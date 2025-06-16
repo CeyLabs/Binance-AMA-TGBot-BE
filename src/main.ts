@@ -1,5 +1,5 @@
 /**
- * @fileoverview Main application entry point for the PizzaDao MoltoBene Telegram Bot
+ * @fileoverview Main application entry point for the Template Telegram Bot
  * @module main
  */
 
@@ -16,7 +16,7 @@ import { json } from "express";
  * @returns {Promise<void>}
  * @throws {Error} If there's an error during application bootstrap
  */
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   // Get the bot instance

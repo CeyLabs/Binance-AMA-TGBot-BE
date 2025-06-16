@@ -1,5 +1,5 @@
 /**
- * @fileoverview Root module of the PizzaDao MoltoBene Telegram Bot application
+ * @fileoverview Root module of the Template Telegram Bot application
  * @module app.module
  */
 

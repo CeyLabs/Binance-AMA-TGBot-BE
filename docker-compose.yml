@@ -5,9 +5,9 @@ services:
     image: postgres:16.3
     container_name: postgres
     environment:
-      POSTGRES_USER: pizzadao
-      POSTGRES_PASSWORD: pizzadao
-      POSTGRES_DB: pizzadao
+      POSTGRES_USER: tgbot-template
+      POSTGRES_PASSWORD: tgbot-template
+      POSTGRES_DB: tgbot-template
     ports:
       - '3009:5432'
     volumes:

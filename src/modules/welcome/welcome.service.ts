@@ -11,7 +11,6 @@ import { Start, Update } from "nestjs-telegraf";
  * Service class that handles all welcome functionality
  * @class WelcomeService
  * @description Manages user onboarding, registration, and welcome messages
- * including pizza name generation, city selection, and user verification
  */
 @Update()
 @Injectable()

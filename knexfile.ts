@@ -1,5 +1,5 @@
-import * as dotenv from 'dotenv';
-import type { Knex } from 'knex';
+import * as dotenv from "dotenv";
+import type { Knex } from "knex";
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ const defaultPoolConfig: Knex.PoolConfig = {
 
 const config: { [key: string]: Knex.Config } = {
   development: {
-    client: 'pg',
+    client: "pg",
     connection: {
       host: process.env.PG_HOST,
       port: Number(process.env.PG_PORT),
@@ -33,16 +33,16 @@ const config: { [key: string]: Knex.Config } = {
       ...defaultPoolConfig,
     },
     migrations: {
-      directory: './src/migrations',
-      tableName: 'knex_migrations',
+      directory: "./src/migrations",
+      tableName: "knex_migrations",
     },
     seeds: {
-      directory: './src/fixtures',
+      directory: "./src/fixtures",
     },
   },
 
   production: {
-    client: 'pg',
+    client: "pg",
     connection: {
       host: process.env.PG_HOST,
       port: Number(process.env.PG_PORT),
@@ -59,22 +59,22 @@ const config: { [key: string]: Knex.Config } = {
       ...defaultPoolConfig,
     },
     migrations: {
-      directory: './src/migrations',
-      tableName: 'knex_migrations',
+      directory: "./src/migrations",
+      tableName: "knex_migrations",
     },
     seeds: {
-      directory: './src/fixtures',
+      directory: "./src/fixtures",
     },
   },
 
   localhost: {
-    client: 'pg',
+    client: "pg",
     connection: {
-      host: '127.0.0.1',
+      host: "127.0.0.1",
       port: 3009,
-      database: 'pizzadao',
-      user: 'pizzadao',
-      password: 'pizzadao',
+      database: "tgbot-template",
+      user: "tgbot-template",
+      password: "tgbot-template",
       // Keep connections alive
       ssl: false,
       keepAlive: true,
@@ -87,11 +87,11 @@ const config: { [key: string]: Knex.Config } = {
       max: 10,
     },
     migrations: {
-      directory: './src/migrations',
-      tableName: 'knex_migrations',
+      directory: "./src/migrations",
+      tableName: "knex_migrations",
     },
     seeds: {
-      directory: './src/fixtures',
+      directory: "./src/fixtures",
     },
   },
 };
