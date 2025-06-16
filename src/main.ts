@@ -8,6 +8,17 @@ import { AppModule } from "./app.module";
 import { getBotToken } from "nestjs-telegraf";
 import { Telegraf } from "telegraf";
 import { json } from "express";
+import { Request, Response, NextFunction } from "express";
+
+// Add request logger middleware
+const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+  console.log(
+    `[${new Date().toISOString()}]` +
+      ` ${req.method.padEnd(6)} ${req.url}` +
+      (req.body ? `\n  Body: ${JSON.stringify(req.body, null, 2)}` : ""),
+  );
+  next();
+};
 
 /**
  * Bootstraps the NestJS application and configures the Telegram bot
@@ -23,11 +34,13 @@ async function bootstrap(): Promise<void> {
   const bot = app.get<Telegraf>(getBotToken());
 
   app.use(json());
+  if (process.env.WEBHOOK_LOGS === "true") {
+    // Use the request logger middleware only if webhook is enabled
+    app.use(requestLogger);
+  }
 
   // Connect the webhook middleware
-  if (process.env.ENABLE_WEBHOOK === "true") {
-    app.use(bot.webhookCallback("/webhook"));
-  }
+  app.use(bot.webhookCallback("/webhook"));
 
   // Start the NestJS application
   const PORT = process.env.PORT || 3000;
