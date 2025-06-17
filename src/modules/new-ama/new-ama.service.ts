@@ -62,15 +62,6 @@ Ask your questions in this group using the below hashtag:
         ),
       ])
     );
-
-    if (!process.env.ADMIN_GROUP_ID) {
-      throw new Error("ADMIN_GROUP_ID environment variable is not set");
-    }
-
-    await ctx.telegram.callApi("createForumTopic", {
-      chat_id: process.env.ADMIN_GROUP_ID,
-      name: `#${amaNumber} - ${amaName}`,
-    });
   }
 
   @Action(/publish_ama_(\d+)_(.+)/)
@@ -86,6 +77,16 @@ Ask your questions in this group using the below hashtag:
       await ctx.answerCbQuery("❌ PUBLIC_GROUP_ID is not set.");
       return;
     }
+
+    if (!process.env.ADMIN_GROUP_ID) {
+      throw new Error("ADMIN_GROUP_ID environment variable is not set");
+    }
+
+    await ctx.telegram.callApi("createForumTopic", {
+      chat_id: process.env.ADMIN_GROUP_ID,
+      name: `#${amaNumber} - ${amaName}`,
+    });
+
     const message = this.generateAMAMessage(amaNumber, amaName);
     await ctx.telegram.sendMessage(publicGroupId, message.trim(), {
       parse_mode: "HTML",
