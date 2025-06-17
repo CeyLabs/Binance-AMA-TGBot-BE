@@ -11,6 +11,7 @@ import { AppService } from "./app.service";
 import { AppController } from "./app.controller";
 import { WelcomeModule } from "./modules/welcome/welcome.module";
 import { PrivateChatMiddleware } from "./middleware/chat-type.middleware";
+import { HelpModule } from './modules/help/help.module';
 
 // Load environment variables
 config();
@@ -50,6 +51,7 @@ config();
       inject: [ConfigService],
     }),
     WelcomeModule,
+    HelpModule,
   ],
 
   controllers: [AppController],
