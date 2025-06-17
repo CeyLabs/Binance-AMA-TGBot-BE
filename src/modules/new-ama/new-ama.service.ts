@@ -7,9 +7,9 @@ import { Action, Command, Update } from "nestjs-telegraf";
 export class NewAMAService {
   constructor() {}
 
-  @Command("newama")
+  @Command("new")
   async handleNewAMACommand(ctx: Context): Promise<void> {
-    const text = ctx.text
+    const text = ctx.text;
 
     if (!text) {
       await ctx.reply("Invalid command format.");
@@ -17,14 +17,14 @@ export class NewAMAService {
     }
 
     // Remove the command part and parse the rest
-    const argsText = text.replace(/^\/newama\s+/, "");
+    const argsText = text.replace(/^\/new\s+/, "");
 
     // Match: 1) language, 2) AMA number, 3) AMA name in quotes
     const match = argsText.match(/^(\w+)\s+(\d+)\s+"(.+)"$/);
 
     if (!match) {
       await ctx.reply(
-        '❌ Incorrect format.\n\n✅ Correct usage:\n`/newama <language> <number> "<AMA name>"`\n\n📌 Example:\n`/newama en 50 "AMA Title"`'
+        '❌ Incorrect format.\n\n✅ Correct usage:\n`/new <language> <number> "<AMA name>"`\n\n📌 Example:\n`/new en 50 "AMA Title"`'
       );
       return;
     }
@@ -52,6 +52,14 @@ Ask your questions in this group using the below hashtag:
         Markup.button.callback("📤 Publish AMA", `publish_ama_${amaNumber}`),
       ])
     );
+
+    if (!process.env.ADMIN_GROUP_ID) {
+      throw new Error('ADMIN_GROUP_ID environment variable is not set');
+    }
+    await ctx.telegram.callApi("createForumTopic", {
+      chat_id: process.env.ADMIN_GROUP_ID,
+      name: `#${amaNumber} - ${amaName}`,
+    });
   }
 
   @Action(/publish_ama_(\d+)/)
