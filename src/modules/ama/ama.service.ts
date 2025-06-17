@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { Action, Command, Update } from "nestjs-telegraf";
 import { handleNewAMA } from "./helper/new-ama";
 import { handlePublishAMA } from "./helper/publish-ama";
-import { AMA_COMMANDS } from "./ama.constants";
+import { AMA_COMMANDS, AMA_HASHTAG } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 
 @Update()
@@ -14,6 +14,20 @@ export class AMAService {
     private readonly config: ConfigService,
     private readonly knexService: KnexService
   ) {}
+
+  // Insert the AMA details into the database
+  async createAMA(
+    amaNumber: number,
+    amaName: string,
+    topicId: number
+  ): Promise<void> {
+    await this.knexService.knex("ama").insert({
+      ama_no: amaNumber,
+      title: amaName,
+      topic_id: topicId,
+      hashtag: `#${AMA_HASHTAG}${amaNumber}`,
+    });
+  }
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
@@ -27,9 +41,11 @@ export class AMAService {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
 
-    // Pass the db connection to the handler
-    const db = this.knexService.knex;
-
-    await handlePublishAMA(ctx, adminGroupId, publicGroupId, db);
+    await handlePublishAMA(
+      ctx,
+      adminGroupId,
+      publicGroupId,
+      this.createAMA.bind(this)
+    );
   }
 }

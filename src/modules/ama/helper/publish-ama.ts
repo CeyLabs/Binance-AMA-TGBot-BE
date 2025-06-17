@@ -1,13 +1,16 @@
 import { Context } from "telegraf";
 import { generateAMAMessage } from "./message";
-import { Knex } from "knex";
-import { AMA_TAG } from "../ama.constants";
+import { AMA_HASHTAG } from "../ama.constants";
 
 export async function handlePublishAMA(
   ctx: Context,
   adminGroupId: string,
   publicGroupId: string,
-  db: Knex
+  createAMA: (
+    amaNumber: number,
+    amaName: string,
+    topicId: number
+  ) => Promise<void>
 ): Promise<void> {
   const callbackQuery = ctx.callbackQuery as any;
   const match = callbackQuery.data.match(/publish_ama_(\d+)_(.+)/);
@@ -23,12 +26,7 @@ export async function handlePublishAMA(
   });
 
   // Insert AMA details into the database
-  await db("ama").insert({
-    ama_id: amaNumber,
-    title: amaName,
-    topic_id: topic.message_thread_id,
-    tag: `#${AMA_TAG}${amaNumber}`,
-  });
+  await createAMA(amaNumber, amaName, topic.message_thread_id);
 
   const message = generateAMAMessage(amaNumber, amaName);
   await ctx.telegram.sendMessage(publicGroupId, message, {

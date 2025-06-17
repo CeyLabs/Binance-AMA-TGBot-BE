@@ -1,6 +1,6 @@
 export const AMA_COMMANDS = {
-  NEW: "new",
+  NEW: "newama",
   END: "endama",
 };
 
-export const AMA_TAG = "weeklysession";
+export const AMA_HASHTAG = "weeklysession";
