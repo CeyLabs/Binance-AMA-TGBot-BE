@@ -12,6 +12,7 @@ import { AppController } from "./app.controller";
 import { WelcomeModule } from "./modules/welcome/welcome.module";
 import { PrivateChatMiddleware } from "./middleware/chat-type.middleware";
 import { HelpModule } from './modules/help/help.module';
+import { NewAMAModule } from './modules/new-ama/new-ama.module';
 
 // Load environment variables
 config();
@@ -52,6 +53,7 @@ config();
     }),
     WelcomeModule,
     HelpModule,
+    NewAMAModule,
   ],
 
   controllers: [AppController],
