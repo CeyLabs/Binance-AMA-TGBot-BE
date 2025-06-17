@@ -1,5 +1,5 @@
 {
-  "name": "nestjs-tgbot-be-template",
+  "name": "binance-ama-tgbot",
   "version": "1.0.0",
   "description": "",
   "author": "CeyLabs",
@@ -12,6 +12,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
+    "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
     "serve:local": "export $(xargs < ./.env) && npm run start:dev",
