@@ -12,7 +12,7 @@ export class NewAMAService {
     const text = ctx.text
 
     if (!text) {
-      ctx.reply("Invalid command format.");
+      await ctx.reply("Invalid command format.");
       return;
     }
 
@@ -23,13 +23,13 @@ export class NewAMAService {
     const match = argsText.match(/^(\w+)\s+(\d+)\s+"(.+)"$/);
 
     if (!match) {
-      ctx.reply(
+      await ctx.reply(
         '❌ Incorrect format.\n\n✅ Correct usage:\n`/newama <language> <number> "<AMA name>"`\n\n📌 Example:\n`/newama en 50 "AMA Title"`'
       );
       return;
     }
 
-    const [, language, amaNumber, amaName] = match;
+    const [, , amaNumber, amaName] = match;
 
     // Build the AMA message
     const message = `
