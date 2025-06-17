@@ -1,29 +1,27 @@
-# Telegram Bot Template
+# Binance MENA AMA Telegram Bot
 
-A Telegram bot template built with NestJS and Telegraf.
+A Telegram bot built with NestJS and Telegraf to manage AMAs for MENA region groups.
 
 ## 🚀 About
 
-This template provides a foundation for building Telegram bots that can handle pretty much any bot related need. It's designed to be easily customizable for various use cases.
+This bot is specifically designed to manage and automate AMA (Ask Me Anything) sessions for Binance MENA region Telegram groups. It helps streamline the AMA process, manage participant interactions, Create reward leaderboards, and ensure smooth communication during these sessions.
 
 ## 🛠 Features
 
-- **User Management**
-  - Automated user verification
-  - User registration and tracking
-  - Role-based access control
+- **AMA Management**
+  - Automated AMA session scheduling
+  - Question collection and moderation
+  - Real-time participant tracking
 
-- **Community Features**
-  - Broadcast messaging
-  - Custom command handling
-  - AI-powered responses
+- **User Management**
+  - Participant registration for AMAs
+  - User verification and tracking
 
 ## 🛠 Tech Stack
 
 - NestJS
 - Telegraf (Telegram Bot Framework)
 - PostgreSQL with Knex.js
-- OpenAI Integration
 - Docker Support
 
 ## 📋 Prerequisites
@@ -31,14 +29,13 @@ This template provides a foundation for building Telegram bots that can handle p
 - Node.js v22
 - Docker
 - Telegram Bot Token
-- OpenAI API Key
 
 ## 🚀 Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/telegram-bot-template.git
-cd telegram-bot-template
+git clone https://github.com/CeyLabs/Binance-AMA-TGBot-BE.git
+cd Binance-AMA-TGBot-BE
 ```
 
 2. Create `.env` file:
@@ -67,10 +64,3 @@ npm run fixtures
 ```bash
 npm run serve:local
 ```
-
-## 📝 Customization
-
-1. Update the bot configuration in `.env`
-2. Modify the command handlers in `src/commands`
-3. Customize the database schema in `src/database/migrations`
-4. Add your own features and integrations
