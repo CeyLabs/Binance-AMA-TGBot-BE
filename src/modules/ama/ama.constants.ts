@@ -1,4 +1,4 @@
 export const AMA_COMMANDS = {
-  NEW: "newama",
+  NEW: "new",
   END: "endama",
 };

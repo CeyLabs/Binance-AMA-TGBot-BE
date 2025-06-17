@@ -11,9 +11,9 @@ import { AppService } from "./app.service";
 import { AppController } from "./app.controller";
 import { WelcomeModule } from "./modules/welcome/welcome.module";
 import { PrivateChatMiddleware } from "./middleware/chat-type.middleware";
-import { HelpModule } from './modules/help/help.module';
-import { KnexModule } from './modules/knex/knex.module';
-import { AMAModule } from './modules/ama/ama.module';
+import { HelpModule } from "./modules/help/help.module";
+import { KnexModule } from "./modules/knex/knex.module";
+import { AMAModule } from "./modules/ama/ama.module";
 
 // Load environment variables
 config();
@@ -26,14 +26,24 @@ config();
  */
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config) => {
+        if (!process.env.ADMIN_GROUP_ID) throw new Error("ADMIN_GROUP_ID is not set");
+        if (!process.env.PUBLIC_GROUP_ID) throw new Error("PUBLIC_GROUP_ID is not set");
+        return config as {
+          ADMIN_GROUP_ID: string;
+          PUBLIC_GROUP_ID: string;
+        };
+      },
+    }),
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const token = configService.get<string>("TELEGRAM_BOT_TOKEN");
         if (!token) {
           throw new Error(
-            "TELEGRAM_BOT_TOKEN is not defined in the environment variables",
+            "TELEGRAM_BOT_TOKEN is not defined in the environment variables"
           );
         }
         return {
