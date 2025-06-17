@@ -7,6 +7,24 @@ import { Action, Command, Update } from "nestjs-telegraf";
 export class NewAMAService {
   constructor() {}
 
+  private generateAMAMessage(
+    amaNumber: string | number,
+    amaName: string
+  ): string {
+    return `
+📢 <b>Binance MENA Weekly AMA #${amaNumber}</b>
+
+Join us for an exciting session to discuss <b>${amaName}</b>.
+
+✅ <b>How to Participate:</b>
+Ask your questions in this group using the below hashtag:
+
+<pre>#weeklysession${amaNumber}</pre>
+
+🏆 The best questions will share the rewards! Get your questions ready!
+    `.trim();
+  }
+
   @Command("new")
   async handleNewAMACommand(ctx: Context): Promise<void> {
     const text = ctx.text;
@@ -32,42 +50,45 @@ export class NewAMAService {
     const [, , amaNumber, amaName] = match;
 
     // Build the AMA message
-    const message = `
-📢 <b>Binance MENA Weekly AMA #${amaNumber}</b>
-
-Join us for an exciting session to discuss <b>${amaName}</b>.
-
-✅ <b>How to Participate:</b>
-Ask your questions in this group using the below hashtag:
-
-<pre>#weeklysession${amaNumber}</pre>
-
-🏆 The best questions will share the rewards! Get your questions ready!
-    `;
+    const message = this.generateAMAMessage(amaNumber, amaName);
 
     // Send the message
     await ctx.replyWithHTML(
       message.trim(),
       Markup.inlineKeyboard([
-        Markup.button.callback("📤 Publish AMA", `publish_ama_${amaNumber}`),
+        Markup.button.callback(
+          "📤 Publish AMA",
+          `publish_ama_${amaNumber}_${encodeURIComponent(amaName)}`
+        ),
       ])
     );
 
     if (!process.env.ADMIN_GROUP_ID) {
-      throw new Error('ADMIN_GROUP_ID environment variable is not set');
+      throw new Error("ADMIN_GROUP_ID environment variable is not set");
     }
+
     await ctx.telegram.callApi("createForumTopic", {
       chat_id: process.env.ADMIN_GROUP_ID,
       name: `#${amaNumber} - ${amaName}`,
     });
   }
 
-  @Action(/publish_ama_(\d+)/)
+  @Action(/publish_ama_(\d+)_(.+)/)
   async handlePublishAMA(ctx: Context) {
     const callbackQuery = ctx.callbackQuery as any;
-    const match = callbackQuery.data.match(/publish_ama_(\d+)/);
+    const match = callbackQuery.data.match(/publish_ama_(\d+)_(.+)/);
     if (!match) return;
     const amaNumber = parseInt(match[1], 10);
-    await ctx.answerCbQuery(`✅ AMA ${amaNumber} published!`);
+    const publicGroupId = process.env.PUBLIC_GROUP_ID;
+    const amaName = decodeURIComponent(match[2]);
+
+    if (!publicGroupId) {
+      await ctx.answerCbQuery("❌ PUBLIC_GROUP_ID is not set.");
+      return;
+    }
+    const message = this.generateAMAMessage(amaNumber, amaName);
+    await ctx.telegram.sendMessage(publicGroupId, message.trim(), {
+      parse_mode: "HTML",
+    });
   }
 }
