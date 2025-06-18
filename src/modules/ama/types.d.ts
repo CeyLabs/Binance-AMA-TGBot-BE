@@ -13,6 +13,7 @@ export interface AMA {
   special_guest?: string;
   topic: string;
   hashtag: string;
+  scheduled_at?: Date;
   created_at?: Date;
   updated_at?: Date;
 }

@@ -45,3 +45,37 @@ export async function handleBroadcastNow(
 
   await ctx.reply("Announcement Broadcasted to the group successfully!");
 }
+
+export async function handleScheduleBroadcast(
+  ctx: Context & { match: RegExpExecArray },
+  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
+  updateAMA: (sessionNo: number, updates: Partial<AMA>) => Promise<boolean>
+): Promise<void> {
+  const result = await validateCallbackPattern(
+    ctx,
+    CALLBACK_ACTIONS.SCHEDULE_BROADCAST,
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_(\\d+)$`)
+  );
+  if (!result) return;
+
+  const { sessionNo } = result;
+
+  const ama = await getAMABySessionNo(sessionNo);
+  if (!ama) {
+    await ctx.reply("AMA session not found.");
+    return;
+  }
+
+  // Schedule the broadcast for 1 minute later (for testing purposes)
+  const broadcastTime = new Date(Date.now() + 1 * 60 * 1000);
+
+  // Update the AMA session with the scheduled broadcast time
+  await updateAMA(sessionNo, {
+    scheduled_at: broadcastTime,
+    status: "scheduled",
+  });
+
+  await ctx.reply(
+    `Scheduled AMA session ${ama.session_no} broadcast for ${broadcastTime.toLocaleString()}.`
+  );
+}

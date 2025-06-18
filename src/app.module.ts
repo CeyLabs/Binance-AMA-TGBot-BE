@@ -15,6 +15,8 @@ import { HelpModule } from "./modules/help/help.module";
 import { KnexModule } from "./modules/knex/knex.module";
 import { AMAModule } from "./modules/ama/ama.module";
 import { session } from "telegraf";
+import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleServicesModule } from './modules/schedule-services/schedule-services.module';
 
 // Load environment variables
 config();
@@ -40,6 +42,7 @@ config();
         };
       },
     }),
+    ScheduleModule.forRoot(),
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -69,6 +72,7 @@ config();
     HelpModule,
     KnexModule,
     AMAModule,
+    ScheduleServicesModule,
   ],
 
   controllers: [AppController],

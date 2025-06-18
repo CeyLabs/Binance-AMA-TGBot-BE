@@ -40,7 +40,7 @@ export function buildAMAMessage(data: AMAData): string {
 <b>⚡ To be eligible to win, you must:</b>
 1️⃣ Complete this <a href="${data.form_link}">form</a> to become qualified for the reward.
 2️⃣ Participate in the voice call 🗣️
-3️⃣ Ask a question during the call using the hashtag <b>${AMA_HASHTAG}${data.session_no}</b>
+3️⃣ Ask a question during the call using the hashtag <b>#${AMA_HASHTAG}${data.session_no}</b>
 4️⃣ Have a username
 5️⃣ Not be a winner of the competition in the last 30 days.
 

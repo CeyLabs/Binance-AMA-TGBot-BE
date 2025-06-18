@@ -12,7 +12,10 @@ import {
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
 import { AMA, BotContext } from "./types";
-import { handleBroadcastNow } from "./new-ama/broadcast";
+import {
+  handleBroadcastNow,
+  handleScheduleBroadcast,
+} from "./new-ama/broadcast";
 import { handleEditRequest } from "./helper/handleEditRequest";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
@@ -105,6 +108,18 @@ export class AMAService {
       ctx,
       publicGroupId,
       this.getAMABySessionNo.bind(this)
+    );
+  }
+
+  // schedule-broadcast_(sessionNo)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_(\\d+)$`))
+  async scheduleBroadcast(
+    ctx: Context & { match: RegExpExecArray }
+  ): Promise<void> {
+    await handleScheduleBroadcast(
+      ctx,
+      this.getAMABySessionNo.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
