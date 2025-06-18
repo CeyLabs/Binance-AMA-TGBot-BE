@@ -1,4 +1,4 @@
-import { Context } from 'telegraf';
+import { Context } from "telegraf";
 
 export interface AMA {
   id: string;
@@ -20,7 +20,15 @@ export interface AMA {
 export interface SessionData {
   editMode?: {
     sessionNo: number;
-    field: string;
+    field:
+      | "date"
+      | "time"
+      | "sessionNo"
+      | "reward"
+      | "winnerCount"
+      | "formLink"
+      | "topic"
+      | "guest";
     newValue?: string;
   };
 }

@@ -22,6 +22,10 @@ export const CALLBACK_ACTIONS = {
   SCHEDULE_BROADCAST: "schedule-broadcast",
   BROADCAST_NOW: "broadcast-now",
   CANCEL_BROADCAST: "cancel-broadcast",
+
+  // Callback actions for edit confirmation
+  EDIT_CONFIRM: "edit-confirm",
+  EDIT_CANCEL: "edit-cancel",
 };
 
 export const AMA_DEFAULT_DATA = {

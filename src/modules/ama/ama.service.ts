@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Context, Markup } from "telegraf";
+import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, On, Update } from "nestjs-telegraf";
 import { handleNewAMA } from "./new-ama/new-ama";
@@ -11,30 +11,11 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
-import { AMA } from "./types";
+import { AMA, BotContext } from "./types";
 import { handleBroadcastNow } from "./new-ama/broadcast";
-import { validateCallbackPattern } from "./helper/utils";
-import { buildAMAMessage } from "./helper/msg-builder";
-
-export interface SessionData {
-  editMode?: {
-    sessionNo: number;
-    field:
-      | "date"
-      | "time"
-      | "sessionNo"
-      | "reward"
-      | "winnerCount"
-      | "formLink"
-      | "topic"
-      | "guest";
-    newValue?: string;
-  };
-}
-
-export interface BotContext extends Context {
-  session: SessionData;
-}
+import { handleEditRequest } from "./helper/handleEditRequest";
+import { EDITABLE_FIELDS } from "./helper/field-metadata";
+import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
 
 @Update()
 @Injectable()
@@ -129,80 +110,51 @@ export class AMAService {
 
   // edit-date_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_(\\d+)$`))
-  async editAMA(ctx: BotContext): Promise<void> {
-    const result = await validateCallbackPattern(
+  async editDate(ctx: BotContext) {
+    return handleEditRequest(
       ctx,
+      "date",
       CALLBACK_ACTIONS.EDIT_DATE,
-      new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_(\\d+)$`)
+      this.getAMABySessionNo.bind(this)
     );
-    if (!result) return;
-    const { sessionNo } = result;
-    const ama = await this.getAMABySessionNo(sessionNo);
-    if (!ama) {
-      await ctx.reply(`AMA session number ${sessionNo} does not exist.`);
-      return;
-    }
-
-    // Store temporary state
-    ctx.session.editMode = {
-      sessionNo,
-      field: "date",
-    };
-    await ctx.reply(`Enter Date (dd/mm/yyyy)`);
   }
 
+  // edit-time_(sessionNo)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_TIME}_(\\d+)$`))
+  async editTime(ctx: BotContext) {
+    return handleEditRequest(
+      ctx,
+      "time",
+      CALLBACK_ACTIONS.EDIT_TIME,
+      this.getAMABySessionNo.bind(this)
+    );
+  }
+
+  // Capture text input for editing
   @On("text")
-  async handleEditText(ctx: BotContext): Promise<void> {
-    const editMode = ctx.session.editMode;
-    if (!editMode || editMode.field !== "date") return;
+  async handleText(ctx: BotContext): Promise<void> {
+    await handleEdit(ctx);
+  }
 
-    if (!ctx.message || !("text" in ctx.message)) return;
-    const input = ctx.message.text.trim();
-    const match = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-
-    if (!match) {
-      await ctx.reply("❌ Invalid format. Please enter date as dd/mm/yyyy.");
-      return;
-    }
-
-    const [, day, month, year] = match;
-    const isoDate = `${year}-${month}-${day}`;
-
-    // Save new value for confirmation
-    if (!ctx.session.editMode) return;
-    ctx.session.editMode.newValue = isoDate;
-
-    await ctx.reply(
-      `✅ Updated Date: ${day}/${month}/${year}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback("Cancel", "edit_cancel")],
-        [Markup.button.callback("Confirm", "edit_date_confirm")],
-      ])
+  // confirm-edit_(sessionNo)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_(\\d+)$`))
+  async confirmEdit(ctx: BotContext): Promise<void> {
+    await handleConfirmEdit(
+      ctx,
+      this.updateAMA.bind(this),
+      this.getAMABySessionNo.bind(this)
     );
   }
 
-  @Action("edit_date_confirm")
-  async confirmDateUpdate(ctx: BotContext): Promise<void> {
-    const { sessionNo, newValue } = ctx.session.editMode || {};
-    if (!sessionNo || !newValue) {
-      await ctx.reply("⚠️ No pending update found.");
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_(\\d+)$`))
+  async cancelEdit(ctx: BotContext): Promise<void> {
+    if (!ctx.session.editMode) {
+      await ctx.reply("⚠️ No pending update to cancel.");
       return;
     }
-
-    const success = await this.updateAMA(sessionNo, { date: newValue });
-    if (!success) {
-      await ctx.reply("❌ Failed to update AMA. It may no longer exist.");
-      return;
-    }
-
+    const { field } = ctx.session.editMode || {};
+    const column = EDITABLE_FIELDS[field].column;
     delete ctx.session.editMode;
-
-    await ctx.reply("✅ Date updated successfully!");
-
-    const updatedAMA = await this.getAMABySessionNo(sessionNo);
-    if (updatedAMA) {
-      const message = buildAMAMessage(updatedAMA); // use your formatter function
-      await ctx.reply(message, { parse_mode: "HTML" });
-    }
+    await ctx.reply(`${column} update cancelled.`);
   }
 }
