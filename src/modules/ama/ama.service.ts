@@ -3,9 +3,14 @@ import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, Update } from "nestjs-telegraf";
 import { handleNewAMA } from "./helper/new-ama";
-import { handlePublishAMA } from "./helper/publish-ama";
-import { AMA_COMMANDS, AMA_HASHTAG } from "./ama.constants";
+import {
+  AMA_COMMANDS,
+  AMA_DEFAULT_DATA,
+  AMA_HASHTAG,
+  CALLBACK_ACTIONS,
+} from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
+import { handleBroadcastNow, handleConfirmAMA } from "./helper/actions";
 
 @Update()
 @Injectable()
@@ -16,36 +21,50 @@ export class AMAService {
   ) {}
 
   // Insert the AMA details into the database
-  async createAMA(
-    amaNumber: number,
-    amaName: string,
-    topicId: number
-  ): Promise<void> {
+  // prettier-ignore
+  async createAMA( sessionNo: number, topic?: string): Promise<void> {
     await this.knexService.knex("ama").insert({
-      ama_no: amaNumber,
-      title: amaName,
-      topic_id: topicId,
-      hashtag: `#${AMA_HASHTAG}${amaNumber}`,
+      session_no: sessionNo,
+      language: "en",
+      date: AMA_DEFAULT_DATA.date,
+      time: AMA_DEFAULT_DATA.time,
+      reward: AMA_DEFAULT_DATA.reward,
+      winner_count: AMA_DEFAULT_DATA.winner_count,
+      form_link: AMA_DEFAULT_DATA.form_link,
+      topic: topic || "Weekly AMA",
+      hashtag: `#${AMA_HASHTAG}${sessionNo}`,
     });
+  }
+
+  // Check if the AMA session number already exists
+  async isAMASessionExists(sessionNo: number): Promise<boolean> {
+    const exists = await this.knexService
+      .knex("ama")
+      .where({ session_no: sessionNo })
+      .first("id");
+
+    return Boolean(exists);
   }
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: Context): Promise<void> {
-    await handleNewAMA(ctx);
+    await handleNewAMA(
+      ctx,
+      this.createAMA.bind(this),
+      this.isAMASessionExists.bind(this)
+    );
   }
 
-  // Publish the AMA to the public group
-  @Action(/publish_ama_(\d+)_(.+)/)
-  async publishAMA(ctx: Context): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
+  // confirm-ama_(amaNumber)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_(\\d+)$`))
+  async confirmAMA(ctx: Context): Promise<void> {
+    await handleConfirmAMA(ctx);
+  }
 
-    await handlePublishAMA(
-      ctx,
-      adminGroupId,
-      publicGroupId,
-      this.createAMA.bind(this)
-    );
+  // broadcast-now_<amaNumber>
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_(\\d+)$`))
+  async broadcastNow(ctx: Context): Promise<void> {
+    await handleBroadcastNow(ctx);
   }
 }
