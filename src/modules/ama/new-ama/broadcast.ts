@@ -32,9 +32,15 @@ export async function handleBroadcastNow(
     form_link: ama.form_link,
   });
 
-  await ctx.telegram.sendPhoto(publicGroupId, imageUrl, {
+  // Send the announcement to the public group
+  const sent = await ctx.telegram.sendPhoto(publicGroupId, imageUrl, {
     caption: message,
     parse_mode: "HTML",
+  });
+
+  // Pin the message in the public group
+  await ctx.telegram.pinChatMessage(publicGroupId, sent.message_id, {
+    disable_notification: false, // set to true if you don't want to notify users
   });
 
   await ctx.reply("Announcement Broadcasted to the group successfully!");
