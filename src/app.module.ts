@@ -14,6 +14,7 @@ import { PrivateChatMiddleware } from "./middleware/chat-type.middleware";
 import { HelpModule } from "./modules/help/help.module";
 import { KnexModule } from "./modules/knex/knex.module";
 import { AMAModule } from "./modules/ama/ama.module";
+import { session } from "telegraf";
 
 // Load environment variables
 config();
@@ -29,8 +30,10 @@ config();
     ConfigModule.forRoot({
       isGlobal: true,
       validate: (config) => {
-        if (!process.env.ADMIN_GROUP_ID) throw new Error("ADMIN_GROUP_ID is not set");
-        if (!process.env.PUBLIC_GROUP_ID) throw new Error("PUBLIC_GROUP_ID is not set");
+        if (!process.env.ADMIN_GROUP_ID)
+          throw new Error("ADMIN_GROUP_ID is not set");
+        if (!process.env.PUBLIC_GROUP_ID)
+          throw new Error("PUBLIC_GROUP_ID is not set");
         return config as {
           ADMIN_GROUP_ID: string;
           PUBLIC_GROUP_ID: string;
@@ -57,7 +60,7 @@ config();
                   },
                 }
               : {},
-          middlewares: [new PrivateChatMiddleware().use()],
+          middlewares: [session(), new PrivateChatMiddleware().use()],
         };
       },
       inject: [ConfigService],

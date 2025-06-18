@@ -1,3 +1,5 @@
+import { Context } from 'telegraf';
+
 export interface AMA {
   id: string;
   session_no: number;
@@ -13,4 +15,16 @@ export interface AMA {
   hashtag: string;
   created_at?: Date;
   updated_at?: Date;
+}
+
+export interface SessionData {
+  editMode?: {
+    sessionNo: number;
+    field: string;
+    newValue?: string;
+  };
+}
+
+export interface BotContext extends Context {
+  session: SessionData;
 }
