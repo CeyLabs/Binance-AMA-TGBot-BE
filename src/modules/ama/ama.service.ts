@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, Update } from "nestjs-telegraf";
-import { handleNewAMA } from "./helper/new-ama";
+import { handleNewAMA } from "./new-ama/new-ama";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
@@ -10,8 +10,9 @@ import {
   CALLBACK_ACTIONS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
-import { handleBroadcastNow, handleConfirmAMA } from "./helper/actions";
-import { AMA } from "./helper/types";
+import { handleConfirmAMA } from "./new-ama/callbacks";
+import { AMA } from "./types";
+import { handleBroadcastNow } from "./new-ama/broadcast";
 
 @Update()
 @Injectable()

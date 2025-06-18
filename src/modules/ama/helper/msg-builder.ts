@@ -1,4 +1,4 @@
-import { formatTimeTo12Hour } from "./utils";
+import { formatTimeTo12Hour } from "../helper/utils";
 import { AMA_HASHTAG } from "../ama.constants";
 
 interface AMAData {

@@ -4,7 +4,7 @@ import {
   AMA_DEFAULT_DATA,
   CALLBACK_ACTIONS,
 } from "../ama.constants";
-import { buildAMAMessage, imageUrl } from "./msg-builder";
+import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
