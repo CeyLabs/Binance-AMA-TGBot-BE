@@ -11,6 +11,7 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleBroadcastNow, handleConfirmAMA } from "./helper/actions";
+import { AMA } from "./helper/types";
 
 @Update()
 @Injectable()
@@ -46,6 +47,16 @@ export class AMAService {
     return Boolean(exists);
   }
 
+  // Get AMA details by session number
+  async getAMABySessionNo(sessionNo: number): Promise<AMA | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo })
+      .first();
+
+    return ama || null;
+  }
+
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: Context): Promise<void> {
@@ -65,6 +76,11 @@ export class AMAService {
   // broadcast-now_<amaNumber>
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_(\\d+)$`))
   async broadcastNow(ctx: Context): Promise<void> {
-    await handleBroadcastNow(ctx);
+    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
+    await handleBroadcastNow(
+      ctx,
+      publicGroupId,
+      this.getAMABySessionNo.bind(this)
+    );
   }
 }
