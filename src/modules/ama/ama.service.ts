@@ -196,18 +196,23 @@ export class AMAService {
     await ctx.reply(`${column} update cancelled.`);
   }
 
-  // Capture text input for editing
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
-    await handleEdit(ctx);
-  }
-
-  // AMA question forwarding to the admin group
-  // This will forward messages containing the AMA hashtag to the admin group
-  @On("message")
-  async handleMessage(ctx: Context): Promise<void> {
+    console.log("Received text message:", ctx);
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    console.log("Forwarding message to admin group:", ctx);
-    await handleMsgForward(ctx, adminGroupId, this.getAMAByHashtag.bind(this));
+    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
+    const chatID = ctx.chat?.id.toString();
+
+    if (chatID === adminGroupId) {
+      await handleEdit(ctx);
+    } else if (chatID === publicGroupId) {
+      await handleMsgForward(
+        ctx,
+        adminGroupId,
+        this.getAMAByHashtag.bind(this)
+      );
+    } else {
+      await ctx.reply("This command is not available in this chat.");
+    }
   }
 }

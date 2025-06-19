@@ -8,7 +8,6 @@ export async function handleMsgForward(
   getAMAByHashtag: (hashtag: string) => Promise<AMA | null>
 ) {
   const message = ctx.message;
-  console.log("Forwarding message to admin group:", message);
 
   if (!message || !("text" in message) || message.from.is_bot) return;
 
@@ -18,10 +17,8 @@ export async function handleMsgForward(
       new RegExp(`#${AMA_HASHTAG}(\\d+)`)
     );
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
-    console.log("Extracted hashtag:", hashtag);
     if (hashtag) {
       const ama = await getAMAByHashtag(hashtag);
-        console.log("Retrieved AMA:", ama);
       // Forward the message to the admin group if AMA is active
       if (ama && ama.status === "active" && ama.thread_id) {
         await ctx.telegram.forwardMessage(
