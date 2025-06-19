@@ -27,6 +27,7 @@ export async function handleBroadcastNow(
     session_no: ama.session_no,
     date: ama.date,
     time: ama.time,
+    total_pool: ama.total_pool,
     reward: ama.reward,
     winner_count: ama.winner_count,
     form_link: ama.form_link,

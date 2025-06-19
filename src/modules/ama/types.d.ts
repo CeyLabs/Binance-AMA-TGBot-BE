@@ -6,6 +6,7 @@ export interface AMA {
   language: string;
   date: string;
   time: string;
+  total_pool: string;
   reward: string;
   winner_count: number;
   form_link: string;

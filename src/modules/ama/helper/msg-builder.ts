@@ -5,6 +5,7 @@ interface AMAData {
   session_no: number;
   date: Date | string;
   time: string;
+  total_pool: string;
   reward: string;
   winner_count: number;
   form_link: string;
@@ -29,7 +30,7 @@ export function buildAMAMessage(data: AMAData): string {
 
   const formattedTime = formatTimeTo12Hour(data.time);
 
-  return `<b>📣 Join us for an AMA from our Binance Weekly Sessions with #BinanceMENA</b> team and get a chance to share a portion of the total reward pool worth <b>${data.reward}</b> 🎁
+  return `<b>📣 Join us for an AMA from our Binance Weekly Sessions with #BinanceMENA</b> team and get a chance to share a portion of the total reward pool worth <b>${data.total_pool}</b> 🎁
 
 ⬇️ <b>Reward pool</b> will be shared up to <b>${data.winner_count}</b> winners for a prize of <b>${data.reward}</b> each 🎁
 

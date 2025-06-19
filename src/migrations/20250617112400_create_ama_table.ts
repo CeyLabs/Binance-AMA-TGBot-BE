@@ -11,13 +11,14 @@ export async function up(knex: Knex): Promise<void> {
     table.string("language", 10).notNullable()
     table.date("date").notNullable();
     table.time("time").notNullable();
+    table.string("total_pool").notNullable();
     table.string("reward").notNullable();
     table.integer("winner_count").notNullable();
     table.string("form_link").notNullable();
     table.string("status").notNullable().defaultTo("pending");
     table.string("special_guest");
-    table.string("topic").notNullable();
-    table.string("hashtag").notNullable();
+    table.string("topic");
+    table.string("hashtag").notNullable().unique();
     table.timestamp("scheduled_at");
     table.timestamps(true, true);
   });

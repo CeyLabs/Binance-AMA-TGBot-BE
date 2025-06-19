@@ -55,6 +55,7 @@ export async function handleNewAMA(
       session_no: sessionNo,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
+      total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,
       winner_count: AMA_DEFAULT_DATA.winner_count,
       form_link: AMA_DEFAULT_DATA.form_link,
