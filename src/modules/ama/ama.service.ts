@@ -108,7 +108,8 @@ export class AMAService {
     await handleBroadcastNow(
       ctx,
       publicGroupId,
-      this.getAMABySessionNo.bind(this)
+      this.getAMABySessionNo.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 

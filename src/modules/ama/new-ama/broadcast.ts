@@ -7,7 +7,8 @@ import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 export async function handleBroadcastNow(
   ctx: Context,
   publicGroupId: string,
-  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>
+  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
+  updateAMA: (sessionNo: number, updates: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
   const result = await validateCallbackPattern(
     ctx,
@@ -42,6 +43,11 @@ export async function handleBroadcastNow(
   // Pin the message in the public group
   await ctx.telegram.pinChatMessage(publicGroupId, sent.message_id, {
     disable_notification: false, // set to true if you don't want to notify users
+  });
+
+  // Update the AMA session status to 'broadcasted'
+  await updateAMA(sessionNo, {
+    status: "broadcasted",
   });
 
   await ctx.reply("Announcement Broadcasted to the group successfully!");
