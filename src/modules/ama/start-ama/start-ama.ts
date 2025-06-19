@@ -5,6 +5,7 @@ import { AMA } from "../types";
 export async function handleStartAMA(
   ctx: Context,
   adminGroupId: string,
+  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
   updateAMA: (sessionNo: number, data: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
   const text = ctx.text;
@@ -22,6 +23,15 @@ export async function handleStartAMA(
   const sessionNo = parseInt(match[1], 10);
   if (isNaN(sessionNo) || sessionNo <= 0) {
     await ctx.reply("Invalid session number. Please provide a valid number.");
+    return;
+  }
+
+  // Check if the AMA session already started
+  const existingAMA = await getAMABySessionNo(sessionNo);
+  if (existingAMA?.status === "active" || existingAMA?.status === "ended") {
+    await ctx.reply(
+      `AMA session #${AMA_HASHTAG}${sessionNo} is already ${existingAMA.status}.`
+    );
     return;
   }
 

@@ -118,7 +118,12 @@ export class AMAService {
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    await handleStartAMA(ctx, adminGroupId, this.updateAMA.bind(this));
+    await handleStartAMA(
+      ctx,
+      adminGroupId,
+      this.getAMABySessionNo.bind(this),
+      this.updateAMA.bind(this)
+    );
   }
 
   // confirm-ama_(sessionNo)
