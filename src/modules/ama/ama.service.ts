@@ -19,6 +19,8 @@ import {
 import { handleEditRequest } from "./helper/handleEditRequest";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
+import { handleStartAMA } from "./start-ama/start-ama";
+import { handleMsgForward } from "./start-ama/forward-msg";
 
 @Update()
 @Injectable()
@@ -65,6 +67,23 @@ export class AMAService {
     return ama || null;
   }
 
+  // Get AMA by hashtag
+  async getAMAByHashtag(hashtag: string): Promise<AMA | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ hashtag })
+      .first();
+    return ama || null;
+  }
+
+  async getThreadIdBySessionNo(sessionNo: number): Promise<number | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo })
+      .first("thread_id");
+    return ama?.thread_id ?? null;
+  }
+
   // Update an existing AMA
   async updateAMA(sessionNo: number, updates: Partial<AMA>): Promise<boolean> {
     const exists = await this.knexService
@@ -93,6 +112,13 @@ export class AMAService {
       this.createAMA.bind(this),
       this.isAMASessionExists.bind(this)
     );
+  }
+
+  // Start a new AMA session (/startama 60)
+  @Command(AMA_COMMANDS.START)
+  async startAMA(ctx: Context): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    await handleStartAMA(ctx, adminGroupId, this.updateAMA.bind(this));
   }
 
   // confirm-ama_(sessionNo)
@@ -147,12 +173,6 @@ export class AMAService {
     );
   }
 
-  // Capture text input for editing
-  @On("text")
-  async handleText(ctx: BotContext): Promise<void> {
-    await handleEdit(ctx);
-  }
-
   // confirm-edit_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_(\\d+)$`))
   async confirmEdit(ctx: BotContext): Promise<void> {
@@ -163,6 +183,7 @@ export class AMAService {
     );
   }
 
+  // edit-cancel_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_(\\d+)$`))
   async cancelEdit(ctx: BotContext): Promise<void> {
     if (!ctx.session.editMode) {
@@ -173,5 +194,20 @@ export class AMAService {
     const column = EDITABLE_FIELDS[field].column;
     delete ctx.session.editMode;
     await ctx.reply(`${column} update cancelled.`);
+  }
+
+  // Capture text input for editing
+  @On("text")
+  async handleText(ctx: BotContext): Promise<void> {
+    await handleEdit(ctx);
+  }
+
+  // AMA question forwarding to the admin group
+  // This will forward messages containing the AMA hashtag to the admin group
+  @On("message")
+  async handleMessage(ctx: Context): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    console.log("Forwarding message to admin group:", ctx);
+    await handleMsgForward(ctx, adminGroupId, this.getAMAByHashtag.bind(this));
   }
 }

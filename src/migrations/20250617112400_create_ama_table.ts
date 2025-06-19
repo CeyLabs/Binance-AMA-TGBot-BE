@@ -20,6 +20,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("topic");
     table.string("hashtag").notNullable().unique();
     table.timestamp("scheduled_at");
+    table.integer("thread_id");
     table.timestamps(true, true);
   });
 }

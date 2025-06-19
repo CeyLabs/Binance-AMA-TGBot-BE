@@ -1,5 +1,6 @@
 export const AMA_COMMANDS = {
   NEW: "newama",
+  START: "startama",
   END: "endama",
 };
 

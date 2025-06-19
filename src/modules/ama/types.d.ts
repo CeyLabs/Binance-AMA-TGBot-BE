@@ -15,6 +15,7 @@ export interface AMA {
   topic: string;
   hashtag: string;
   scheduled_at?: Date;
+  thread_id?: number;
   created_at?: Date;
   updated_at?: Date;
 }

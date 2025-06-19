@@ -66,8 +66,8 @@ export class PrivateChatMiddleware {
         // Do something specific for /start command in groups
       }
 
-      // Allow only private chats for commands and text
-      if (ctx.chat?.type === "private") {
+      // Allow for private chats and public groups (channels)
+      if (ctx.chat?.type === "private" || ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {
         return next();
       }
 
