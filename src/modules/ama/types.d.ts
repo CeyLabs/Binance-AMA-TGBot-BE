@@ -53,3 +53,16 @@ export interface OpenAIAnalysis {
   language: Score;
   total_score: number;
 }
+
+export interface ScoreData {
+  sessionNo: number;
+  userId: string;
+  userName: string;
+  question: string;
+  originality: number;
+  relevance: number;
+  clarity: number;
+  engagement: number;
+  language: number;
+  score: number;
+}

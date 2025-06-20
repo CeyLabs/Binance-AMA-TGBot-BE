@@ -11,7 +11,7 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
-import { AMA, BotContext, OpenAIAnalysis } from "./types";
+import { AMA, BotContext, OpenAIAnalysis, ScoreData } from "./types";
 import {
   handleBroadcastNow,
   handleScheduleBroadcast,
@@ -45,6 +45,21 @@ export class AMAService {
       form_link: AMA_DEFAULT_DATA.form_link,
       topic: topic || "Weekly AMA",
       hashtag: `#${AMA_HASHTAG}${sessionNo}`,
+    });
+  }
+
+  async addScore(scoreData: ScoreData): Promise<void> {
+    await this.knexService.knex("scores").insert({
+      session_no: scoreData.sessionNo,
+      user_id: scoreData.userId,
+      user_name: scoreData.userName,
+      question: scoreData.question,
+      originality: scoreData.originality,
+      relevance: scoreData.relevance,
+      clarity: scoreData.clarity,
+      engagement: scoreData.engagement,
+      language: scoreData.language,
+      score: scoreData.score,
     });
   }
 
@@ -222,7 +237,8 @@ export class AMAService {
         ctx,
         adminGroupId,
         this.getAMAByHashtag.bind(this),
-        this.getAnalysis.bind(this)
+        this.getAnalysis.bind(this),
+        this.addScore.bind(this),
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

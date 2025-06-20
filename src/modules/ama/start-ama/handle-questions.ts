@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
-import { AMA, OpenAIAnalysis } from "../types";
+import { AMA, OpenAIAnalysis, ScoreData } from "../types";
 
 export async function handleAMAQuestion(
   ctx: Context,
@@ -9,7 +9,8 @@ export async function handleAMAQuestion(
   getAnalysis: (
     question: string,
     topic?: string
-  ) => Promise<OpenAIAnalysis | null>
+  ) => Promise<OpenAIAnalysis | null>,
+  addScore: (scoreData: ScoreData) => Promise<void>
 ) {
   const message = ctx.message;
 
@@ -41,19 +42,19 @@ export async function handleAMAQuestion(
 
         const analysis = await getAnalysis(question, ama.topic);
 
-        const analysisMessage = 
-`<b>📊 AI Analysis</b>\n\n` +
-`<b>✨ Originality:</b> ${analysis?.originality?.score}/10\n` +
-`<i>${analysis?.originality?.comment}</i>\n\n` +
-`<b>🎯 Relevance:</b> ${analysis?.relevance?.score}/10\n` +
-`<i>${analysis?.relevance?.comment}</i>\n\n` +
-`<b>🔍 Clarity:</b> ${analysis?.clarity?.score}/10\n` +
-`<i>${analysis?.clarity?.comment}</i>\n\n` +
-`<b>📢 Engagement:</b> ${analysis?.engagement?.score}/10\n` +
-`<i>${analysis?.engagement?.comment}</i>\n\n` +
-`<b>✍️ Language:</b> ${analysis?.language?.score}/10\n` +
-`<i>${analysis?.language?.comment}</i>\n\n` +
-`<b>🏁 Total Score:</b> <b>${analysis?.total_score}/50</b>`;
+        const analysisMessage =
+          `<b>📊 AI Analysis</b>\n\n` +
+          `<b>✨ Originality:</b> ${analysis?.originality?.score}/10\n` +
+          `<i>${analysis?.originality?.comment}</i>\n\n` +
+          `<b>🎯 Relevance:</b> ${analysis?.relevance?.score}/10\n` +
+          `<i>${analysis?.relevance?.comment}</i>\n\n` +
+          `<b>🔍 Clarity:</b> ${analysis?.clarity?.score}/10\n` +
+          `<i>${analysis?.clarity?.comment}</i>\n\n` +
+          `<b>📢 Engagement:</b> ${analysis?.engagement?.score}/10\n` +
+          `<i>${analysis?.engagement?.comment}</i>\n\n` +
+          `<b>✍️ Language:</b> ${analysis?.language?.score}/10\n` +
+          `<i>${analysis?.language?.comment}</i>\n\n` +
+          `<b>🏁 Total Score:</b> <b>${analysis?.total_score}/50</b>`;
 
         // ✅ Now reply to the copied message
         await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
@@ -62,6 +63,25 @@ export async function handleAMAQuestion(
           },
           parse_mode: "HTML",
         });
+
+        // Add the score to the database
+        const scoreData: ScoreData = {
+          sessionNo: ama.session_no,
+          userId: message.from.id.toString(),
+          userName: message.from.first_name || "Unknown",
+          question: question,
+          originality: analysis?.originality?.score || 0,
+          relevance: analysis?.relevance?.score || 0,
+          clarity: analysis?.clarity?.score || 0,
+          engagement: analysis?.engagement?.score || 0,
+          language: analysis?.language?.score || 0,
+          score: analysis?.total_score || 0,
+        };
+        await addScore(scoreData);
+      } else {
+        await ctx.reply(
+          "❌ This AMA is not currently active or has ended. Please check back later."
+        );
       }
     }
   }
