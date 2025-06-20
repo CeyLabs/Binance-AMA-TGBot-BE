@@ -35,6 +35,14 @@ export async function handleNewAMA(
 
     const [, language, sessionNumber] = match;
 
+    //validate language by check if its "en" or "ar"
+    if (!["en", "ar"].includes(language)) {
+      await ctx.reply(
+        "Invalid language. Please use 'en' for English or 'ar' for Arabic."
+      );
+      return;
+    }
+
     // Validate session number
     const sessionNo = parseInt(sessionNumber, 10);
     if (isNaN(sessionNo) || sessionNo <= 0) {
