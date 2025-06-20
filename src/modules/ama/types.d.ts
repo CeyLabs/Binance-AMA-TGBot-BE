@@ -10,7 +10,7 @@ export interface AMA {
   reward: string;
   winner_count: number;
   form_link: string;
-  status: "pending" | "broadcasted" | "active" | "ended";
+  status: "pending" | "scheduled" | "broadcasted" | "active" | "ended";
   special_guest?: string;
   topic: string;
   hashtag: string;

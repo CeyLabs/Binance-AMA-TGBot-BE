@@ -21,10 +21,14 @@ export async function up(knex: Knex): Promise<void> {
     table.integer("winner_count").notNullable();
     table.string("form_link").notNullable();
     table
-      .enum("status", ["pending", "broadcasted", "active", "ended"], {
-        useNative: true,
-        enumName: "enum_status",
-      })
+      .enum(
+        "status",
+        ["pending", "scheduled", "broadcasted", "active", "ended"],
+        {
+          useNative: true,
+          enumName: "enum_status",
+        }
+      )
       .notNullable()
       .defaultTo("pending");
     table.string("special_guest");
