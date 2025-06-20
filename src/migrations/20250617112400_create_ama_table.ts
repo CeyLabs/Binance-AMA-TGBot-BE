@@ -8,14 +8,25 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
     table.uuid("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
     table.integer("session_no").notNullable().unique();
-    table.string("language", 10).notNullable()
+    table
+      .enum("language", ["en", "ar"], {
+        useNative: true,
+        enumName: "enum_language",
+      })
+      .notNullable();
     table.date("date").notNullable();
     table.time("time").notNullable();
     table.string("total_pool").notNullable();
     table.string("reward").notNullable();
     table.integer("winner_count").notNullable();
     table.string("form_link").notNullable();
-    table.string("status").notNullable().defaultTo("pending");
+    table
+      .enum("status", ["pending", "broadcasted", "active", "ended"], {
+        useNative: true,
+        enumName: "enum_status",
+      })
+      .notNullable()
+      .defaultTo("pending");
     table.string("special_guest");
     table.string("topic");
     table.string("hashtag").notNullable().unique();
@@ -25,5 +36,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable(tableName);
+  await knex.schema
+    .dropTableIfExists(tableName)
+    .raw('DROP TYPE IF EXISTS "enum_language", "enum_status";');
 }
