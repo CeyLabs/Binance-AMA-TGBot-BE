@@ -18,7 +18,7 @@ export async function getQuestionAnalysis(
   try {
     // pretty-ignore
     const response = await openAIClient.responses.create({
-      model: "gpt-4.1",
+      model: "gpt-4.1-mini",
       input: [
         {
           role: "system",
