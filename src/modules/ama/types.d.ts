@@ -39,3 +39,17 @@ export interface SessionData {
 export interface BotContext extends Context {
   session: SessionData;
 }
+
+interface Score {
+  score: number;
+  comment: string;
+}
+
+export interface OpenAIAnalysis {
+  originality: Score;
+  relevance: Score;
+  clarity: Score;
+  engagement: Score;
+  language: Score;
+  total_score: number;
+}

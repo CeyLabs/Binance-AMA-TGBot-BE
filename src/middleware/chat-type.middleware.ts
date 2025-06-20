@@ -63,11 +63,26 @@ export class PrivateChatMiddleware {
         typeof ctx.message.text === "string" &&
         ctx.message.text.startsWith("/start")
       ) {
-        // Do something specific for /start command in groups
+        return next();
       }
 
-      // Allow for private chats and public groups (channels)
-      if (ctx.chat?.type === "private" || ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {
+      // Allow forwarded messages
+      if (
+        "message" in ctx &&
+        ctx.message &&
+        ("forward_from" in ctx.message ||
+          "forward_from_chat" in ctx.message ||
+          "forward_sender_name" in ctx.message)
+      ) {
+        return next();
+      }
+
+      // Allow private chats, groups, and supergroups
+      if (
+        ctx.chat?.type === "private" ||
+        ctx.chat?.type === "group" ||
+        ctx.chat?.type === "supergroup"
+      ) {
         return next();
       }
 
@@ -75,7 +90,7 @@ export class PrivateChatMiddleware {
       if (ctx.chat?.id?.toString() === adminGroupId) {
         return next();
       }
-      
+
       // Block everything else (like group text/commands)
 
       return;

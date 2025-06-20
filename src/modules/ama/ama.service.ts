@@ -11,7 +11,7 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
-import { AMA, BotContext } from "./types";
+import { AMA, BotContext, OpenAIAnalysis } from "./types";
 import {
   handleBroadcastNow,
   handleScheduleBroadcast,
@@ -20,7 +20,8 @@ import { handleEditRequest } from "./helper/handleEditRequest";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
 import { handleStartAMA } from "./start-ama/start-ama";
-import { handleMsgForward } from "./start-ama/forward-msg";
+import { handleAMAQuestion } from "./start-ama/handle-questions";
+import { getQuestionAnalysis } from "./helper/openai-utils";
 
 @Update()
 @Injectable()
@@ -102,6 +103,13 @@ export class AMAService {
       .whereNotNull("scheduled_at")
       .where("scheduled_at", "<=", now)
       .where("status", "scheduled");
+  }
+
+  async getAnalysis(
+    question: string,
+    topic?: string
+  ): Promise<OpenAIAnalysis | string> {
+    return getQuestionAnalysis(question, topic);
   }
 
   // Create a new AMA
@@ -203,7 +211,6 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
-    console.log("Received text message:", ctx);
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
     const chatID = ctx.chat?.id.toString();
@@ -211,10 +218,11 @@ export class AMAService {
     if (chatID === adminGroupId) {
       await handleEdit(ctx);
     } else if (chatID === publicGroupId) {
-      await handleMsgForward(
+      await handleAMAQuestion(
         ctx,
         adminGroupId,
-        this.getAMAByHashtag.bind(this)
+        this.getAMAByHashtag.bind(this),
+        this.getAnalysis.bind(this)
       );
     } else {
       await ctx.reply("This command is not available in this chat.");
