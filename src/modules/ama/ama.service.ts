@@ -76,6 +76,15 @@ export class AMAService {
     return true;
   }
 
+  // Get all scheduled AMAs that are due for broadcasting
+  async getScheduledAMAsToBroadcast(now: Date): Promise<AMA[]> {
+    return this.knexService
+      .knex<AMA>("ama")
+      .whereNotNull("scheduled_at")
+      .where("scheduled_at", "<=", now)
+      .where("status", "scheduled");
+  }
+
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: Context): Promise<void> {

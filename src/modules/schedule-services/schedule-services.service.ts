@@ -1,17 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { KnexService } from "../knex/knex.service";
 import { ConfigService } from "@nestjs/config";
 import { buildAMAMessage, imageUrl } from "../ama/helper/msg-builder";
 import { Telegraf } from "telegraf";
 import { InjectBot } from "nestjs-telegraf";
+import { AMAService } from "../ama/ama.service";
 
 @Injectable()
 export class SchedulerService {
   constructor(
-    private readonly knex: KnexService,
     private readonly config: ConfigService,
-    @InjectBot() private readonly bot: Telegraf
+    @InjectBot() private readonly bot: Telegraf,
+    private readonly amaService: AMAService
   ) {}
 
   @Cron("*/1 * * * *") // every minute
@@ -19,18 +19,14 @@ export class SchedulerService {
     const now = new Date();
     console.log("Checking for scheduled AMAs to broadcast...");
 
-    const amas = await this.knex
-      .knex("ama")
-      .whereNotNull("scheduled_at")
-      .where("scheduled_at", "<=", now)
-      .where("status", "scheduled");
+    const amas = await this.amaService.getScheduledAMAsToBroadcast(now);
 
     for (const ama of amas) {
       const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
       const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
       const message = buildAMAMessage(ama);
 
-      const result = await new Promise((resolve) =>
+      await new Promise((resolve) =>
         setTimeout(() => resolve("wait 1s between each send"), 1000)
       );
 
@@ -41,10 +37,10 @@ export class SchedulerService {
 
       await this.bot.telegram.pinChatMessage(publicGroupId, sent.message_id);
 
-      await this.knex
-        .knex("ama")
-        .where({ session_no: ama.session_no })
-        .update({ status: "broadcasted" });
+      await this.amaService.updateAMA(ama.session_no, {
+        status: "broadcasted",
+        scheduled_at: undefined,
+      });
 
       await this.bot.telegram.sendMessage(
         adminGroupId,
