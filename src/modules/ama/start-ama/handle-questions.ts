@@ -42,27 +42,41 @@ export async function handleAMAQuestion(
 
         const analysis = await getAnalysis(question, ama.topic);
 
-        const analysisMessage =
-          `<b>📊 AI Analysis</b>\n\n` +
-          `<b>✨ Originality:</b> ${analysis?.originality?.score}/10\n` +
-          `<i>${analysis?.originality?.comment}</i>\n\n` +
-          `<b>🎯 Relevance:</b> ${analysis?.relevance?.score}/10\n` +
-          `<i>${analysis?.relevance?.comment}</i>\n\n` +
-          `<b>🔍 Clarity:</b> ${analysis?.clarity?.score}/10\n` +
-          `<i>${analysis?.clarity?.comment}</i>\n\n` +
-          `<b>📢 Engagement:</b> ${analysis?.engagement?.score}/10\n` +
-          `<i>${analysis?.engagement?.comment}</i>\n\n` +
-          `<b>✍️ Language:</b> ${analysis?.language?.score}/10\n` +
-          `<i>${analysis?.language?.comment}</i>\n\n` +
-          `<b>🏁 Total Score:</b> <b>${analysis?.total_score}/50</b>`;
+        let analysisMessage: string;
 
-        // ✅ Now reply to the copied message
-        await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
-          reply_parameters: {
-            message_id: forwardedMsgId,
-          },
-          parse_mode: "HTML",
-        });
+        if (!analysis) {
+          // Handle the case where analysis failed
+          analysisMessage = "⚠️ Analysis failed. Please try again later.";
+
+          await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
+            reply_parameters: {
+              message_id: forwardedMsgId,
+            },
+          });
+        } else {
+          // Normal case when analysis succeeds
+          analysisMessage =
+            `<b>📊 AI Analysis</b>\n\n` +
+            `<b>✨ Originality:</b> ${analysis.originality?.score}/10\n` +
+            `<i>${analysis.originality?.comment}</i>\n\n` +
+            `<b>🎯 Relevance:</b> ${analysis.relevance?.score}/10\n` +
+            `<i>${analysis.relevance?.comment}</i>\n\n` +
+            `<b>🔍 Clarity:</b> ${analysis.clarity?.score}/10\n` +
+            `<i>${analysis.clarity?.comment}</i>\n\n` +
+            `<b>📢 Engagement:</b> ${analysis.engagement?.score}/10\n` +
+            `<i>${analysis.engagement?.comment}</i>\n\n` +
+            `<b>✍️ Language:</b> ${analysis.language?.score}/10\n` +
+            `<i>${analysis.language?.comment}</i>\n\n` +
+            `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`;
+
+          // ✅ Now reply to the copied message
+          await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
+            reply_parameters: {
+              message_id: forwardedMsgId,
+            },
+            parse_mode: "HTML",
+          });
+        }
 
         // Add the score to the database
         const scoreData: ScoreData = {
