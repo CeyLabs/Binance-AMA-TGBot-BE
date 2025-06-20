@@ -52,7 +52,7 @@ export class AMAService {
     await this.knexService.knex("scores").insert({
       session_no: scoreData.sessionNo,
       user_id: scoreData.userId,
-      user_name: scoreData.userName,
+      username: scoreData.userName,
       question: scoreData.question,
       originality: scoreData.originality,
       relevance: scoreData.relevance,
