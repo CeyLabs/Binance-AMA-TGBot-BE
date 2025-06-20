@@ -3,14 +3,14 @@ import { Context } from "telegraf";
 export interface AMA {
   id: string;
   session_no: number;
-  language: string;
+  language: "en" | "ar";
   date: string;
   time: string;
   total_pool: string;
   reward: string;
   winner_count: number;
   form_link: string;
-  status: string;
+  status: "pending" | "scheduled" | "broadcasted" | "active" | "ended";
   special_guest?: string;
   topic: string;
   hashtag: string;
