@@ -45,16 +45,6 @@ export class AMAService {
     });
   }
 
-  // Check if the AMA session number already exists
-  async isAMASessionExists(sessionNo: number): Promise<boolean> {
-    const exists = await this.knexService
-      .knex("ama")
-      .where({ session_no: sessionNo })
-      .first("id");
-
-    return Boolean(exists);
-  }
-
   // Get AMA details by session number
   async getAMABySessionNo(sessionNo: number): Promise<AMA | null> {
     const ama = await this.knexService
@@ -65,14 +55,15 @@ export class AMAService {
     return ama || null;
   }
 
+  async isAMASessionExists(sessionNo: number): Promise<boolean> {
+    const session = await this.getAMABySessionNo(sessionNo);
+    return Boolean(session);
+  }
+
   // Update an existing AMA
   async updateAMA(sessionNo: number, updates: Partial<AMA>): Promise<boolean> {
-    const exists = await this.knexService
-      .knex("ama")
-      .where({ session_no: sessionNo })
-      .first("id");
-
-    if (!exists) return false;
+    const session = await this.getAMABySessionNo(sessionNo);
+    if (!session) return false;
 
     await this.knexService
       .knex("ama")
