@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
       .defaultTo("pending");
     table.string("special_guest");
     table.string("topic");
-    table.string("hashtag").notNullable().unique();
+    table.string("hashtag").notNullable();
     table.timestamp("scheduled_at");
     table.integer("thread_id");
     table.timestamps(true, true);
