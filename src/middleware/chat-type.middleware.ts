@@ -37,6 +37,8 @@ export class PrivateChatMiddleware {
    */
   use(): MiddlewareFn<Context> {
     return async (ctx, next) => {
+      const adminGroupId = process.env.ADMIN_GROUP_ID;
+
       // Allow all non-message updates (inline queries, callback queries, etc.)
       if (!ctx.chat && (ctx.inlineQuery || ctx.callbackQuery)) {
         return next();
@@ -68,6 +70,12 @@ export class PrivateChatMiddleware {
       if (ctx.chat?.type === "private") {
         return next();
       }
+
+      // Allow the specific admin group (match by ID as string)
+      if (ctx.chat?.id?.toString() === adminGroupId) {
+        return next();
+      }
+      
       // Block everything else (like group text/commands)
 
       return;
