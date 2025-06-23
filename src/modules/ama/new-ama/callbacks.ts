@@ -17,7 +17,7 @@ export async function handleConfirmAMA(ctx: Context): Promise<void> {
       // prettier-ignore
       inline_keyboard: [
         [
-          {text: "Schedule Broadcast", callback_data: `${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${sessionNo}`},
+          // {text: "Schedule Broadcast", callback_data: `${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${sessionNo}`},
           {text: "Broadcast Now", callback_data: `${CALLBACK_ACTIONS.BROADCAST_NOW}_${sessionNo}`},
         ],
         [

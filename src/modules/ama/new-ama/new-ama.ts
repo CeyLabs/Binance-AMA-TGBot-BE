@@ -5,6 +5,7 @@ import {
   CALLBACK_ACTIONS,
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
+import { NewAMAKeyboard } from "../helper/keyboard.helper";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -74,29 +75,7 @@ export async function handleNewAMA(
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
-      // prettier-ignore
-      reply_markup: Markup.inlineKeyboard([
-        [
-          Markup.button.callback("Edit Date", `${CALLBACK_ACTIONS.EDIT_DATE}_${sessionNo}`),
-          Markup.button.callback("Edit Time", `${CALLBACK_ACTIONS.EDIT_TIME}_${sessionNo}`),
-        ],
-        [
-          Markup.button.callback("Edit Session Number", `${CALLBACK_ACTIONS.EDIT_SESSION}_${sessionNo}`),
-          Markup.button.callback("Edit Reward Prize", `${CALLBACK_ACTIONS.EDIT_REWARD}_${sessionNo}`),
-        ],
-        [
-          Markup.button.callback("Edit Winner Count", `${CALLBACK_ACTIONS.EDIT_WINNERS}_${sessionNo}`),
-          Markup.button.callback("Edit Form Link", `${CALLBACK_ACTIONS.EDIT_FORM}_${sessionNo}`),
-        ],
-        [
-          Markup.button.callback("Add Topic", `${CALLBACK_ACTIONS.ADD_TOPIC}_${sessionNo}`),
-          Markup.button.callback("Add Special Guest", `${CALLBACK_ACTIONS.ADD_GUEST}_${sessionNo}`),
-        ],
-        [
-          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.CANCEL}_${sessionNo}`),
-          Markup.button.callback("✅ Confirm", `${CALLBACK_ACTIONS.CONFIRM}_${sessionNo}`),
-        ],
-      ]).reply_markup,
+      reply_markup: NewAMAKeyboard(sessionNo),
     });
 
     // Add the AMA to the database

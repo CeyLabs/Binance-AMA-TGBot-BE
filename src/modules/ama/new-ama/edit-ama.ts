@@ -1,9 +1,10 @@
 import { Markup } from "telegraf";
 import { CALLBACK_ACTIONS } from "../ama.constants";
 import { EDITABLE_FIELDS } from "../helper/field-metadata";
-import { buildAMAMessage } from "../helper/msg-builder";
+import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 import { validateCallbackPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
+import { NewAMAKeyboard } from "../helper/keyboard.helper";
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
@@ -78,6 +79,11 @@ export async function handleConfirmEdit(
   const updated = await getAMABySessionNo(sessionNo);
   if (updated) {
     const message = buildAMAMessage(updated);
-    await ctx.reply(message, { parse_mode: "HTML" });
+
+    await ctx.replyWithPhoto(imageUrl, {
+      caption: message,
+      parse_mode: "HTML",
+      reply_markup: NewAMAKeyboard(sessionNo),
+    });
   }
 }
