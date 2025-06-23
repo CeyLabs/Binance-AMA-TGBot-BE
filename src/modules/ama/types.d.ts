@@ -1,7 +1,8 @@
+import { UUID } from "crypto";
 import { Context } from "telegraf";
 
 export interface AMA {
-  id: string;
+  id: UUID;
   session_no: number;
   language: "en" | "ar";
   date: string;
@@ -55,7 +56,7 @@ export interface OpenAIAnalysis {
 }
 
 export interface ScoreData {
-  sessionNo: number;
+  amaId: UUID;
   userId: string;
   userName: string;
   question: string;

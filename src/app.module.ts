@@ -34,11 +34,12 @@ config();
       validate: (config) => {
         if (!process.env.ADMIN_GROUP_ID)
           throw new Error("ADMIN_GROUP_ID is not set");
-        if (!process.env.PUBLIC_GROUP_ID)
-          throw new Error("PUBLIC_GROUP_ID is not set");
+        if ((!process.env.EN_PUBLIC_GROUP_ID) && !process.env.AR_PUBLIC_GROUP_ID)
+          throw new Error("EN_PUBLIC_GROUP_ID or AR_PUBLIC_GROUP_ID is not set");
         return config as {
           ADMIN_GROUP_ID: string;
-          PUBLIC_GROUP_ID: string;
+          EN_PUBLIC_GROUP_ID: string;
+          AR_PUBLIC_GROUP_ID: string;
         };
       },
     }),
