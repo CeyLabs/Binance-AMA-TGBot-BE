@@ -29,17 +29,14 @@ export async function handleAMAQuestion(
       if (ama && ama.status === "active" && ama.thread_id) {
         const question = message.text;
 
-        // ✅ Copy the message into the admin group thread instead of forward
-        const result = await ctx.telegram.sendMessage(
+        const forwardedMsg = await ctx.telegram.forwardMessage(
           adminGroupId,
-          `📝 *Question from:* [${message.from.first_name}](tg://user?id=${message.from.id})\n\n${question}`,
+          message.chat.id,
+          message.message_id,
           {
-            parse_mode: "Markdown",
             message_thread_id: ama.thread_id,
           }
         );
-
-        const forwardedMsgId = result.message_id;
 
         const analysis = await getAnalysis(question, ama.topic);
 
@@ -51,7 +48,7 @@ export async function handleAMAQuestion(
 
           await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
             reply_parameters: {
-              message_id: forwardedMsgId,
+              message_id: forwardedMsg.message_id,
             },
           });
         } else {
@@ -70,10 +67,10 @@ export async function handleAMAQuestion(
             `<i>${analysis.language?.comment}</i>\n\n` +
             `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`;
 
-          // ✅ Now reply to the copied message
+          // Reply to the fwdMsg in the admin group
           await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
             reply_parameters: {
-              message_id: forwardedMsgId,
+              message_id: forwardedMsg.message_id,
             },
             parse_mode: "HTML",
           });

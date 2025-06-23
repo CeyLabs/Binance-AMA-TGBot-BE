@@ -16,7 +16,6 @@ export async function getQuestionAnalysis(
   topic?: string
 ): Promise<OpenAIAnalysis | string> {
   try {
-    // pretty-ignore
     const response = await openAIClient.responses.create({
       model: "gpt-4.1-mini",
       input: [
@@ -27,14 +26,64 @@ export async function getQuestionAnalysis(
         },
         {
           role: "user",
-          content: `Score the following user-submitted question based on 5 key factors:\n\n1. Originality – How unique or thoughtful the question is.\n2. Relevance to Topic – How closely it relates to the AMA topic.\n3. Clarity – How clearly the question is phrased.\n4. Engagement Potential – How likely it is to prompt an insightful or interesting answer.\n5. Language Quality – Grammar, spelling, and overall sentence construction.\n\nEach factor must be scored out of 10. Provide a short explanation for each score (1–2 sentences).\nThen calculate a total score out of 50.\n\n---\n\nAMA Context:\nHost: Binance MENA\nTopic: ${topic ?? "Weekly AMA"}\n\nUser-Submitted Question:\n\"${question}\"\n\nRespond in the following JSON format:\n\n{\n  \"originality\": {\n    \"score\": [0–10],\n    \"comment\": \"[Reasoning]\"\n  },\n  \"relevance\": {\n    \"score\": [0–10],\n    \"comment\": \"[Reasoning]\"\n  },\n  \"clarity\": {\n    \"score\": [0–10],\n    \"comment\": \"[Reasoning]\"\n  },\n  \"engagement\": {\n    \"score\": [0–10],\n    \"comment\": \"[Reasoning]\"\n  },\n  \"language\": {\n    \"score\": [0–10],\n    \"comment\": \"[Reasoning]\"\n  },\n  \"total_score\": [0–50]\n}`,
+          content: `Score the following user-submitted question based on 5 key factors:
+
+1. Originality – How unique or thoughtful the question is.
+2. Relevance to Topic – How closely it relates to the AMA topic.
+3. Clarity – How clearly the question is phrased.
+4. Engagement Potential – How likely it is to prompt an insightful or interesting answer.
+5. Language Quality – Grammar, spelling, and overall sentence construction.
+
+Each factor must be scored out of 10. Provide a short explanation for each score (1–2 sentences).
+Then calculate a total score out of 50.
+
+---
+
+AMA Context:
+Host: Binance MENA
+Topic: ${topic ?? "Weekly AMA"}
+
+User-Submitted Question:
+"${question}"
+
+Respond in the following JSON format:
+
+{
+  "originality": {
+    "score": [0–10],
+    "comment": "[Reasoning]"
+  },
+  "relevance": {
+    "score": [0–10],
+    "comment": "[Reasoning]"
+  },
+  "clarity": {
+    "score": [0–10],
+    "comment": "[Reasoning]"
+  },
+  "engagement": {
+    "score": [0–10],
+    "comment": "[Reasoning]"
+  },
+  "language": {
+    "score": [0–10],
+    "comment": "[Reasoning]"
+  },
+  "total_score": [0–50]
+}`,
         },
       ],
     });
 
-    const raw = response.output_text || "{}";
-    const parsed: OpenAIAnalysis = JSON.parse(raw);
+    let raw = response.output_text || "{}";
 
+    // ✅ Strip markdown code block if it exists
+    raw = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
+
+    const parsed: OpenAIAnalysis = JSON.parse(raw);
     return parsed;
   } catch (error) {
     console.error("Error fetching analysis:", error);
