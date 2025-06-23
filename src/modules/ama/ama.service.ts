@@ -48,8 +48,8 @@ export class AMAService {
     });
   }
 
-  async addScore(scoreData: ScoreData): Promise<void> {
-    await this.knexService.knex("scores").insert({
+  async addScore(scoreData: ScoreData): Promise<boolean> {
+    const data = await this.knexService.knex("scores").insert({
       session_no: scoreData.sessionNo,
       user_id: scoreData.userId,
       username: scoreData.userName,
@@ -61,6 +61,7 @@ export class AMAService {
       language: scoreData.language,
       score: scoreData.score,
     });
+    return data.length > 0; // Return true if insert was successful
   }
 
   // Get AMA details by session number
@@ -238,7 +239,7 @@ export class AMAService {
         adminGroupId,
         this.getAMAByHashtag.bind(this),
         this.getAnalysis.bind(this),
-        this.addScore.bind(this),
+        this.addScore.bind(this)
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

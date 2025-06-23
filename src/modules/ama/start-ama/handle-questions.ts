@@ -1,6 +1,7 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
 import { AMA, OpenAIAnalysis, ScoreData } from "../types";
+import type { TelegramEmoji } from "telegraf/types";
 
 export async function handleAMAQuestion(
   ctx: Context,
@@ -10,7 +11,7 @@ export async function handleAMAQuestion(
     question: string,
     topic?: string
   ) => Promise<OpenAIAnalysis | null>,
-  addScore: (scoreData: ScoreData) => Promise<void>
+  addScore: (scoreData: ScoreData) => Promise<boolean>
 ) {
   const message = ctx.message;
 
@@ -91,7 +92,16 @@ export async function handleAMAQuestion(
           language: analysis?.language?.score || 0,
           score: analysis?.total_score || 0,
         };
-        await addScore(scoreData);
+        const addScoreToDb = await addScore(scoreData);
+
+        if (addScoreToDb) {
+          // React ❤️ to the initial question message
+          await ctx.telegram.callApi("setMessageReaction", {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+          });
+        }
       } else {
         await ctx.reply(
           "❌ This AMA is not currently active or has ended. Please check back later."
