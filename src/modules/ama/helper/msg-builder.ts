@@ -1,9 +1,10 @@
 import { formatTimeTo12Hour } from "../helper/utils";
 import { AMA_HASHTAG } from "../ama.constants";
+import { SupportedLanguages } from "../types";
 
 interface AMAData {
   session_no: number;
-  language: "en" | "ar";
+  language: SupportedLanguages;
   date: Date | string;
   time: string;
   total_pool: string;
@@ -31,6 +32,31 @@ export function buildAMAMessage(data: AMAData): string {
 
   const formattedTime = formatTimeTo12Hour(data.time);
 
+  if (data.language === "ar") {
+    return `<b>📣 انضموا إلينا في جلسة AMA من سلسلة جلسات Binance الأسبوعية مع فريق #BinanceMENA</b> واغتنموا فرصة لربح جزء من مجموع الجوائز البالغ <b>${data.total_pool}</b> 🎁
+
+⬇️ <b>مجموع الجوائز</b> سيتم توزيعه على <b>${data.winner_count}</b> فائزين، كل منهم سيحصل على <b>${data.reward}</b> 🎁
+
+📅 <b>${formattedDate} @ ${formattedTime}</b>
+
+📍 <a href="https://t.me/BinanceMENAEnglish?videochat=1a351cbb96f51351b0">انضم إلى الدردشة الصوتية</a>
+
+<b>⚡ لتكون مؤهلاً للفوز، يجب عليك:</b>
+1️⃣ تعبئة هذا <a href="${data.form_link}">النموذج</a> لتكون مؤهلاً للجائزة.
+2️⃣ المشاركة في المكالمة الصوتية 🗣️
+3️⃣ طرح سؤال أثناء المكالمة باستخدام الوسم <b>#${AMA_HASHTAG}${data.session_no}</b>
+4️⃣ أن يكون لديك اسم مستخدم على تيليغرام
+5️⃣ ألا تكون من الفائزين في آخر 30 يومًا.
+
+⛔ تحتفظ Binance بحق استبعاد أي مشارك يظهر عليه سلوك احتيالي بشكل فوري.
+<a href="https://www.binance.com/en/pp-terms">الشروط والأحكام</a>
+
+‼️ <b>سيتم الإعلان عن الفائزين وتوزيع الجوائز خلال الأسبوعين التاليين.</b>
+
+❤️ يسعدنا انضمامكم إلينا!`;
+  }
+
+  // Default (English)
   return `<b>📣 Join us for an AMA from our Binance Weekly Sessions with #BinanceMENA</b> team and get a chance to share a portion of the total reward pool worth <b>${data.total_pool}</b> 🎁
 
 ⬇️ <b>Reward pool</b> will be shared up to <b>${data.winner_count}</b> winners for a prize of <b>${data.reward}</b> each 🎁
