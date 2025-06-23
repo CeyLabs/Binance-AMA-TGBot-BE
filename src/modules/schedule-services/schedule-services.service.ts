@@ -37,7 +37,7 @@ export class SchedulerService {
 
       await this.bot.telegram.pinChatMessage(publicGroupId, sent.message_id);
 
-      await this.amaService.updateAMA(ama.session_no, {
+      await this.amaService.updateAMA(ama.id, {
         status: "broadcasted",
         scheduled_at: undefined,
       });

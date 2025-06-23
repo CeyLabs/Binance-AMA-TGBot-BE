@@ -1,25 +1,31 @@
 import { Context } from "telegraf";
-import { validateCallbackPattern } from "../helper/utils";
+import {
+  UUID_PATTERN,
+  validateCallbackPattern,
+  validateIdPattern,
+} from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, PublicGroupIDs } from "../types";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
+import { UUID } from "crypto";
 
 export async function handleBroadcastNow(
   ctx: Context,
   publicGroupIds: PublicGroupIDs,
-  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
-  updateAMA: (sessionNo: number, updates: Partial<AMA>) => Promise<boolean>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
-  const result = await validateCallbackPattern(
+  const result = await validateIdPattern(
     ctx,
-    CALLBACK_ACTIONS.BROADCAST_NOW,
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_(\\d+)$`)
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
 
-  const { sessionNo } = result;
+  console.log("Group IDs:", publicGroupIds);
 
-  const ama = await getAMABySessionNo(sessionNo);
+  const { id: AMA_ID } = result;
+
+  const ama = await getAMAById(AMA_ID as UUID);
   if (!ama) {
     await ctx.reply("AMA session not found.");
     return;
@@ -49,7 +55,7 @@ export async function handleBroadcastNow(
   });
 
   // Update the AMA session status to 'broadcasted'
-  await updateAMA(sessionNo, {
+  await updateAMA(AMA_ID, {
     status: "broadcasted",
   });
 

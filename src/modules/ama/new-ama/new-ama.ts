@@ -83,6 +83,15 @@ export async function handleNewAMA(
     });
 
     await ctx.reply("Announcement Created!");
+
+    // Create the AMA and get the ID
+    const AMA_ID = await createAMA(
+      sessionNo,
+      language as SupportedLanguages,
+      argsText.replace(match[0], "").trim()
+    );
+
+    console.log("AMA created with ID:", AMA_ID);
     // Send photo with caption and inline buttons
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
@@ -90,37 +99,27 @@ export async function handleNewAMA(
       // prettier-ignore
       reply_markup: Markup.inlineKeyboard([
         [
-          Markup.button.callback("Edit Date", `${CALLBACK_ACTIONS.EDIT_DATE}_${sessionNo}`),
-          Markup.button.callback("Edit Time", `${CALLBACK_ACTIONS.EDIT_TIME}_${sessionNo}`),
+          Markup.button.callback("Edit Date", `${CALLBACK_ACTIONS.EDIT_DATE}_${AMA_ID}`),
+          Markup.button.callback("Edit Time", `${CALLBACK_ACTIONS.EDIT_TIME}_${AMA_ID}`),
         ],
         [
-          Markup.button.callback("Edit Session Number", `${CALLBACK_ACTIONS.EDIT_SESSION}_${sessionNo}`),
-          Markup.button.callback("Edit Reward Prize", `${CALLBACK_ACTIONS.EDIT_REWARD}_${sessionNo}`),
+          Markup.button.callback("Edit Session Number", `${CALLBACK_ACTIONS.EDIT_SESSION}_${AMA_ID}`),
+          Markup.button.callback("Edit Reward Prize", `${CALLBACK_ACTIONS.EDIT_REWARD}_${AMA_ID}`),
         ],
         [
-          Markup.button.callback("Edit Winner Count", `${CALLBACK_ACTIONS.EDIT_WINNERS}_${sessionNo}`),
-          Markup.button.callback("Edit Form Link", `${CALLBACK_ACTIONS.EDIT_FORM}_${sessionNo}`),
+          Markup.button.callback("Edit Winner Count", `${CALLBACK_ACTIONS.EDIT_WINNERS}_${AMA_ID}`),
+          Markup.button.callback("Edit Form Link", `${CALLBACK_ACTIONS.EDIT_FORM}_${AMA_ID}`),
         ],
         [
-          Markup.button.callback("Add Topic", `${CALLBACK_ACTIONS.ADD_TOPIC}_${sessionNo}`),
-          Markup.button.callback("Add Special Guest", `${CALLBACK_ACTIONS.ADD_GUEST}_${sessionNo}`),
+          Markup.button.callback("Add Topic", `${CALLBACK_ACTIONS.ADD_TOPIC}_${AMA_ID}`),
+          Markup.button.callback("Add Special Guest", `${CALLBACK_ACTIONS.ADD_GUEST}_${AMA_ID}`),
         ],
         [
-          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.CANCEL}_${sessionNo}`),
-          Markup.button.callback("✅ Confirm", `${CALLBACK_ACTIONS.CONFIRM}_${sessionNo}`),
+          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.CANCEL}_${AMA_ID}`),
+          Markup.button.callback("✅ Confirm", `${CALLBACK_ACTIONS.CONFIRM}_${AMA_ID}`),
         ],
       ]).reply_markup,
     });
-
-    // Add the AMA to the database
-    await createAMA(
-      sessionNo,
-      language as SupportedLanguages,
-      argsText.replace(match[0], "").trim()
-    );
-    console.log(
-      `New AMA created: Session No. ${sessionNo}, Language: ${language}`
-    );
   } catch (error) {
     console.error("Error in handleNewAMA:", error);
     await ctx.reply(
