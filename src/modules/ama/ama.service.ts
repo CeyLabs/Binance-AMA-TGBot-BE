@@ -169,7 +169,7 @@ export class AMAService {
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
-  async newAMA(ctx: Context): Promise<void> {
+  async newAMA(ctx: BotContext): Promise<void> {
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this),
@@ -232,13 +232,13 @@ export class AMAService {
   }
 
   // edit-date_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_(\\d+)$`))
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_${UUID_PATTERN}`, "i"))
   async editDate(ctx: BotContext) {
     return handleEditRequest(
       ctx,
       "date",
       CALLBACK_ACTIONS.EDIT_DATE,
-      this.getAMABySessionNo.bind(this)
+      this.getAMAById.bind(this)
     );
   }
 
@@ -254,12 +254,12 @@ export class AMAService {
   }
 
   // confirm-edit_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_(\\d+)$`))
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmEdit(ctx: BotContext): Promise<void> {
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this),
-      this.getAMABySessionNo.bind(this)
+      this.getAMAById.bind(this)
     );
   }
 

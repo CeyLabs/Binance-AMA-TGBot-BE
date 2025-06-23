@@ -1,12 +1,10 @@
-import { Context, Markup } from "telegraf";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
-  CALLBACK_ACTIONS,
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
-import { SupportedLanguages } from "../types";
+import { BotContext, SupportedLanguages } from "../types";
 import { NewAMAKeyboard } from "../helper/keyboard.helper";
 import { UUID } from "crypto";
 
@@ -14,7 +12,7 @@ import { UUID } from "crypto";
  * Handles the /newama command and sends an image with inline buttons.
  */
 export async function handleNewAMA(
-  ctx: Context,
+  ctx: BotContext,
   createAMA: (
     sessionNo: number,
     language: SupportedLanguages,
@@ -84,7 +82,7 @@ export async function handleNewAMA(
       form_link: AMA_DEFAULT_DATA.form_link,
     });
 
-    await ctx.reply("Announcement Created!");
+    const annunceMsg = await ctx.reply("Announcement Created!");
 
     // Create the AMA and get the ID
     const AMA_ID = await createAMA(
@@ -98,11 +96,15 @@ export async function handleNewAMA(
       return;
     }
 
-    await ctx.replyWithPhoto(imageUrl, {
+    const amaMsg = await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
     });
+    
+    // Push the message IDs to delete later
+    ctx.session.messagesToDelete ??= [];
+    ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
   } catch (error) {
     console.error("Error in handleNewAMA:", error);
     await ctx.reply(

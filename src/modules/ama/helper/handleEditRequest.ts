@@ -1,6 +1,8 @@
+import { UUID } from "crypto";
 import { AMA, BotContext } from "../types";
 import { EDITABLE_FIELDS } from "./field-metadata";
-import { validateCallbackPattern } from "./utils";
+import { UUID_PATTERN, validateIdPattern } from "./utils";
+import { CALLBACK_ACTIONS } from "../ama.constants";
 
 /**
  * Handles edit requests for AMA fields
@@ -9,24 +11,31 @@ export async function handleEditRequest(
   ctx: BotContext,
   field: keyof typeof EDITABLE_FIELDS,
   action: string,
-  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
-  const result = await validateCallbackPattern(
+  const result = await validateIdPattern(
     ctx,
-    action,
-    new RegExp(`^${action}_(\\d+)$`)
+    new RegExp(`^${action}_${UUID_PATTERN}`, "i")
   );
+
+  console.log("Result from validateIdPattern:", result);
   if (!result) return;
 
-  const { sessionNo } = result;
-  const ama = await getAMABySessionNo(sessionNo);
+  const { id: AMA_ID } = result;
+
+  const ama = await getAMAById(AMA_ID);
   if (!ama) {
-    await ctx.reply(`AMA session number ${sessionNo} does not exist.`);
+    await ctx.reply(`AMA does not exist.`);
     return;
   }
 
-  ctx.session.editMode = { sessionNo, field };
+  // Store the message ID to delete later
+  ctx.session.messagesToDelete = ctx.message?.message_id ? [ctx.message.message_id] : [];
+
+  ctx.session.editMode = { amaId: AMA_ID, field };
 
   const prompt = EDITABLE_FIELDS[field]?.prompt || "Enter new value:";
-  await ctx.reply(prompt);
+  const newValMsg = await ctx.reply(prompt);
+  
+  ctx.session.messagesToDelete.push(newValMsg.message_id);
 }

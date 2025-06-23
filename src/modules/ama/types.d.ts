@@ -26,7 +26,7 @@ export interface AMA {
 
 export interface SessionData {
   editMode?: {
-    sessionNo: number;
+    amaId: UUID;
     field:
       | "date"
       | "time"
@@ -38,6 +38,7 @@ export interface SessionData {
       | "guest";
     newValue?: string;
   };
+  messagesToDelete?: number[];
 }
 
 export interface BotContext extends Context {

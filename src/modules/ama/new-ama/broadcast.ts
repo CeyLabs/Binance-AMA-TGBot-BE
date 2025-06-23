@@ -60,6 +60,14 @@ export async function handleBroadcastNow(
   });
 
   await ctx.reply("Announcement Broadcasted to the group successfully!");
+
+  // Delete the callback message
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+    await ctx.telegram.deleteMessage(
+      ctx.callbackQuery.message.chat.id,
+      ctx.callbackQuery.message.message_id
+    );
+  }
 }
 
 export async function handleScheduleBroadcast(
