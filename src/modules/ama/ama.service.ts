@@ -49,18 +49,21 @@ export class AMAService {
   }
 
   async addScore(scoreData: ScoreData): Promise<boolean> {
-    const data = await this.knexService.knex("scores").insert({
-      session_no: scoreData.sessionNo,
-      user_id: scoreData.userId,
-      username: scoreData.userName,
-      question: scoreData.question,
-      originality: scoreData.originality,
-      relevance: scoreData.relevance,
-      clarity: scoreData.clarity,
-      engagement: scoreData.engagement,
-      language: scoreData.language,
-      score: scoreData.score,
-    });
+    const data = await this.knexService
+      .knex("scores")
+      .insert({
+        session_no: scoreData.sessionNo,
+        user_id: scoreData.userId,
+        username: scoreData.userName,
+        question: scoreData.question,
+        originality: scoreData.originality,
+        relevance: scoreData.relevance,
+        clarity: scoreData.clarity,
+        engagement: scoreData.engagement,
+        language: scoreData.language,
+        score: scoreData.score,
+      })
+      .returning("*");
     return data.length > 0; // Return true if insert was successful
   }
 

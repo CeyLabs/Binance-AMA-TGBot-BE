@@ -95,11 +95,11 @@ export async function handleAMAQuestion(
         const addScoreToDb = await addScore(scoreData);
 
         if (addScoreToDb) {
-          // React ❤️ to the initial question message
+          // React to the initial question message
           await ctx.telegram.callApi("setMessageReaction", {
             chat_id: message.chat.id,
             message_id: message.message_id,
-            reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+            reaction: [{ type: "emoji", emoji: "👍" as TelegramEmoji }],
           });
         }
       } else {
