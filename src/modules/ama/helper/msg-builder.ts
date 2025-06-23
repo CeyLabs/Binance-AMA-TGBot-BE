@@ -54,10 +54,9 @@ export function buildAMAMessage(data: AMAData): string {
 ‼️ <b>سيتم الإعلان عن الفائزين وتوزيع الجوائز خلال الأسبوعين التاليين.</b>
 
 ❤️ يسعدنا انضمامكم إلينا!`;
-  }
-
-  // Default (English)
-  return `<b>📣 Join us for an AMA from our Binance Weekly Sessions with #BinanceMENA</b> team and get a chance to share a portion of the total reward pool worth <b>${data.total_pool}</b> 🎁
+  } else {
+    // Default (English)
+    return `<b>📣 Join us for an AMA from our Binance Weekly Sessions with #BinanceMENA</b> team and get a chance to share a portion of the total reward pool worth <b>${data.total_pool}</b> 🎁
 
 ⬇️ <b>Reward pool</b> will be shared up to <b>${data.winner_count}</b> winners for a prize of <b>${data.reward}</b> each 🎁
 
@@ -78,6 +77,7 @@ export function buildAMAMessage(data: AMAData): string {
 ‼️ <b>Winner announcement</b> and prize distribution will occur within the next two weeks.
 
 ❤️ We are delighted to have you with us!`;
+  }
 }
 
 export const imageUrl =

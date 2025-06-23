@@ -78,7 +78,7 @@ export async function handleAMAQuestion(
 
         // Add the score to the database
         const scoreData: ScoreData = {
-          sessionNo: ama.session_no,
+          amaId: ama.id,
           userId: message.from.id.toString(),
           userName: message.from.first_name || "Unknown",
           question: question,

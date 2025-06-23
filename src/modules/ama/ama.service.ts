@@ -11,7 +11,13 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
-import { AMA, BotContext, OpenAIAnalysis, ScoreData } from "./types";
+import {
+  AMA,
+  BotContext,
+  OpenAIAnalysis,
+  ScoreData,
+  SupportedLanguages,
+} from "./types";
 import {
   handleBroadcastNow,
   handleScheduleBroadcast,
@@ -33,10 +39,10 @@ export class AMAService {
 
   // Insert the AMA details into the database
   // prettier-ignore
-  async createAMA( sessionNo: number, topic?: string): Promise<void> {
+  async createAMA( sessionNo: number, language:SupportedLanguages, topic?: string): Promise<void> {
     await this.knexService.knex("ama").insert({
       session_no: sessionNo,
-      language: "en",
+      language: language,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
       total_pool: AMA_DEFAULT_DATA.total_pool,
@@ -52,7 +58,7 @@ export class AMAService {
     const data = await this.knexService
       .knex("scores")
       .insert({
-        session_no: scoreData.sessionNo,
+        session_no: scoreData.amaId,
         user_id: scoreData.userId,
         username: scoreData.userName,
         question: scoreData.question,
@@ -68,12 +74,23 @@ export class AMAService {
   }
 
   // Get AMA details by session number
+  async getAMABySessionNoAndLang(
+    sessionNo: number,
+    language: SupportedLanguages
+  ): Promise<AMA | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo, language })
+      .first();
+
+    return ama || null;
+  }
+
   async getAMABySessionNo(sessionNo: number): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
       .where({ session_no: sessionNo })
       .first();
-
     return ama || null;
   }
 
@@ -94,8 +111,18 @@ export class AMAService {
     return ama?.thread_id ?? null;
   }
 
-  async isAMASessionExists(sessionNo: number): Promise<boolean> {
+  async isAMASessionExists(
+    sessionNo: number,
+  ): Promise<boolean> {
     const session = await this.getAMABySessionNo(sessionNo);
+    return Boolean(session);
+  }
+
+  async isAMAExists(
+    sessionNo: number,
+    language: SupportedLanguages
+  ): Promise<boolean> {
+    const session = await this.getAMABySessionNoAndLang(sessionNo, language);
     return Boolean(session);
   }
 
@@ -137,7 +164,7 @@ export class AMAService {
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this),
-      this.isAMASessionExists.bind(this)
+      this.isAMAExists.bind(this)
     );
   }
 
@@ -162,10 +189,13 @@ export class AMAService {
   // broadcast-now_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_(\\d+)$`))
   async broadcastNow(ctx: Context): Promise<void> {
-    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
+    const publicGroupIds = {
+      en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+      ar: this.config.get<string>("AR_PUBLIC_GROUP_ID_AR")!,
+    };
     await handleBroadcastNow(
       ctx,
-      publicGroupId,
+      publicGroupIds,
       this.getAMABySessionNo.bind(this),
       this.updateAMA.bind(this)
     );

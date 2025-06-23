@@ -13,8 +13,15 @@ import { SupportedLanguages } from "../types";
  */
 export async function handleNewAMA(
   ctx: Context,
-  createAMA: (sessionNo: number, topic?: string) => Promise<void>,
-  isAMASessionExists: (sessionNo: number) => Promise<boolean>
+  createAMA: (
+    sessionNo: number,
+    language: SupportedLanguages,
+    topic?: string
+  ) => Promise<void>,
+  isAMAExists: (
+    sessionNo: number,
+    language: SupportedLanguages
+  ) => Promise<boolean>
 ): Promise<void> {
   try {
     const text = ctx.text;
@@ -53,7 +60,10 @@ export async function handleNewAMA(
     }
 
     // Check if the session number already exists
-    const sessionExists = await isAMASessionExists(sessionNo);
+    const sessionExists = await isAMAExists(
+      sessionNo,
+      language as SupportedLanguages
+    );
     if (sessionExists) {
       await ctx.reply(
         `AMA session number ${sessionNo} already exists. Please choose a different number.`
@@ -103,7 +113,11 @@ export async function handleNewAMA(
     });
 
     // Add the AMA to the database
-    await createAMA(sessionNo, argsText.replace(match[0], "").trim());
+    await createAMA(
+      sessionNo,
+      language as SupportedLanguages,
+      argsText.replace(match[0], "").trim()
+    );
     console.log(
       `New AMA created: Session No. ${sessionNo}, Language: ${language}`
     );

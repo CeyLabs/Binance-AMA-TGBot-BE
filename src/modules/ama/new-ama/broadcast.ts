@@ -1,12 +1,12 @@
 import { Context } from "telegraf";
 import { validateCallbackPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA } from "../types";
+import { AMA, PublicGroupIDs } from "../types";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 
 export async function handleBroadcastNow(
   ctx: Context,
-  publicGroupId: string,
+  publicGroupIds: PublicGroupIDs,
   getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
   updateAMA: (sessionNo: number, updates: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
@@ -26,6 +26,7 @@ export async function handleBroadcastNow(
   }
   const message = buildAMAMessage({
     session_no: ama.session_no,
+    language: ama.language,
     date: ama.date,
     time: ama.time,
     total_pool: ama.total_pool,
@@ -33,6 +34,8 @@ export async function handleBroadcastNow(
     winner_count: ama.winner_count,
     form_link: ama.form_link,
   });
+
+  const publicGroupId = publicGroupIds[ama.language];
 
   // Send the announcement to the public group
   const sent = await ctx.telegram.sendPhoto(publicGroupId, imageUrl, {

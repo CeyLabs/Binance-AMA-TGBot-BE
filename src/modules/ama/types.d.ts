@@ -1,13 +1,13 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
-import  { SUPPORTED_LANGUAGES } from "./ama.constants";
+import { SUPPORTED_LANGUAGES } from "./ama.constants";
 
-export type SupportedLanguages = typeof SUPPORTED_LANGUAGES[number];
+export type SupportedLanguages = (typeof SUPPORTED_LANGUAGES)[number];
 
 export interface AMA {
   id: UUID;
   session_no: number;
-  language:  SupportedLanguages;
+  language: SupportedLanguages;
   date: string;
   time: string;
   total_pool: string;
@@ -69,4 +69,9 @@ export interface ScoreData {
   engagement: number;
   language: number;
   score: number;
+}
+
+export interface PublicGroupIDs {
+  en: string;
+  ar: string;
 }
