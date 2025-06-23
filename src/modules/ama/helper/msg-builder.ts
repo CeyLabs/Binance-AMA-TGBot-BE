@@ -3,6 +3,7 @@ import { AMA_HASHTAG } from "../ama.constants";
 
 interface AMAData {
   session_no: number;
+  language: "en" | "ar";
   date: Date | string;
   time: string;
   total_pool: string;

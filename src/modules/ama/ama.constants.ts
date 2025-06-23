@@ -4,6 +4,8 @@ export const AMA_COMMANDS = {
   END: "endama",
 };
 
+export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
+
 export const AMA_HASHTAG = "BinanceWeeklySessions";
 
 export const CALLBACK_ACTIONS = {

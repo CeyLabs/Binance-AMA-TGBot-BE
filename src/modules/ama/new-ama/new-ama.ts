@@ -3,8 +3,10 @@ import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
   CALLBACK_ACTIONS,
+  SUPPORTED_LANGUAGES,
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
+import { SupportedLanguages } from "../types";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -36,7 +38,7 @@ export async function handleNewAMA(
     const [, language, sessionNumber] = match;
 
     //validate language by check if its "en" or "ar"
-    if (!["en", "ar"].includes(language)) {
+    if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguages)) {
       await ctx.reply(
         "Invalid language. Please use 'en' for English or 'ar' for Arabic."
       );
@@ -61,6 +63,7 @@ export async function handleNewAMA(
 
     const message = buildAMAMessage({
       session_no: sessionNo,
+      language: language as SupportedLanguages,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
       total_pool: AMA_DEFAULT_DATA.total_pool,
