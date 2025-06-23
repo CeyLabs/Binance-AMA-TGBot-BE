@@ -7,6 +7,8 @@ import {
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 import { SupportedLanguages } from "../types";
+import { NewAMAKeyboard } from "../helper/keyboard.helper";
+import { UUID } from "crypto";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -17,7 +19,7 @@ export async function handleNewAMA(
     sessionNo: number,
     language: SupportedLanguages,
     topic?: string
-  ) => Promise<void>,
+  ) => Promise<UUID>,
   isAMAExists: (
     sessionNo: number,
     language: SupportedLanguages
@@ -91,34 +93,15 @@ export async function handleNewAMA(
       argsText.replace(match[0], "").trim()
     );
 
-    console.log("AMA created with ID:", AMA_ID);
-    // Send photo with caption and inline buttons
+    if (!AMA_ID) {
+      await ctx.reply("Failed to create AMA. Please try again.");
+      return;
+    }
+
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
-      // prettier-ignore
-      reply_markup: Markup.inlineKeyboard([
-        [
-          Markup.button.callback("Edit Date", `${CALLBACK_ACTIONS.EDIT_DATE}_${AMA_ID}`),
-          Markup.button.callback("Edit Time", `${CALLBACK_ACTIONS.EDIT_TIME}_${AMA_ID}`),
-        ],
-        [
-          Markup.button.callback("Edit Session Number", `${CALLBACK_ACTIONS.EDIT_SESSION}_${AMA_ID}`),
-          Markup.button.callback("Edit Reward Prize", `${CALLBACK_ACTIONS.EDIT_REWARD}_${AMA_ID}`),
-        ],
-        [
-          Markup.button.callback("Edit Winner Count", `${CALLBACK_ACTIONS.EDIT_WINNERS}_${AMA_ID}`),
-          Markup.button.callback("Edit Form Link", `${CALLBACK_ACTIONS.EDIT_FORM}_${AMA_ID}`),
-        ],
-        [
-          Markup.button.callback("Add Topic", `${CALLBACK_ACTIONS.ADD_TOPIC}_${AMA_ID}`),
-          Markup.button.callback("Add Special Guest", `${CALLBACK_ACTIONS.ADD_GUEST}_${AMA_ID}`),
-        ],
-        [
-          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.CANCEL}_${AMA_ID}`),
-          Markup.button.callback("✅ Confirm", `${CALLBACK_ACTIONS.CONFIRM}_${AMA_ID}`),
-        ],
-      ]).reply_markup,
+      reply_markup: NewAMAKeyboard(AMA_ID),
     });
   } catch (error) {
     console.error("Error in handleNewAMA:", error);

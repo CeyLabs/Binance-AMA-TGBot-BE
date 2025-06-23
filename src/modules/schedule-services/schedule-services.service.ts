@@ -21,21 +21,28 @@ export class SchedulerService {
 
     const amas = await this.amaService.getScheduledAMAsToBroadcast(now);
 
+    const publicGroupIds = {
+      en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+      ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+    };
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+
     for (const ama of amas) {
-      const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
-      const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
       const message = buildAMAMessage(ama);
 
       await new Promise((resolve) =>
         setTimeout(() => resolve("wait 1s between each send"), 1000)
       );
 
-      const sent = await this.bot.telegram.sendPhoto(publicGroupId, imageUrl, {
+      const groupId =
+        ama.language === "ar" ? publicGroupIds.ar : publicGroupIds.en;
+
+      const sent = await this.bot.telegram.sendPhoto(groupId, imageUrl, {
         caption: message,
         parse_mode: "HTML",
       });
 
-      await this.bot.telegram.pinChatMessage(publicGroupId, sent.message_id);
+      await this.bot.telegram.pinChatMessage(groupId, sent.message_id);
 
       await this.amaService.updateAMA(ama.id, {
         status: "broadcasted",

@@ -32,8 +32,7 @@ export const CALLBACK_ACTIONS = {
 };
 
 export const AMA_DEFAULT_DATA = {
-  date: new Date(),
-  // time should be in proper time format to put in knex database
+  date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0], // one day from now
   // Example: "08:00pm KSA"
   time: "20:00:00",
   total_pool: "100 FDUSD",
