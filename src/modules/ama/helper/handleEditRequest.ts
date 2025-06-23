@@ -1,15 +1,13 @@
 import { UUID } from "crypto";
-import { AMA, BotContext } from "../types";
+import { AMA, BotContext, EditableFieldKey } from "../types";
 import { EDITABLE_FIELDS } from "./field-metadata";
 import { UUID_PATTERN, validateIdPattern } from "./utils";
-import { CALLBACK_ACTIONS } from "../ama.constants";
-
 /**
  * Handles edit requests for AMA fields
  */
 export async function handleEditRequest(
   ctx: BotContext,
-  field: keyof typeof EDITABLE_FIELDS,
+  field: EditableFieldKey,
   action: string,
   getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
@@ -30,12 +28,14 @@ export async function handleEditRequest(
   }
 
   // Store the message ID to delete later
-  ctx.session.messagesToDelete = ctx.message?.message_id ? [ctx.message.message_id] : [];
+  ctx.session.messagesToDelete = ctx.message?.message_id
+    ? [ctx.message.message_id]
+    : [];
 
   ctx.session.editMode = { amaId: AMA_ID, field };
 
   const prompt = EDITABLE_FIELDS[field]?.prompt || "Enter new value:";
   const newValMsg = await ctx.reply(prompt);
-  
+
   ctx.session.messagesToDelete.push(newValMsg.message_id);
 }

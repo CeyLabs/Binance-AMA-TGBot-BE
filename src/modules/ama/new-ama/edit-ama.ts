@@ -23,7 +23,7 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
   }
 
   if (ctx.session.editMode) {
-    ctx.session.editMode.newValue = validated;
+    ctx.session.editMode.newValue = String(validated);
   }
 
   // Store messages for deletion
@@ -34,12 +34,18 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
   // }
 
   const updatedMsg = await ctx.reply(
-    `Updated <b>${fieldMeta.column}</b>: <code>${validated}</code>`,
+    `Updated <b>${fieldMeta.name}</b>: <code>${validated}</code>`,
     {
       parse_mode: "HTML",
+      // prettier-ignore
       reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback("Cancel", `edit-cancel_${editMode.amaId}`)],
-        [Markup.button.callback("Confirm", `edit-confirm_${editMode.amaId}`)],
+        [
+          Markup.button.callback(`Edit ${fieldMeta.name}`, `edit-${editMode.field}_${editMode.amaId}`),
+          Markup.button.callback("Confirm", `${CALLBACK_ACTIONS.EDIT_CONFIRM}_${editMode.amaId}`),
+        ],
+        [
+          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
+        ]
       ]).reply_markup,
     }
   );
@@ -65,10 +71,10 @@ export async function handleConfirmEdit(
     return;
   }
 
-  const column = EDITABLE_FIELDS[field].column;
+  const fieldMeta = EDITABLE_FIELDS[field];
 
   const success = await updateAMA(AMA_ID, {
-    [column]: newValue,
+    [fieldMeta.column]: newValue,
   } as Partial<AMA>);
 
   if (!success) {
@@ -78,7 +84,7 @@ export async function handleConfirmEdit(
 
   delete ctx.session.editMode;
 
-  await ctx.reply(`${column} updated successfully`);
+  await ctx.reply(`${fieldMeta.name} updated successfully`);
 
   const updated = await getAMAById(AMA_ID);
   if (updated) {

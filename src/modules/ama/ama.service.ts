@@ -8,6 +8,7 @@ import {
   AMA_DEFAULT_DATA,
   AMA_HASHTAG,
   CALLBACK_ACTIONS,
+  EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/callbacks";
@@ -38,6 +39,8 @@ export class AMAService {
     private readonly config: ConfigService,
     private readonly knexService: KnexService
   ) {}
+
+  // <<------------------------------------ Database Operations ------------------------------------>>
 
   // Insert the AMA details into the database
   // prettier-ignore
@@ -160,12 +163,16 @@ export class AMAService {
       .where("status", "scheduled");
   }
 
+  // <<------------------------------------ Analysis ------------------------------------>>
+
   async getAnalysis(
     question: string,
     topic?: string
   ): Promise<OpenAIAnalysis | string> {
     return getQuestionAnalysis(question, topic);
   }
+
+  // <<------------------------------------ Commands ------------------------------------>>
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
@@ -189,7 +196,9 @@ export class AMAService {
     );
   }
 
-  // Console log all callback actions
+  // <<------------------------------------ Callback Actions ------------------------------------>>
+
+  // Console log all callback actions (For testing purposes)
   // @Action(/.*/)
   // async handleCallback(ctx: Context): Promise<void> {
   //   if (ctx.callbackQuery && 'data' in ctx.callbackQuery) {
@@ -231,27 +240,73 @@ export class AMAService {
     );
   }
 
-  // edit-date_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_${UUID_PATTERN}`, "i"))
-  async editDate(ctx: BotContext) {
+  @Action(
+    new RegExp(
+      `^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`,
+      "i"
+    )
+  )
+  async handleGenericEdit(ctx: BotContext) {
+    if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
+    const callbackData = ctx.callbackQuery.data;
+    if (!callbackData) return;
+
+    const match = callbackData.match(
+      new RegExp(
+        `^edit-(${Object.values(EDIT_KEYS).join("|")})_(${UUID_PATTERN})$`,
+        "i"
+      )
+    );
+
+    if (!match) return;
+
+    const [, field] = match;
+
+    if (!(field in EDITABLE_FIELDS)) {
+      await ctx.reply("⚠️ Invalid field for editing.");
+      return;
+    }
+
     return handleEditRequest(
       ctx,
-      "date",
-      CALLBACK_ACTIONS.EDIT_DATE,
+      field as (typeof EDIT_KEYS)[keyof typeof EDIT_KEYS],
+      `edit-${field}`,
       this.getAMAById.bind(this)
     );
   }
 
-  // edit-time_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_TIME}_(\\d+)$`))
-  async editTime(ctx: BotContext) {
-    return handleEditRequest(
-      ctx,
-      "time",
-      CALLBACK_ACTIONS.EDIT_TIME,
-      this.getAMABySessionNo.bind(this)
-    );
-  }
+  // // edit-date_(sessionNo)
+  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_${UUID_PATTERN}`, "i"))
+  // async editDate(ctx: BotContext) {
+  //   return handleEditRequest(
+  //     ctx,
+  //     "date",
+  //     CALLBACK_ACTIONS.EDIT_DATE,
+  //     this.getAMAById.bind(this)
+  //   );
+  // }
+
+  // // edit-time_(sessionNo)
+  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_TIME}_${UUID_PATTERN}`, "i"))
+  // async editTime(ctx: BotContext) {
+  //   return handleEditRequest(
+  //     ctx,
+  //     "time",
+  //     CALLBACK_ACTIONS.EDIT_TIME,
+  //     this.getAMAById.bind(this)
+  //   );
+  // }
+
+  // // edit-sessionNo_(sessionNo)
+  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_SESSION}_${UUID_PATTERN}`, "i"))
+  // async editSessionNo(ctx: BotContext) {
+  //   return handleEditRequest(
+  //     ctx,
+  //     "sessionNo",
+  //     CALLBACK_ACTIONS.EDIT_SESSION,
+  //     this.getAMAById.bind(this)
+  //   );
+  // }
 
   // confirm-edit_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
@@ -275,6 +330,8 @@ export class AMAService {
     delete ctx.session.editMode;
     await ctx.reply(`${column} update cancelled.`);
   }
+
+  // <<------------------------------------ Text Commands ------------------------------------>>
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
