@@ -1,18 +1,18 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
-import { AMA, OpenAIAnalysis, ScoreData } from "../types";
+import { AMA, GroupIDs, OpenAIAnalysis, ScoreData } from "../types";
 import type { TelegramEmoji } from "telegraf/types";
 
 export async function handleAMAQuestion(
   ctx: Context,
-  adminGroupId: string,
-  getAMAByHashtag: (hashtag: string) => Promise<AMA | null>,
+  groupIds: GroupIDs,
+  getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
   getAnalysis: (
     question: string,
     topic?: string
   ) => Promise<OpenAIAnalysis | null>,
   addScore: (scoreData: ScoreData) => Promise<boolean>
-) {
+): Promise<void> {
   const message = ctx.message;
 
   if (!message || !("text" in message) || message.from.is_bot) return;
@@ -24,35 +24,44 @@ export async function handleAMAQuestion(
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
     if (hashtag) {
-      const ama = await getAMAByHashtag(hashtag);
+      const amas = await getAMAsByHashtag(hashtag);
 
-      if (ama && ama.status === "active" && ama.thread_id) {
+      const publicChatId = message.chat.id.toString();
+
+      const matchedAMA = amas.find((ama) => {
+        const isActive = ama.status === "active";
+        const isGroupMatch =
+          (ama.language === "en" && publicChatId === groupIds.public.en) ||
+          (ama.language === "ar" && publicChatId === groupIds.public.ar);
+        return isActive && isGroupMatch && ama.thread_id;
+      });
+
+      if (matchedAMA) {
         const question = message.text;
 
+        // Forward question to admin group thread
         const forwardedMsg = await ctx.telegram.forwardMessage(
-          adminGroupId,
+          groupIds.admin,
           message.chat.id,
           message.message_id,
           {
-            message_thread_id: ama.thread_id,
+            message_thread_id: matchedAMA.thread_id,
           }
         );
 
-        const analysis = await getAnalysis(question, ama.topic);
+        const analysis = await getAnalysis(question, matchedAMA.topic);
 
         let analysisMessage: string;
 
         if (!analysis) {
-          // Handle the case where analysis failed
           analysisMessage = "⚠️ Analysis failed. Please try again later.";
 
-          await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
+          await ctx.telegram.sendMessage(groupIds.admin, analysisMessage, {
             reply_parameters: {
               message_id: forwardedMsg.message_id,
             },
           });
         } else {
-          // Normal case when analysis succeeds
           analysisMessage =
             `<b>📊 AI Analysis</b>\n\n` +
             `<b>✨ Originality:</b> ${analysis.originality?.score}/10\n` +
@@ -67,8 +76,7 @@ export async function handleAMAQuestion(
             `<i>${analysis.language?.comment}</i>\n\n` +
             `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`;
 
-          // Reply to the fwdMsg in the admin group
-          await ctx.telegram.sendMessage(adminGroupId, analysisMessage, {
+          await ctx.telegram.sendMessage(groupIds.admin, analysisMessage, {
             reply_parameters: {
               message_id: forwardedMsg.message_id,
             },
@@ -76,9 +84,8 @@ export async function handleAMAQuestion(
           });
         }
 
-        // Add the score to the database
         const scoreData: ScoreData = {
-          amaId: ama.id,
+          amaId: matchedAMA.id,
           userId: message.from.id.toString(),
           userName: message.from.first_name || "Unknown",
           question: question,
@@ -89,10 +96,10 @@ export async function handleAMAQuestion(
           language: analysis?.language?.score || 0,
           score: analysis?.total_score || 0,
         };
+
         const addScoreToDb = await addScore(scoreData);
 
         if (addScoreToDb) {
-          // React to the initial question message
           await ctx.telegram.callApi("setMessageReaction", {
             chat_id: message.chat.id,
             message_id: message.message_id,
@@ -101,7 +108,7 @@ export async function handleAMAQuestion(
         }
       } else {
         await ctx.reply(
-          "❌ This AMA is not currently active or has ended. Please check back later."
+          "❌ This AMA is not currently active in this group or has ended."
         );
       }
     }

@@ -16,7 +16,6 @@ import {
   AMA,
   BotContext,
   OpenAIAnalysis,
-  PublicGroupIDs,
   ScoreData,
   SupportedLanguages,
 } from "./types";
@@ -68,7 +67,7 @@ export class AMAService {
     const data = await this.knexService
       .knex("scores")
       .insert({
-        session_no: scoreData.amaId,
+        ama_id: scoreData.amaId,
         user_id: scoreData.userId,
         username: scoreData.userName,
         question: scoreData.question,
@@ -96,6 +95,15 @@ export class AMAService {
       .where({ session_no: sessionNo })
       .orderBy("created_at", "desc");
 
+    return ama || [];
+  }
+
+  // Get all AMAs by hashtag
+  async getAMAsByHashtag(hashtag: string): Promise<AMA[] | []> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ hashtag })
+      .orderBy("created_at", "desc");
     return ama || [];
   }
 
@@ -340,17 +348,23 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
     const chatID = ctx.chat?.id.toString();
 
-    if (chatID === adminGroupId) {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+
+    if (chatID === groupIds.admin) {
       await handleEdit(ctx);
-    } else if (chatID === publicGroupId) {
+    } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
         ctx,
-        adminGroupId,
-        this.getAMAByHashtag.bind(this),
+        groupIds,
+        this.getAMAsByHashtag.bind(this),
         this.getAnalysis.bind(this),
         this.addScore.bind(this)
       );
