@@ -29,7 +29,7 @@ export interface AMA {
 export interface SessionData {
   editMode?: {
     amaId: UUID;
-    field:EditableFieldKey;
+    field: EditableFieldKey;
     newValue?: string;
   };
   messagesToDelete?: number[];
@@ -69,4 +69,9 @@ export interface ScoreData {
 export interface PublicGroupIDs {
   en: string;
   ar: string;
+}
+
+export interface GroupIDs {
+  public: PublicGroupIDs;
+  admin: string;
 }

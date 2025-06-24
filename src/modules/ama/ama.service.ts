@@ -16,6 +16,7 @@ import {
   AMA,
   BotContext,
   OpenAIAnalysis,
+  PublicGroupIDs,
   ScoreData,
   SupportedLanguages,
 } from "./types";
@@ -26,7 +27,7 @@ import {
 import { handleEditRequest } from "./helper/handleEditRequest";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
-import { handleStartAMA } from "./start-ama/start-ama";
+import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
 import { handleAMAQuestion } from "./start-ama/handle-questions";
 import { getQuestionAnalysis } from "./helper/openai-utils";
 import { UUID } from "crypto";
@@ -82,6 +83,22 @@ export class AMAService {
     return data.length > 0; // Return true if insert was successful
   }
 
+  // Get AMA by ID
+  async getAMAById(id: UUID): Promise<AMA | null> {
+    const ama = await this.knexService.knex<AMA>("ama").where({ id }).first();
+    return ama || null;
+  }
+
+  // Get all AMAs by session number
+  async getAMAsBySessionNo(sessionNo: number): Promise<AMA[] | []> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo })
+      .orderBy("created_at", "desc");
+
+    return ama || [];
+  }
+
   // Get AMA details by session number
   async getAMABySessionNoAndLang(
     sessionNo: number,
@@ -100,11 +117,6 @@ export class AMAService {
       .knex<AMA>("ama")
       .where({ session_no: sessionNo })
       .first();
-    return ama || null;
-  }
-
-  async getAMAById(id: UUID): Promise<AMA | null> {
-    const ama = await this.knexService.knex<AMA>("ama").where({ id }).first();
     return ama || null;
   }
 
@@ -187,11 +199,17 @@ export class AMAService {
   // Start a new AMA session (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
     await handleStartAMA(
       ctx,
-      adminGroupId,
-      this.getAMABySessionNo.bind(this),
+      groupIds,
+      this.getAMAsBySessionNo.bind(this),
       this.updateAMA.bind(this)
     );
   }
@@ -220,6 +238,7 @@ export class AMAService {
       en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
       ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
     };
+
     await handleBroadcastNow(
       ctx,
       publicGroupIds,
@@ -240,6 +259,7 @@ export class AMAService {
     );
   }
 
+  // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)
   @Action(
     new RegExp(
       `^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`,
@@ -275,39 +295,6 @@ export class AMAService {
     );
   }
 
-  // // edit-date_(sessionNo)
-  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_${UUID_PATTERN}`, "i"))
-  // async editDate(ctx: BotContext) {
-  //   return handleEditRequest(
-  //     ctx,
-  //     "date",
-  //     CALLBACK_ACTIONS.EDIT_DATE,
-  //     this.getAMAById.bind(this)
-  //   );
-  // }
-
-  // // edit-time_(sessionNo)
-  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_TIME}_${UUID_PATTERN}`, "i"))
-  // async editTime(ctx: BotContext) {
-  //   return handleEditRequest(
-  //     ctx,
-  //     "time",
-  //     CALLBACK_ACTIONS.EDIT_TIME,
-  //     this.getAMAById.bind(this)
-  //   );
-  // }
-
-  // // edit-sessionNo_(sessionNo)
-  // @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_SESSION}_${UUID_PATTERN}`, "i"))
-  // async editSessionNo(ctx: BotContext) {
-  //   return handleEditRequest(
-  //     ctx,
-  //     "sessionNo",
-  //     CALLBACK_ACTIONS.EDIT_SESSION,
-  //     this.getAMAById.bind(this)
-  //   );
-  // }
-
   // confirm-edit_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmEdit(ctx: BotContext): Promise<void> {
@@ -329,6 +316,24 @@ export class AMAService {
     const column = EDITABLE_FIELDS[field].column;
     delete ctx.session.editMode;
     await ctx.reply(`${column} update cancelled.`);
+  }
+
+  // start-ama_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"))
+  async startAMASession(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await startAMAbyCallback(
+      ctx,
+      groupIds,
+      this.getAMAById.bind(this),
+      this.updateAMA.bind(this)
+    );
   }
 
   // <<------------------------------------ Text Commands ------------------------------------>>

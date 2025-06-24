@@ -40,6 +40,10 @@ export const CALLBACK_ACTIONS = {
   // Callback actions for edit confirmation
   EDIT_CONFIRM: "edit-confirm",
   EDIT_CANCEL: "edit-cancel",
+
+  // Callback actions for AMA session management
+  START_AMA: "start-ama",
+  END_AMA: "end-ama",
 };
 
 export const AMA_DEFAULT_DATA = {
