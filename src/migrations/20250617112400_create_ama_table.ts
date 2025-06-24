@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.createTable(tableName, (table) => {
     table.uuid("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
-    table.integer("session_no").notNullable().unique();
+    table.integer("session_no").notNullable();
     table
       .enum("language", ["en", "ar"], {
         useNative: true,
@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
       .defaultTo("pending");
     table.string("special_guest");
     table.string("topic");
-    table.string("hashtag").notNullable().unique();
+    table.string("hashtag").notNullable();
     table.timestamp("scheduled_at");
     table.integer("thread_id");
     table.timestamps(true, true);

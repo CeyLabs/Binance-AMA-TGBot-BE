@@ -8,9 +8,9 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
     table.uuid("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
     table
-      .integer("session_no")
+      .uuid("ama_id")
       .notNullable()
-      .references("session_no")
+      .references("id")
       .inTable("ama")
       .onDelete("RESTRICT");
     table.string("user_id").notNullable();

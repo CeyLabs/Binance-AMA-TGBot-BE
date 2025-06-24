@@ -1,9 +1,15 @@
+import { UUID } from "crypto";
 import { Context } from "telegraf";
+import { SUPPORTED_LANGUAGES } from "./ama.constants";
+import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export type EditableFieldKey = keyof typeof EDITABLE_FIELDS;
 
 export interface AMA {
-  id: string;
+  id: UUID;
   session_no: number;
-  language: "en" | "ar";
+  language: SupportedLanguage;
   date: string;
   time: string;
   total_pool: string;
@@ -22,18 +28,11 @@ export interface AMA {
 
 export interface SessionData {
   editMode?: {
-    sessionNo: number;
-    field:
-      | "date"
-      | "time"
-      | "sessionNo"
-      | "reward"
-      | "winnerCount"
-      | "formLink"
-      | "topic"
-      | "guest";
+    amaId: UUID;
+    field: EditableFieldKey;
     newValue?: string;
   };
+  messagesToDelete?: number[];
 }
 
 export interface BotContext extends Context {
@@ -55,7 +54,7 @@ export interface OpenAIAnalysis {
 }
 
 export interface ScoreData {
-  sessionNo: number;
+  amaId: UUID;
   userId: string;
   userName: string;
   question: string;
@@ -65,4 +64,14 @@ export interface ScoreData {
   engagement: number;
   language: number;
   score: number;
+}
+
+export interface PublicGroupInfo {
+  en: string;
+  ar: string;
+}
+
+export interface GroupInfo {
+  public: PublicGroupInfo;
+  admin: string;
 }
