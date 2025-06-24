@@ -1,10 +1,10 @@
 import { formatTimeTo12Hour } from "../helper/utils";
 import { AMA_HASHTAG } from "../ama.constants";
-import { SupportedLanguages } from "../types";
+import { SupportedLanguage } from "../types";
 
 interface AMAData {
   session_no: number;
-  language: SupportedLanguages;
+  language: SupportedLanguage;
   date: Date | string;
   time: string;
   total_pool: string;

@@ -1,10 +1,10 @@
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, GroupIDs, SupportedLanguages } from "../types";
+import { AMA, GroupIDs, SupportedLanguage } from "../types";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { UUID } from "crypto";
 
-function getLanguageText(language: SupportedLanguages): string {
+function getLanguageText(language: SupportedLanguage): string {
   return language === "ar" ? "Arabic" : "English";
 }
 

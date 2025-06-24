@@ -17,7 +17,7 @@ import {
   BotContext,
   OpenAIAnalysis,
   ScoreData,
-  SupportedLanguages,
+  SupportedLanguage,
 } from "./types";
 import {
   handleBroadcastNow,
@@ -44,7 +44,7 @@ export class AMAService {
 
   // Insert the AMA details into the database
   // prettier-ignore
-  async createAMA( sessionNo: number, language:SupportedLanguages, topic?: string): Promise<UUID> {
+  async createAMA( sessionNo: number, language:SupportedLanguage, topic?: string): Promise<UUID> {
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
       language: language,
@@ -110,7 +110,7 @@ export class AMAService {
   // Get AMA details by session number
   async getAMABySessionNoAndLang(
     sessionNo: number,
-    language: SupportedLanguages
+    language: SupportedLanguage
   ): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
@@ -152,7 +152,7 @@ export class AMAService {
 
   async isAMAExists(
     sessionNo: number,
-    language: SupportedLanguages
+    language: SupportedLanguage
   ): Promise<boolean> {
     const session = await this.getAMABySessionNoAndLang(sessionNo, language);
     return Boolean(session);

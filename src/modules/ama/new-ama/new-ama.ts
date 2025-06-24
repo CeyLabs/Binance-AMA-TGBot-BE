@@ -4,7 +4,7 @@ import {
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
-import { BotContext, SupportedLanguages } from "../types";
+import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "../helper/keyboard.helper";
 import { UUID } from "crypto";
 
@@ -15,12 +15,12 @@ export async function handleNewAMA(
   ctx: BotContext,
   createAMA: (
     sessionNo: number,
-    language: SupportedLanguages,
+    language: SupportedLanguage,
     topic?: string
   ) => Promise<UUID>,
   isAMAExists: (
     sessionNo: number,
-    language: SupportedLanguages
+    language: SupportedLanguage
   ) => Promise<boolean>
 ): Promise<void> {
   try {
@@ -45,7 +45,7 @@ export async function handleNewAMA(
     const [, language, sessionNumber] = match;
 
     //validate language by check if its "en" or "ar"
-    if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguages)) {
+    if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguage)) {
       await ctx.reply(
         "Invalid language. Please use 'en' for English or 'ar' for Arabic."
       );
@@ -62,7 +62,7 @@ export async function handleNewAMA(
     // Check if the session number already exists
     const sessionExists = await isAMAExists(
       sessionNo,
-      language as SupportedLanguages
+      language as SupportedLanguage
     );
     if (sessionExists) {
       await ctx.reply(
@@ -73,7 +73,7 @@ export async function handleNewAMA(
 
     const message = buildAMAMessage({
       session_no: sessionNo,
-      language: language as SupportedLanguages,
+      language: language as SupportedLanguage,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
       total_pool: AMA_DEFAULT_DATA.total_pool,
@@ -87,7 +87,7 @@ export async function handleNewAMA(
     // Create the AMA and get the ID
     const AMA_ID = await createAMA(
       sessionNo,
-      language as SupportedLanguages,
+      language as SupportedLanguage,
       argsText.replace(match[0], "").trim()
     );
 
@@ -101,7 +101,7 @@ export async function handleNewAMA(
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
     });
-    
+
     // Push the message IDs to delete later
     ctx.session.messagesToDelete ??= [];
     ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);

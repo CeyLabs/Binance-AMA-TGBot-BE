@@ -3,13 +3,13 @@ import { Context } from "telegraf";
 import { SUPPORTED_LANGUAGES } from "./ama.constants";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 
-export type SupportedLanguages = (typeof SUPPORTED_LANGUAGES)[number];
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 export type EditableFieldKey = keyof typeof EDITABLE_FIELDS;
 
 export interface AMA {
   id: UUID;
   session_no: number;
-  language: SupportedLanguages;
+  language: SupportedLanguage;
   date: string;
   time: string;
   total_pool: string;
