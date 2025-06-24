@@ -37,6 +37,9 @@ export async function validateIdPattern(
 ): Promise<{ id: UUID } | null> {
   const callbackQuery = ctx.callbackQuery as any;
 
+  console.log("Validating Callback Query Pattern:", pattern);
+  console.log("Callback Query:", callbackQuery);
+
   console.log("Callback Query Data:", callbackQuery?.data);
 
   if (!callbackQuery?.data) {

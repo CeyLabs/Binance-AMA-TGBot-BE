@@ -1,9 +1,5 @@
 import { Context } from "telegraf";
-import {
-  UUID_PATTERN,
-  validateCallbackPattern,
-  validateIdPattern,
-} from "../helper/utils";
+import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, PublicGroupIDs } from "../types";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
@@ -20,8 +16,6 @@ export async function handleBroadcastNow(
     new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
-
-  console.log("Group IDs:", publicGroupIds);
 
   const { id: AMA_ID } = result;
 
@@ -70,31 +64,63 @@ export async function handleBroadcastNow(
   }
 }
 
+const scheduleOptions = [
+  { label: "2 Days Before", key: "2DAYS" },
+  { label: "24 Hours Before", key: "24H" },
+  { label: "6 Hours Before", key: "6H" },
+];
+
 export async function handleScheduleBroadcast(
-  ctx: Context & { match: RegExpExecArray },
-  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>,
-  updateAMA: (sessionNo: number, updates: Partial<AMA>) => Promise<boolean>
+  ctx: Context,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
-  const result = await validateCallbackPattern(
+  const result = await validateIdPattern(
     ctx,
-    CALLBACK_ACTIONS.SCHEDULE_BROADCAST,
-    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_(\\d+)$`)
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
 
-  const { sessionNo } = result;
+  const { id: AMA_ID } = result;
 
-  const ama = await getAMABySessionNo(sessionNo);
+  const ama = await getAMAById(AMA_ID);
   if (!ama) {
     await ctx.reply("AMA session not found.");
     return;
   }
 
+  await ctx.reply("Schedule Announcement Broadcast", {
+    reply_markup: {
+      inline_keyboard: [
+        ...scheduleOptions.map((option) => [
+          {
+            text: option.label,
+            callback_data: `schedule_${option.key}_${AMA_ID}`,
+          },
+          {
+            text: "✅ / ❎",
+            callback_data: `toggle_${option.key}_${AMA_ID}`,
+          },
+        ]),
+        [
+          {
+            text: "Cancel",
+            callback_data: `cancel_${AMA_ID}`,
+          },
+          {
+            text: "Confirm",
+            callback_data: `confirm_${AMA_ID}`,
+          },
+        ],
+      ],
+    },
+  });
+
   // Schedule the broadcast for 1 minute later (for testing purposes)
   const broadcastTime = new Date(Date.now() + 1 * 60 * 1000);
 
   // Update the AMA session with the scheduled broadcast time
-  await updateAMA(sessionNo, {
+  await updateAMA(AMA_ID, {
     scheduled_at: broadcastTime,
     status: "scheduled",
   });

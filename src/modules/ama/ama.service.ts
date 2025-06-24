@@ -256,13 +256,13 @@ export class AMAService {
   }
 
   // schedule-broadcast_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_(\\d+)$`))
-  async scheduleBroadcast(
-    ctx: Context & { match: RegExpExecArray }
-  ): Promise<void> {
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
+  )
+  async scheduleBroadcast(ctx: Context): Promise<void> {
     await handleScheduleBroadcast(
       ctx,
-      this.getAMABySessionNo.bind(this),
+      this.getAMAById.bind(this),
       this.updateAMA.bind(this)
     );
   }
