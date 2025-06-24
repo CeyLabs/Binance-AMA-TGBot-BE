@@ -23,7 +23,7 @@ import {
   handleBroadcastNow,
   handleScheduleBroadcast,
 } from "./new-ama/broadcast";
-import { handleEditRequest } from "./helper/handleEditRequest";
+import { handleEditRequest } from "./helper/handle-edit-request";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
 import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
