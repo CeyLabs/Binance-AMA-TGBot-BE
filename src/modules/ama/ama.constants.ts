@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 export const AMA_COMMANDS = {
   NEW: "newama",
   START: "startama",
@@ -47,7 +49,7 @@ export const CALLBACK_ACTIONS = {
 };
 
 export const AMA_DEFAULT_DATA = {
-  date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0], // one day from now
+  date: dayjs().add(1, "day").format("YYYY-MM-DD"), // one day from now
   // Example: "08:00pm KSA"
   time: "20:00:00",
   total_pool: "100 FDUSD",
