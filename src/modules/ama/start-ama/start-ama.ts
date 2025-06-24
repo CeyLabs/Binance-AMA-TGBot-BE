@@ -43,12 +43,12 @@ export async function handleStartAMA(
   } else if (availableAMAs.length > 1) {
     return void ctx.reply(`Select the community group to Start AMA`, {
       reply_markup: {
-        inline_keyboard: availableAMAs.map((ama) => [
-          {
+        inline_keyboard: [
+          availableAMAs.map((ama) => ({
             text: getLanguageText(ama.language),
             callback_data: `${CALLBACK_ACTIONS.START_AMA}_${ama.id}`,
-          },
-        ]),
+          })),
+        ],
       },
     });
   }
