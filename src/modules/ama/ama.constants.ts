@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import * as dayjs from "dayjs";
 
 export const AMA_COMMANDS = {
   NEW: "newama",

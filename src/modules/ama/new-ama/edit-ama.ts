@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
 import { EDITABLE_FIELDS } from "../helper/field-metadata";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
@@ -71,9 +71,20 @@ export async function handleConfirmEdit(
 
   const fieldMeta = EDITABLE_FIELDS[field];
 
-  const success = await updateAMA(AMA_ID, {
+  // Prepare update payload
+  const updateData: Partial<AMA> = {
     [fieldMeta.column]: newValue,
-  } as Partial<AMA>);
+  };
+
+  // If session_no is being updated, also update the hashtag
+  if (fieldMeta.column === "session_no") {
+    const sessionNo = Number(newValue);
+    if (!isNaN(sessionNo)) {
+      updateData["hashtag"] = `#${AMA_HASHTAG}${sessionNo}`;
+    }
+  }
+
+  const success = await updateAMA(AMA_ID, updateData);
 
   if (!success) {
     await ctx.reply("❌ Failed to update AMA.");
