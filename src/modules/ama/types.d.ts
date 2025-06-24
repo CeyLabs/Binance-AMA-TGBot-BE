@@ -1,7 +1,7 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { SUPPORTED_LANGUAGES } from "./ama.constants";
-import { EDITABLE_FIELDS } from "./helper/field-metadata";
+import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 export type EditableFieldKey = keyof typeof EDITABLE_FIELDS;

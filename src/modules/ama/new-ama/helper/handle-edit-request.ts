@@ -1,7 +1,7 @@
 import { UUID } from "crypto";
-import { AMA, BotContext, EditableFieldKey } from "../types";
+import { AMA, BotContext, EditableFieldKey } from "../../types";
 import { EDITABLE_FIELDS } from "./field-metadata";
-import { UUID_PATTERN, validateIdPattern } from "./utils";
+import { UUID_PATTERN, validateIdPattern } from "../../helper/utils";
 /**
  * Handles edit requests for AMA fields
  */

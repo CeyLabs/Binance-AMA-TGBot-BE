@@ -3,9 +3,9 @@ import {
   AMA_DEFAULT_DATA,
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
-import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
+import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { BotContext, SupportedLanguage } from "../types";
-import { NewAMAKeyboard } from "../helper/keyboard.helper";
+import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 
 /**

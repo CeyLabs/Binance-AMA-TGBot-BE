@@ -1,11 +1,11 @@
 import { Markup } from "telegraf";
 import { AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { EDITABLE_FIELDS } from "../helper/field-metadata";
-import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
+import { EDITABLE_FIELDS } from "./helper/field-metadata";
+import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
 import { UUID } from "crypto";
-import { NewAMAKeyboard } from "../helper/keyboard.helper";
+import { NewAMAKeyboard } from "./helper/keyboard.helper";
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;

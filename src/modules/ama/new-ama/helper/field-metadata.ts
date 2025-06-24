@@ -1,4 +1,4 @@
-import { EDIT_KEYS } from "../ama.constants";
+import { EDIT_KEYS } from "../../ama.constants";
 
 type ValidationResult = {
   value: string | number | null;

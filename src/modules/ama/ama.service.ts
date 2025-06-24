@@ -11,7 +11,7 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
-import { handleConfirmAMA } from "./new-ama/callbacks";
+import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
   BotContext,
@@ -22,9 +22,9 @@ import {
 import {
   handleBroadcastNow,
   handleScheduleBroadcast,
-} from "./new-ama/broadcast";
-import { handleEditRequest } from "./helper/handle-edit-request";
-import { EDITABLE_FIELDS } from "./helper/field-metadata";
+} from "./new-ama/broadcast-ama";
+import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
+import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
 import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
 import { handleAMAQuestion } from "./start-ama/handle-questions";

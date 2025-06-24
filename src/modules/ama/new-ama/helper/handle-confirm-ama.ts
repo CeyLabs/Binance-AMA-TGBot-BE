@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
-import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
-import { CALLBACK_ACTIONS } from "../ama.constants";
+import { UUID_PATTERN, validateIdPattern } from "../../helper/utils";
+import { CALLBACK_ACTIONS } from "../../ama.constants";
 
 export async function handleConfirmAMA(ctx: Context): Promise<void> {
   const result = await validateIdPattern(

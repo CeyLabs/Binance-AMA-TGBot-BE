@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { ConfigService } from "@nestjs/config";
-import { buildAMAMessage, imageUrl } from "../ama/helper/msg-builder";
+import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
 import { Telegraf } from "telegraf";
 import { InjectBot } from "nestjs-telegraf";
 import { AMAService } from "../ama/ama.service";

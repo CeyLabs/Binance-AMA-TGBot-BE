@@ -1,6 +1,6 @@
-import { formatTimeTo12Hour } from "../helper/utils";
-import { AMA_HASHTAG } from "../ama.constants";
-import { SupportedLanguage } from "../types";
+import { formatTimeTo12Hour } from "../../helper/utils";
+import { AMA_HASHTAG } from "../../ama.constants";
+import { SupportedLanguage } from "../../types";
 
 interface AMAData {
   session_no: number;

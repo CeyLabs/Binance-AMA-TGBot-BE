@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { CALLBACK_ACTIONS } from "../ama.constants";
+import { CALLBACK_ACTIONS } from "../../ama.constants";
 import { InlineKeyboardMarkup } from "telegraf/typings/core/types/typegram";
 import { UUID } from "crypto";
 
