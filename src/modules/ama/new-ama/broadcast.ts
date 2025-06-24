@@ -1,13 +1,13 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, PublicGroupIDs } from "../types";
+import { AMA, PublicGroupInfo } from "../types";
 import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
 import { UUID } from "crypto";
 
 export async function handleBroadcastNow(
   ctx: Context,
-  publicGroupIds: PublicGroupIDs,
+  publicGroupIds: PublicGroupInfo,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {

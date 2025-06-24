@@ -1,11 +1,11 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
-import { AMA, GroupIDs, OpenAIAnalysis, ScoreData } from "../types";
+import { AMA, GroupInfo, OpenAIAnalysis, ScoreData } from "../types";
 import type { TelegramEmoji } from "telegraf/types";
 
 export async function handleAMAQuestion(
   ctx: Context,
-  groupIds: GroupIDs,
+  groupIds: GroupInfo,
   getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
   getAnalysis: (
     question: string,

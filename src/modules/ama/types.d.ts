@@ -66,12 +66,12 @@ export interface ScoreData {
   score: number;
 }
 
-export interface PublicGroupIDs {
+export interface PublicGroupInfo {
   en: string;
   ar: string;
 }
 
-export interface GroupIDs {
-  public: PublicGroupIDs;
+export interface GroupInfo {
+  public: PublicGroupInfo;
   admin: string;
 }

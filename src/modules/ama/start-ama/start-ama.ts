@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, GroupIDs, SupportedLanguage } from "../types";
+import { AMA, GroupInfo, SupportedLanguage } from "../types";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { UUID } from "crypto";
 
@@ -10,7 +10,7 @@ function getLanguageText(language: SupportedLanguage): string {
 
 export async function handleStartAMA(
   ctx: Context,
-  groupIds: GroupIDs,
+  groupIds: GroupInfo,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
@@ -58,7 +58,7 @@ export async function handleStartAMA(
 
 export async function startAMAbyCallback(
   ctx: Context,
-  groupIds: GroupIDs,
+  groupIds: GroupInfo,
   getAMAById: (id: string) => Promise<AMA | null>,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
@@ -84,7 +84,7 @@ export async function startAMAbyCallback(
 // Generic function to start an AMA session
 async function startAMA(
   ctx: Context,
-  groupIds: GroupIDs,
+  groupIds: GroupInfo,
   ama: AMA,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
 ): Promise<void> {
