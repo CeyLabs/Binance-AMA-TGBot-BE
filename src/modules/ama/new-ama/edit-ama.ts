@@ -10,42 +10,40 @@ import { NewAMAKeyboard } from "../helper/keyboard.helper";
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
   if (!editMode || !editMode.field) return;
-
   if (!ctx.message || !("text" in ctx.message)) return;
 
   const input = ctx.message.text.trim();
   const fieldMeta = EDITABLE_FIELDS[editMode.field];
 
   const validated = fieldMeta.validate(input);
-  if (!validated) {
-    await ctx.reply("❌ Invalid format. " + fieldMeta.prompt);
+
+  // If there's an error, show it to the user and return
+  if (validated.error || validated.value === null) {
+    await ctx.reply(validated.error ?? "❌ Invalid input.");
     return;
   }
 
+  // Save the new value to session
   if (ctx.session.editMode) {
-    ctx.session.editMode.newValue = String(validated);
+    ctx.session.editMode.newValue = String(validated.value);
   }
 
-  // Store messages for deletion
+  // Initialize messagesToDelete array if needed
   ctx.session.messagesToDelete ??= [];
 
-  // if (ctx.message.message_id) {
-  //   ctx.session.messagesToDelete.push(ctx.message.message_id);
-  // }
-
   const updatedMsg = await ctx.reply(
-    `Updated <b>${fieldMeta.name}</b>: <code>${validated}</code>`,
+    `✅ Updated <b>${fieldMeta.name}</b>: <code>${validated.value}</code>`,
     {
       parse_mode: "HTML",
       // prettier-ignore
       reply_markup: Markup.inlineKeyboard([
         [
-          Markup.button.callback(`Edit ${fieldMeta.name}`, `edit-${editMode.field}_${editMode.amaId}`),
-          Markup.button.callback("Confirm", `${CALLBACK_ACTIONS.EDIT_CONFIRM}_${editMode.amaId}`),
+          Markup.button.callback(`Edit ${fieldMeta.name}`,`edit-${editMode.field}_${editMode.amaId}`),
+          Markup.button.callback("✅ Confirm",`${CALLBACK_ACTIONS.EDIT_CONFIRM}_${editMode.amaId}`),
         ],
         [
-          Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
-        ]
+          Markup.button.callback("❌ Cancel",`${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
+        ],
       ]).reply_markup,
     }
   );
