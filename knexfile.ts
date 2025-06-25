@@ -72,9 +72,9 @@ const config: { [key: string]: Knex.Config } = {
     connection: {
       host: "127.0.0.1",
       port: 3009,
-      database: "tgbot-template",
-      user: "tgbot-template",
-      password: "tgbot-template",
+      database: "binance-ama-bot",
+      user: "binance-ama-bot",
+      password: "binance-ama-bot",
       // Keep connections alive
       ssl: false,
       keepAlive: true,

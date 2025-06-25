@@ -31,6 +31,7 @@ export async function validateIdPattern(
   };
 }
 
+
 export function formatTimeTo12Hour(time24: string): string {
   const [hours, minutes] = time24.split(":").map(Number);
   const period = hours >= 12 ? "PM" : "AM";

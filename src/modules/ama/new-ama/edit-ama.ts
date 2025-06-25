@@ -10,6 +10,7 @@ import { NewAMAKeyboard } from "./helper/keyboard.helper";
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
   if (!editMode || !editMode.field) return;
+
   if (!ctx.message || !("text" in ctx.message)) return;
 
   const input = ctx.message.text.trim();
