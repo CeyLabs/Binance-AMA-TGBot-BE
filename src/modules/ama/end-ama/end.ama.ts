@@ -104,9 +104,6 @@ async function selectWinners(
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
-  //   await updateAMA(ama.id, {
-  //     status: "ended",
-  //   });
 
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
   await ctx.reply("TODO: CSV need to be generated and sent to the group.");
@@ -157,13 +154,6 @@ async function selectWinners(
       },
     }
   );
-
-  // Notify the public group about the AMA start
-  //   const publicGroupId = groupIds.public[ama.language];
-  //   const message = `#${AMA_HASHTAG}${ama.session_no} ${getLanguageText(ama.language)} AMA Session has ended!`;
-  //   await ctx.telegram.sendMessage(publicGroupId, message, {
-  //     parse_mode: "HTML",
-  //   });
 }
 
 export async function selectWinnersCallback(
