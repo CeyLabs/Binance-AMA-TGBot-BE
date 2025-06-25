@@ -1,5 +1,6 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
+import { SupportedLanguage } from "../types";
 
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,4 +38,8 @@ export function formatTimeTo12Hour(time24: string): string {
   const period = hours >= 12 ? "PM" : "AM";
   const adjustedHour = hours % 12 || 12;
   return `${adjustedHour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${period} KSA`;
+}
+
+export function getLanguageText(language: SupportedLanguage): string {
+  return language === "ar" ? "Arabic" : "English";
 }

@@ -85,9 +85,9 @@ export async function handleAMAQuestion(
         }
 
         const scoreData: ScoreData = {
-          amaId: matchedAMA.id,
-          userId: message.from.id.toString(),
-          userName: message.from.first_name || "Unknown",
+          ama_id: matchedAMA.id,
+          user_id: message.from.id.toString(),
+          username: message.from.first_name || "Unknown",
           question: question,
           originality: analysis?.originality?.score || 0,
           relevance: analysis?.relevance?.score || 0,

@@ -31,6 +31,7 @@ import { handleAMAQuestion } from "./start-ama/handle-questions";
 import { getQuestionAnalysis } from "./helper/openai-utils";
 import { UUID } from "crypto";
 import { UUID_PATTERN } from "./helper/utils";
+import { endAMAbyCallback, handleEndAMA } from "./end-ama/end.ama";
 
 @Update()
 @Injectable()
@@ -67,9 +68,9 @@ export class AMAService {
     const data = await this.knexService
       .knex("scores")
       .insert({
-        ama_id: scoreData.amaId,
-        user_id: scoreData.userId,
-        username: scoreData.userName,
+        ama_id: scoreData.ama_id,
+        user_id: scoreData.ama_id,
+        username: scoreData.username,
         question: scoreData.question,
         originality: scoreData.originality,
         relevance: scoreData.relevance,
@@ -183,6 +184,17 @@ export class AMAService {
       .where("status", "scheduled");
   }
 
+  // Get scores for a specific AMA
+  async getScoresForAMA(id: UUID): Promise<ScoreData[]> {
+    return this.knexService
+      .knex<ScoreData>("scores")
+      .where("ama_id", id)
+      .orderBy([
+        { column: "score", order: "desc" },
+        { column: "created_at", order: "asc" },
+      ]);
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(
@@ -204,7 +216,7 @@ export class AMAService {
     );
   }
 
-  // Start a new AMA session (/startama 60)
+  // Start the AMA (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
     const groupIds = {
@@ -219,6 +231,25 @@ export class AMAService {
       groupIds,
       this.getAMAsBySessionNo.bind(this),
       this.updateAMA.bind(this)
+    );
+  }
+
+  // End the AMA (/endama 60)
+  @Command(AMA_COMMANDS.END)
+  async endAMA(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await handleEndAMA(
+      ctx,
+      groupIds,
+      this.getAMAsBySessionNo.bind(this),
+      this.updateAMA.bind(this),
+      this.getScoresForAMA.bind(this)
     );
   }
 
@@ -341,6 +372,25 @@ export class AMAService {
       groupIds,
       this.getAMAById.bind(this),
       this.updateAMA.bind(this)
+    );
+  }
+
+  // end-ama_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"))
+  async endAMASession(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await endAMAbyCallback(
+      ctx,
+      groupIds,
+      this.getAMAById.bind(this),
+      this.updateAMA.bind(this),
+      this.getScoresForAMA.bind(this)
     );
   }
 

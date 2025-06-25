@@ -1,12 +1,12 @@
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, GroupInfo, SupportedLanguage } from "../types";
-import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
+import { AMA, GroupInfo } from "../types";
+import {
+  getLanguageText,
+  UUID_PATTERN,
+  validateIdPattern,
+} from "../helper/utils";
 import { UUID } from "crypto";
-
-function getLanguageText(language: SupportedLanguage): string {
-  return language === "ar" ? "Arabic" : "English";
-}
 
 export async function handleStartAMA(
   ctx: Context,

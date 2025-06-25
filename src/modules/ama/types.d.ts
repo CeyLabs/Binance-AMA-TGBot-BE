@@ -54,9 +54,9 @@ export interface OpenAIAnalysis {
 }
 
 export interface ScoreData {
-  amaId: UUID;
-  userId: string;
-  userName: string;
+  ama_id: UUID;
+  user_id: string;
+  username: string;
   question: string;
   originality: number;
   relevance: number;
@@ -64,6 +64,8 @@ export interface ScoreData {
   engagement: number;
   language: number;
   score: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PublicGroupInfo {
