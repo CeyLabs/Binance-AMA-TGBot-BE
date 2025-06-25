@@ -46,12 +46,20 @@ export const CALLBACK_ACTIONS = {
   // Callback actions for AMA session management
   START_AMA: "start-ama",
   END_AMA: "end-ama",
+
+  // Callback actions for winner selection
+  SELECT_WINNERS: "select-winners",
+  CONFIRM_WINNERS: "confirm-winners",
+  CANCEL_WINNERS: "cancel-winners",
+  BROADCAST_WINNERS: "broadcast-winners",
+
+  // Callback actions for claiming rewards
+  CLAIM_REWARD: "claim-reward",
 };
 
 export const AMA_DEFAULT_DATA = {
   date: dayjs().add(1, "day").format("YYYY-MM-DD"), // one day from now
-  // Example: "08:00pm KSA"
-  time: "20:00:00",
+  time: "20:00:00",   // Example: "08:00pm KSA"
   total_pool: "100 FDUSD",
   reward: "33.3 FDUSD",
   winner_count: 3,

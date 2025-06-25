@@ -30,8 +30,14 @@ import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
 import { handleAMAQuestion } from "./start-ama/handle-questions";
 import { getQuestionAnalysis } from "./helper/openai-utils";
 import { UUID } from "crypto";
-import { UUID_PATTERN } from "./helper/utils";
-import { endAMAbyCallback, handleEndAMA } from "./end-ama/end.ama";
+import { UUID_FRAGMENT, UUID_PATTERN } from "./helper/utils";
+import {
+  confirmWinnersCallback,
+  endAMAbyCallback,
+  handleEndAMA,
+  handleWiinersBroadcast,
+  selectWinnersCallback,
+} from "./end-ama/end.ama";
 
 @Update()
 @Injectable()
@@ -69,7 +75,7 @@ export class AMAService {
       .knex("scores")
       .insert({
         ama_id: scoreData.ama_id,
-        user_id: scoreData.ama_id,
+        user_id: scoreData.user_id,
         username: scoreData.username,
         question: scoreData.question,
         originality: scoreData.originality,
@@ -391,6 +397,56 @@ export class AMAService {
       this.getAMAById.bind(this),
       this.updateAMA.bind(this),
       this.getScoresForAMA.bind(this)
+    );
+  }
+
+  // select-winners_(id)_(winnerCount)
+  // select-winners_83a7aa46-2eaf-483c-a004-507e8b0c5f99_3
+  @Action(
+    new RegExp(
+      `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
+      "i"
+    )
+  )
+  async selectWinners(ctx: Context): Promise<void> {
+    await selectWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this),
+      // this.getScoresForAMA.bind(this),
+      this.getScoresForAMA.bind(this)
+    );
+  }
+
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i")
+  )
+  async confirmWinners(ctx: Context): Promise<void> {
+    await confirmWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this),
+      this.getScoresForAMA.bind(this)
+    );
+  }
+
+
+  //broadcast-winners_83a7aa46-2eaf-483c-a004-507e8b0c5f99
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
+  )
+  async broadcastWinners(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await handleWiinersBroadcast(
+      ctx,
+      this.getAMAById.bind(this),
+      this.updateAMA.bind(this),
+      this.getScoresForAMA.bind(this),
+      groupIds
     );
   }
 

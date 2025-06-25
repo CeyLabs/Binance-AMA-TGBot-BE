@@ -8,6 +8,9 @@ export const UUID_REGEX =
 export const UUID_PATTERN =
   "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$";
 
+export const UUID_FRAGMENT =
+  "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
+
 // This function validates the callback data against a given pattern
 export async function validateIdPattern(
   ctx: Context,
@@ -31,7 +34,6 @@ export async function validateIdPattern(
     id: match[1] as UUID,
   };
 }
-
 
 export function formatTimeTo12Hour(time24: string): string {
   const [hours, minutes] = time24.split(":").map(Number);
