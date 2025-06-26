@@ -1,0 +1,116 @@
+import { Context } from "telegraf";
+import { AMA_HASHTAG } from "../ama.constants";
+import { AMA, GroupInfo, OpenAIAnalysis, ScoreData } from "../types";
+import type { TelegramEmoji } from "telegraf/types";
+
+export async function handleAMAQuestion(
+  ctx: Context,
+  groupIds: GroupInfo,
+  getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
+  getAnalysis: (
+    question: string,
+    topic?: string
+  ) => Promise<OpenAIAnalysis | null>,
+  addScore: (scoreData: ScoreData) => Promise<boolean>
+): Promise<void> {
+  const message = ctx.message;
+
+  if (!message || !("text" in message) || message.from.is_bot) return;
+
+  if (message.text && message.text.includes(`#${AMA_HASHTAG}`)) {
+    const amaHashtagMatch = message.text.match(
+      new RegExp(`#${AMA_HASHTAG}(\\d+)`)
+    );
+    const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
+
+    if (hashtag) {
+      const amas = await getAMAsByHashtag(hashtag);
+
+      const publicChatId = message.chat.id.toString();
+
+      const matchedAMA = amas.find((ama) => {
+        const isActive = ama.status === "active";
+        const isGroupMatch =
+          (ama.language === "en" && publicChatId === groupIds.public.en) ||
+          (ama.language === "ar" && publicChatId === groupIds.public.ar);
+        return isActive && isGroupMatch && ama.thread_id;
+      });
+
+      if (matchedAMA) {
+        const question = message.text;
+
+        // Forward question to admin group thread
+        const forwardedMsg = await ctx.telegram.forwardMessage(
+          groupIds.admin,
+          message.chat.id,
+          message.message_id,
+          {
+            message_thread_id: matchedAMA.thread_id,
+          }
+        );
+
+        const analysis = await getAnalysis(question, matchedAMA.topic);
+
+        let analysisMessage: string;
+
+        if (!analysis) {
+          analysisMessage = "⚠️ Analysis failed. Please try again later.";
+
+          await ctx.telegram.sendMessage(groupIds.admin, analysisMessage, {
+            reply_parameters: {
+              message_id: forwardedMsg.message_id,
+            },
+          });
+        } else {
+          analysisMessage =
+            `<b>📊 AI Analysis</b>\n\n` +
+            `<b>✨ Originality:</b> ${analysis.originality?.score}/10\n` +
+            `<i>${analysis.originality?.comment}</i>\n\n` +
+            `<b>🎯 Relevance:</b> ${analysis.relevance?.score}/10\n` +
+            `<i>${analysis.relevance?.comment}</i>\n\n` +
+            `<b>🔍 Clarity:</b> ${analysis.clarity?.score}/10\n` +
+            `<i>${analysis.clarity?.comment}</i>\n\n` +
+            `<b>📢 Engagement:</b> ${analysis.engagement?.score}/10\n` +
+            `<i>${analysis.engagement?.comment}</i>\n\n` +
+            `<b>✍️ Language:</b> ${analysis.language?.score}/10\n` +
+            `<i>${analysis.language?.comment}</i>\n\n` +
+            `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`;
+
+          await ctx.telegram.sendMessage(groupIds.admin, analysisMessage, {
+            reply_parameters: {
+              message_id: forwardedMsg.message_id,
+            },
+            parse_mode: "HTML",
+          });
+        }
+
+        const scoreData: ScoreData = {
+          amaId: matchedAMA.id,
+          userId: message.from.id.toString(),
+          userName: message.from.first_name || "Unknown",
+          question: question,
+          originality: analysis?.originality?.score || 0,
+          relevance: analysis?.relevance?.score || 0,
+          clarity: analysis?.clarity?.score || 0,
+          engagement: analysis?.engagement?.score || 0,
+          language: analysis?.language?.score || 0,
+          score: analysis?.total_score || 0,
+        };
+
+        const addScoreToDb = await addScore(scoreData);
+
+        if (addScoreToDb) {
+          await ctx.telegram.callApi("setMessageReaction", {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            reaction: [{ type: "emoji", emoji: "👍" as TelegramEmoji }],
+          });
+        }
+      } else {
+        await ctx.reply(
+          "❌ This AMA is not currently active in this group or has ended."
+        );
+      }
+    }
+  }
+}

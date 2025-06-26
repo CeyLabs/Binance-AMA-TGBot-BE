@@ -1,10 +1,17 @@
+import { UUID } from "crypto";
 import { Context } from "telegraf";
 
-export async function validateCallbackPattern(
+export const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const UUID_PATTERN =
+  "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$";
+
+// This function validates the callback data against a given pattern
+export async function validateIdPattern(
   ctx: Context,
-  actionPrefix: string,
   pattern: RegExp
-): Promise<{ sessionNo: number } | null> {
+): Promise<{ id: UUID } | null> {
   const callbackQuery = ctx.callbackQuery as any;
 
   if (!callbackQuery?.data) {
@@ -14,13 +21,13 @@ export async function validateCallbackPattern(
 
   const match = callbackQuery.data.match(pattern);
 
-  if (!match || isNaN(Number(match[1]))) {
+  if (!match || !match[1] || !UUID_REGEX.test(match[1])) {
     await ctx.answerCbQuery("Invalid callback format.", { show_alert: true });
     return null;
   }
 
   return {
-    sessionNo: parseInt(match[1], 10),
+    id: match[1] as UUID,
   };
 }
 

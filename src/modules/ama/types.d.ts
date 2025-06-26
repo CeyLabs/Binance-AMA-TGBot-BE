@@ -1,9 +1,15 @@
+import { UUID } from "crypto";
 import { Context } from "telegraf";
+import { SUPPORTED_LANGUAGES } from "./ama.constants";
+import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export type EditableFieldKey = keyof typeof EDITABLE_FIELDS;
 
 export interface AMA {
-  id: string;
+  id: UUID;
   session_no: number;
-  language: "en" | "ar";
+  language: SupportedLanguage;
   date: string;
   time: string;
   total_pool: string;
@@ -15,26 +21,57 @@ export interface AMA {
   topic: string;
   hashtag: string;
   scheduled_at?: Date;
+  thread_id?: number;
   created_at?: Date;
   updated_at?: Date;
 }
 
 export interface SessionData {
   editMode?: {
-    sessionNo: number;
-    field:
-      | "date"
-      | "time"
-      | "sessionNo"
-      | "reward"
-      | "winnerCount"
-      | "formLink"
-      | "topic"
-      | "guest";
+    amaId: UUID;
+    field: EditableFieldKey;
     newValue?: string;
   };
+  messagesToDelete?: number[];
 }
 
 export interface BotContext extends Context {
   session: SessionData;
+}
+
+interface Score {
+  score: number;
+  comment: string;
+}
+
+export interface OpenAIAnalysis {
+  originality: Score;
+  relevance: Score;
+  clarity: Score;
+  engagement: Score;
+  language: Score;
+  total_score: number;
+}
+
+export interface ScoreData {
+  amaId: UUID;
+  userId: string;
+  userName: string;
+  question: string;
+  originality: number;
+  relevance: number;
+  clarity: number;
+  engagement: number;
+  language: number;
+  score: number;
+}
+
+export interface PublicGroupInfo {
+  en: string;
+  ar: string;
+}
+
+export interface GroupInfo {
+  public: PublicGroupInfo;
+  admin: string;
 }

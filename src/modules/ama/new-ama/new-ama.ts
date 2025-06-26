@@ -1,19 +1,27 @@
-import { Context, Markup } from "telegraf";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
-  CALLBACK_ACTIONS,
+  SUPPORTED_LANGUAGES,
 } from "../ama.constants";
-import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
-import { NewAMAKeyboard } from "../helper/keyboard.helper";
+import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
+import { BotContext, SupportedLanguage } from "../types";
+import { NewAMAKeyboard } from "./helper/keyboard.helper";
+import { UUID } from "crypto";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
  */
 export async function handleNewAMA(
-  ctx: Context,
-  createAMA: (sessionNo: number, topic?: string) => Promise<void>,
-  isAMASessionExists: (sessionNo: number) => Promise<boolean>
+  ctx: BotContext,
+  createAMA: (
+    sessionNo: number,
+    language: SupportedLanguage,
+    topic?: string
+  ) => Promise<UUID>,
+  isAMAExists: (
+    sessionNo: number,
+    language: SupportedLanguage
+  ) => Promise<boolean>
 ): Promise<void> {
   try {
     const text = ctx.text;
@@ -37,7 +45,7 @@ export async function handleNewAMA(
     const [, language, sessionNumber] = match;
 
     //validate language by check if its "en" or "ar"
-    if (!["en", "ar"].includes(language)) {
+    if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguage)) {
       await ctx.reply(
         "Invalid language. Please use 'en' for English or 'ar' for Arabic."
       );
@@ -52,7 +60,10 @@ export async function handleNewAMA(
     }
 
     // Check if the session number already exists
-    const sessionExists = await isAMASessionExists(sessionNo);
+    const sessionExists = await isAMAExists(
+      sessionNo,
+      language as SupportedLanguage
+    );
     if (sessionExists) {
       await ctx.reply(
         `AMA session number ${sessionNo} already exists. Please choose a different number.`
@@ -62,6 +73,7 @@ export async function handleNewAMA(
 
     const message = buildAMAMessage({
       session_no: sessionNo,
+      language: language as SupportedLanguage,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
       total_pool: AMA_DEFAULT_DATA.total_pool,
@@ -70,19 +82,29 @@ export async function handleNewAMA(
       form_link: AMA_DEFAULT_DATA.form_link,
     });
 
-    await ctx.reply("Announcement Created!");
-    // Send photo with caption and inline buttons
-    await ctx.replyWithPhoto(imageUrl, {
+    const annunceMsg = await ctx.reply("Announcement Created!");
+
+    // Create the AMA and get the ID
+    const AMA_ID = await createAMA(
+      sessionNo,
+      language as SupportedLanguage,
+      argsText.replace(match[0], "").trim()
+    );
+
+    if (!AMA_ID) {
+      await ctx.reply("Failed to create AMA. Please try again.");
+      return;
+    }
+
+    const amaMsg = await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
-      reply_markup: NewAMAKeyboard(sessionNo),
+      reply_markup: NewAMAKeyboard(AMA_ID),
     });
 
-    // Add the AMA to the database
-    await createAMA(sessionNo, argsText.replace(match[0], "").trim());
-    console.log(
-      `New AMA created: Session No. ${sessionNo}, Language: ${language}`
-    );
+    // Push the message IDs to delete later
+    ctx.session.messagesToDelete ??= [];
+    ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
   } catch (error) {
     console.error("Error in handleNewAMA:", error);
     await ctx.reply(

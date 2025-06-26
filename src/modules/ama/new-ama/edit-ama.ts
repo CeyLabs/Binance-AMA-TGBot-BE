@@ -1,10 +1,11 @@
 import { Markup } from "telegraf";
-import { CALLBACK_ACTIONS } from "../ama.constants";
-import { EDITABLE_FIELDS } from "../helper/field-metadata";
-import { buildAMAMessage, imageUrl } from "../helper/msg-builder";
-import { validateCallbackPattern } from "../helper/utils";
+import { AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { EDITABLE_FIELDS } from "./helper/field-metadata";
+import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
+import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
-import { NewAMAKeyboard } from "../helper/keyboard.helper";
+import { UUID } from "crypto";
+import { NewAMAKeyboard } from "./helper/keyboard.helper";
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
@@ -16,56 +17,75 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
   const fieldMeta = EDITABLE_FIELDS[editMode.field];
 
   const validated = fieldMeta.validate(input);
-  if (!validated) {
-    await ctx.reply("❌ Invalid format. " + fieldMeta.prompt);
+
+  // If there's an error, show it to the user and return
+  if (validated.error || validated.value === null) {
+    await ctx.reply(validated.error ?? "❌ Invalid input.");
     return;
   }
 
+  // Save the new value to session
   if (ctx.session.editMode) {
-    ctx.session.editMode.newValue = validated;
+    ctx.session.editMode.newValue = String(validated.value);
   }
 
-  await ctx.reply(
-    `Updated <b>${fieldMeta.column}</b>: <code>${validated}</code>`,
+  // Initialize messagesToDelete array if needed
+  ctx.session.messagesToDelete ??= [];
+
+  const updatedMsg = await ctx.reply(
+    `✅ Updated <b>${fieldMeta.name}</b>: <code>${validated.value}</code>`,
     {
       parse_mode: "HTML",
+      // prettier-ignore
       reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback("Cancel", `edit-cancel_${editMode.sessionNo}`)],
         [
-          Markup.button.callback(
-            "Confirm",
-            `edit-confirm_${editMode.sessionNo}`
-          ),
+          Markup.button.callback(`Edit ${fieldMeta.name}`,`edit-${editMode.field}_${editMode.amaId}`),
+          Markup.button.callback("✅ Confirm",`${CALLBACK_ACTIONS.EDIT_CONFIRM}_${editMode.amaId}`),
+        ],
+        [
+          Markup.button.callback("❌ Cancel",`${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
         ],
       ]).reply_markup,
     }
   );
+
+  ctx.session.messagesToDelete.push(updatedMsg.message_id);
 }
 
 export async function handleConfirmEdit(
   ctx: BotContext,
-  updateAMA: (sessionNo: number, data: Partial<AMA>) => Promise<boolean>,
-  getAMABySessionNo: (sessionNo: number) => Promise<AMA | null>
+  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
-  const result = await validateCallbackPattern(
+  const result = await validateIdPattern(
     ctx,
-    CALLBACK_ACTIONS.EDIT_CONFIRM,
-    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_(\\d+)$`)
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
-  const { sessionNo } = result;
+  const { id: AMA_ID } = result;
   const { field, newValue } = ctx.session.editMode || {};
 
-  if (!sessionNo || !field || newValue === undefined) {
+  if (!AMA_ID || !field || newValue === undefined) {
     await ctx.reply("⚠️ No pending update.");
     return;
   }
 
-  const column = EDITABLE_FIELDS[field].column;
+  const fieldMeta = EDITABLE_FIELDS[field];
 
-  const success = await updateAMA(sessionNo, {
-    [column]: newValue,
-  } as Partial<AMA>);
+  // Prepare update payload
+  const updateData: Partial<AMA> = {
+    [fieldMeta.column]: newValue,
+  };
+
+  // If session_no is being updated, also update the hashtag
+  if (fieldMeta.column === "session_no") {
+    const sessionNo = Number(newValue);
+    if (!isNaN(sessionNo)) {
+      updateData["hashtag"] = `#${AMA_HASHTAG}${sessionNo}`;
+    }
+  }
+
+  const success = await updateAMA(AMA_ID, updateData);
 
   if (!success) {
     await ctx.reply("❌ Failed to update AMA.");
@@ -74,16 +94,26 @@ export async function handleConfirmEdit(
 
   delete ctx.session.editMode;
 
-  await ctx.reply(`${column} updated successfully`);
+  await ctx.reply(`${fieldMeta.name} updated successfully`);
 
-  const updated = await getAMABySessionNo(sessionNo);
+  const updated = await getAMAById(AMA_ID);
   if (updated) {
     const message = buildAMAMessage(updated);
-
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
-      reply_markup: NewAMAKeyboard(sessionNo),
+      reply_markup: NewAMAKeyboard(AMA_ID),
     });
+  }
+
+  if (ctx.session.messagesToDelete) {
+    for (const msgId of ctx.session.messagesToDelete) {
+      try {
+        await ctx.deleteMessage(msgId);
+      } catch (err) {
+        console.error(`Failed to delete message ${msgId}:`, err);
+      }
+    }
+    delete ctx.session.messagesToDelete;
   }
 }

@@ -8,17 +8,29 @@ import {
   AMA_DEFAULT_DATA,
   AMA_HASHTAG,
   CALLBACK_ACTIONS,
+  EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
-import { handleConfirmAMA } from "./new-ama/callbacks";
-import { AMA, BotContext } from "./types";
+import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
+import {
+  AMA,
+  BotContext,
+  OpenAIAnalysis,
+  ScoreData,
+  SupportedLanguage,
+} from "./types";
 import {
   handleBroadcastNow,
   handleScheduleBroadcast,
-} from "./new-ama/broadcast";
-import { handleEditRequest } from "./helper/handleEditRequest";
-import { EDITABLE_FIELDS } from "./helper/field-metadata";
+} from "./new-ama/broadcast-ama";
+import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
+import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
 import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
+import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
+import { handleAMAQuestion } from "./start-ama/handle-questions";
+import { getQuestionAnalysis } from "./helper/openai-utils";
+import { UUID } from "crypto";
+import { UUID_PATTERN } from "./helper/utils";
 
 @Update()
 @Injectable()
@@ -28,12 +40,14 @@ export class AMAService {
     private readonly knexService: KnexService
   ) {}
 
+  // <<------------------------------------ Database Operations ------------------------------------>>
+
   // Insert the AMA details into the database
   // prettier-ignore
-  async createAMA( sessionNo: number, topic?: string): Promise<void> {
-    await this.knexService.knex("ama").insert({
+  async createAMA( sessionNo: number, language:SupportedLanguage, topic?: string): Promise<UUID> {
+    const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
-      language: "en",
+      language: language,
       date: AMA_DEFAULT_DATA.date,
       time: AMA_DEFAULT_DATA.time,
       total_pool: AMA_DEFAULT_DATA.total_pool,
@@ -42,17 +56,93 @@ export class AMAService {
       form_link: AMA_DEFAULT_DATA.form_link,
       topic: topic || "Weekly AMA",
       hashtag: `#${AMA_HASHTAG}${sessionNo}`,
-    });
+    }).returning("id");
+    if (data.length === 0) {
+      throw new Error("Failed to create AMA session");
+    }
+    return data[0].id as UUID; // Return the UUID of the created AMA
+  }
+
+  async addScore(scoreData: ScoreData): Promise<boolean> {
+    const data = await this.knexService
+      .knex("scores")
+      .insert({
+        ama_id: scoreData.amaId,
+        user_id: scoreData.userId,
+        username: scoreData.userName,
+        question: scoreData.question,
+        originality: scoreData.originality,
+        relevance: scoreData.relevance,
+        clarity: scoreData.clarity,
+        engagement: scoreData.engagement,
+        language: scoreData.language,
+        score: scoreData.score,
+      })
+      .returning("*");
+    return data.length > 0; // Return true if insert was successful
+  }
+
+  // Get AMA by ID
+  async getAMAById(id: UUID): Promise<AMA | null> {
+    const ama = await this.knexService.knex<AMA>("ama").where({ id }).first();
+    return ama || null;
+  }
+
+  // Get all AMAs by session number
+  async getAMAsBySessionNo(sessionNo: number): Promise<AMA[] | []> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo })
+      .orderBy("created_at", "desc");
+
+    return ama || [];
+  }
+
+  // Get all AMAs by hashtag
+  async getAMAsByHashtag(hashtag: string): Promise<AMA[] | []> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ hashtag })
+      .orderBy("created_at", "desc");
+    return ama || [];
   }
 
   // Get AMA details by session number
+  async getAMABySessionNoAndLang(
+    sessionNo: number,
+    language: SupportedLanguage
+  ): Promise<AMA | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo, language })
+      .first();
+
+    return ama || null;
+  }
+
   async getAMABySessionNo(sessionNo: number): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
       .where({ session_no: sessionNo })
       .first();
-
     return ama || null;
+  }
+
+  // Get AMA by hashtag
+  async getAMAByHashtag(hashtag: string): Promise<AMA | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ hashtag })
+      .first();
+    return ama || null;
+  }
+
+  async getThreadIdBySessionNo(sessionNo: number): Promise<number | null> {
+    const ama = await this.knexService
+      .knex<AMA>("ama")
+      .where({ session_no: sessionNo })
+      .first("thread_id");
+    return ama?.thread_id ?? null;
   }
 
   async isAMASessionExists(sessionNo: number): Promise<boolean> {
@@ -60,14 +150,22 @@ export class AMAService {
     return Boolean(session);
   }
 
+  async isAMAExists(
+    sessionNo: number,
+    language: SupportedLanguage
+  ): Promise<boolean> {
+    const session = await this.getAMABySessionNoAndLang(sessionNo, language);
+    return Boolean(session);
+  }
+
   // Update an existing AMA
-  async updateAMA(sessionNo: number, updates: Partial<AMA>): Promise<boolean> {
-    const session = await this.getAMABySessionNo(sessionNo);
+  async updateAMA(id: UUID, updates: Partial<AMA>): Promise<boolean> {
+    const session = await this.getAMAById(id);
     if (!session) return false;
 
     await this.knexService
       .knex("ama")
-      .where({ session_no: sessionNo })
+      .where({ id })
       .update({
         ...updates,
         updated_at: new Date(),
@@ -85,84 +183,137 @@ export class AMAService {
       .where("status", "scheduled");
   }
 
+  // <<------------------------------------ Analysis ------------------------------------>>
+
+  async getAnalysis(
+    question: string,
+    topic?: string
+  ): Promise<OpenAIAnalysis | string> {
+    return getQuestionAnalysis(question, topic);
+  }
+
+  // <<------------------------------------ Commands ------------------------------------>>
+
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
-  async newAMA(ctx: Context): Promise<void> {
+  async newAMA(ctx: BotContext): Promise<void> {
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this),
-      this.isAMASessionExists.bind(this)
+      this.isAMAExists.bind(this)
     );
   }
 
-  // confirm-ama_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_(\\d+)$`))
+  // Start a new AMA session (/startama 60)
+  @Command(AMA_COMMANDS.START)
+  async startAMA(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await handleStartAMA(
+      ctx,
+      groupIds,
+      this.getAMAsBySessionNo.bind(this),
+      this.updateAMA.bind(this)
+    );
+  }
+
+  // <<------------------------------------ Callback Actions ------------------------------------>>
+
+  // Console log all callback actions (For testing purposes)
+  // @Action(/.*/)
+  // async handleCallback(ctx: Context): Promise<void> {
+  //   if (ctx.callbackQuery && 'data' in ctx.callbackQuery) {
+  //     console.log("Callback Action:", ctx.callbackQuery.data);
+  //   }
+  //   await ctx.answerCbQuery("Action received.");
+  // }
+
+  // confirm-ama_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmAMA(ctx: Context): Promise<void> {
     await handleConfirmAMA(ctx);
   }
 
-  // broadcast-now_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_(\\d+)$`))
+  // broadcast-now_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i"))
   async broadcastNow(ctx: Context): Promise<void> {
-    const publicGroupId = this.config.get<string>("PUBLIC_GROUP_ID")!;
+    const publicGroupIds = {
+      en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+      ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+    };
+
     await handleBroadcastNow(
       ctx,
-      publicGroupId,
-      this.getAMABySessionNo.bind(this),
+      publicGroupIds,
+      this.getAMAById.bind(this),
       this.updateAMA.bind(this)
     );
   }
 
   // schedule-broadcast_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_(\\d+)$`))
-  async scheduleBroadcast(
-    ctx: Context & { match: RegExpExecArray }
-  ): Promise<void> {
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
+  )
+  async scheduleBroadcast(ctx: Context): Promise<void> {
     await handleScheduleBroadcast(
       ctx,
-      this.getAMABySessionNo.bind(this),
+      this.getAMAById.bind(this),
       this.updateAMA.bind(this)
     );
   }
 
-  // edit-date_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_DATE}_(\\d+)$`))
-  async editDate(ctx: BotContext) {
+  // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)
+  @Action(
+    new RegExp(
+      `^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`,
+      "i"
+    )
+  )
+  async handleGenericEdit(ctx: BotContext) {
+    if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
+    const callbackData = ctx.callbackQuery.data;
+    if (!callbackData) return;
+
+    const match = callbackData.match(
+      new RegExp(
+        `^edit-(${Object.values(EDIT_KEYS).join("|")})_(${UUID_PATTERN})$`,
+        "i"
+      )
+    );
+
+    if (!match) return;
+
+    const [, field] = match;
+
+    if (!(field in EDITABLE_FIELDS)) {
+      await ctx.reply("⚠️ Invalid field for editing.");
+      return;
+    }
+
     return handleEditRequest(
       ctx,
-      "date",
-      CALLBACK_ACTIONS.EDIT_DATE,
-      this.getAMABySessionNo.bind(this)
+      field as (typeof EDIT_KEYS)[keyof typeof EDIT_KEYS],
+      `edit-${field}`,
+      this.getAMAById.bind(this)
     );
-  }
-
-  // edit-time_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_TIME}_(\\d+)$`))
-  async editTime(ctx: BotContext) {
-    return handleEditRequest(
-      ctx,
-      "time",
-      CALLBACK_ACTIONS.EDIT_TIME,
-      this.getAMABySessionNo.bind(this)
-    );
-  }
-
-  // Capture text input for editing
-  @On("text")
-  async handleText(ctx: BotContext): Promise<void> {
-    await handleEdit(ctx);
   }
 
   // confirm-edit_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_(\\d+)$`))
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmEdit(ctx: BotContext): Promise<void> {
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this),
-      this.getAMABySessionNo.bind(this)
+      this.getAMAById.bind(this)
     );
   }
 
+  // edit-cancel_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_(\\d+)$`))
   async cancelEdit(ctx: BotContext): Promise<void> {
     if (!ctx.session.editMode) {
@@ -173,5 +324,52 @@ export class AMAService {
     const column = EDITABLE_FIELDS[field].column;
     delete ctx.session.editMode;
     await ctx.reply(`${column} update cancelled.`);
+  }
+
+  // start-ama_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"))
+  async startAMASession(ctx: Context): Promise<void> {
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+    await startAMAbyCallback(
+      ctx,
+      groupIds,
+      this.getAMAById.bind(this),
+      this.updateAMA.bind(this)
+    );
+  }
+
+  // <<------------------------------------ Text Commands ------------------------------------>>
+
+  @On("text")
+  async handleText(ctx: BotContext): Promise<void> {
+    const chatID = ctx.chat?.id.toString();
+
+    const groupIds = {
+      public: {
+        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
+        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
+      },
+      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
+    };
+
+    if (chatID === groupIds.admin) {
+      await handleEdit(ctx);
+    } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
+      await handleAMAQuestion(
+        ctx,
+        groupIds,
+        this.getAMAsByHashtag.bind(this),
+        this.getAnalysis.bind(this),
+        this.addScore.bind(this)
+      );
+    } else {
+      await ctx.reply("This command is not available in this chat.");
+    }
   }
 }
