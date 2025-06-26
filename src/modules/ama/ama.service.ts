@@ -375,18 +375,9 @@ export class AMAService {
   // end-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"))
   async endAMASession(ctx: Context): Promise<void> {
-    const groupIds = {
-      public: {
-        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
-        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
-      },
-      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
-    };
     await endAMAbyCallback(
       ctx,
-      groupIds,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this),
       this.getScoresForAMA.bind(this)
     );
   }
@@ -433,7 +424,6 @@ export class AMAService {
     await handleWiinersBroadcast(
       ctx,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this),
       this.getScoresForAMA.bind(this),
       groupIds
     );

@@ -62,9 +62,7 @@ export async function handleEndAMA(
 
 export async function endAMAbyCallback(
   ctx: Context,
-  groupIds: GroupInfo,
   getAMAById: (id: string) => Promise<AMA | null>,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
   const result = await validateIdPattern(
@@ -261,7 +259,6 @@ export async function confirmWinnersCallback(
 export async function handleWiinersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
   groupIds: GroupInfo
 ): Promise<void> {
