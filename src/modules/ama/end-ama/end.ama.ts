@@ -8,13 +8,12 @@ import {
   UUID_PATTERN,
   validateIdPattern,
 } from "../helper/utils";
-import * as dayjs from "dayjs";
-
-//prettier-ignore
-const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
-
-const congratsImg =
-  "https://a.dropoverapp.com/cloud/download/002b40b8-631c-4431-8f4b-5b8a977f4cd3/29e8d620-b2fe-4159-bb05-412c491f8b9f";
+import {
+  buildWinnersAnnouncement,
+  congratsImg,
+  getSortedUniqueScores,
+  placeEmojis,
+} from "./utils";
 
 export async function handleEndAMA(
   ctx: Context,
@@ -76,12 +75,6 @@ export async function endAMAbyCallback(
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
-  const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
-  if (!callbackData) return void ctx.answerCbQuery("Invalid callback data.");
-
   const result = await validateIdPattern(
     ctx,
     new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i")
@@ -104,28 +97,13 @@ async function selectWinners(
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
-
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
   await ctx.reply("TODO: CSV need to be generated and sent to the group.");
 
   // Top 10 scores
   const scores = await getScoresForAMA(ama.id);
 
-  // Group scores by username and keep highest score
-  const uniqueScores = scores.reduce(
-    (acc, current) => {
-      const uid = String(current.user_id); // Normalize to string
-      if (!acc[uid] || acc[uid].score < current.score) {
-        acc[uid] = current;
-      }
-      return acc;
-    },
-    {} as Record<string, ScoreData>
-  );
-
-  const sortedScores = Object.values(uniqueScores).sort(
-    (a, b) => b.score - a.score
-  );
+  const sortedScores = getSortedUniqueScores(scores);
 
   // Create array of 10 entries, fill empty slots with placeholder
   const topScores = Array(10)
@@ -199,20 +177,7 @@ export async function selectWinnersCallback(
   }
 
   // De-duplicate by user and keep highest score
-  const uniqueScores = scores.reduce(
-    (acc, current) => {
-      const uid = String(current.user_id);
-      if (!acc[uid] || acc[uid].score < current.score) {
-        acc[uid] = current;
-      }
-      return acc;
-    },
-    {} as Record<string, ScoreData>
-  );
-
-  const sortedScores = Object.values(uniqueScores).sort(
-    (a, b) => b.score - a.score
-  );
+  const sortedScores = getSortedUniqueScores(scores);
 
   const topWinners = sortedScores.slice(0, winnerCount);
   if (topWinners.length === 0) {
@@ -236,16 +201,11 @@ export async function selectWinnersCallback(
   await ctx.reply(`${winnersText}`, {
     parse_mode: "HTML",
     reply_markup: {
+      // prettier-ignore
       inline_keyboard: [
         [
-          {
-            text: "Cancel",
-            callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}s_${ama.id}`,
-          },
-          {
-            text: "Confirm",
-            callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`,
-          },
+          {text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}s_${ama.id}`},
+          {text: "Confirm", callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
         ],
       ],
     },
@@ -287,44 +247,11 @@ export async function confirmWinnersCallback(
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  // De-duplicate by user and keep highest score
-  const uniqueScores = scores.reduce(
-    (acc, current) => {
-      const uid = String(current.user_id);
-      if (!acc[uid] || acc[uid].score < current.score) {
-        acc[uid] = current;
-      }
-      return acc;
-    },
-    {} as Record<string, ScoreData>
-  );
-
-  const sortedScores = Object.values(uniqueScores).sort(
-    (a, b) => b.score - a.score
-  );
+  const sortedScores = getSortedUniqueScores(scores);
 
   const topWinners = sortedScores.slice(0, 5); // Display top 5 only
 
-  const sessionDate = ama.created_at
-    ? dayjs(ama.created_at).format("MMMM D")
-    : "Unknown Date";
-
-  const winnersList = topWinners
-    .map((winner, index) => {
-      const emoji = placeEmojis[index] || `${index + 1}.`;
-      const medals = index < 3 ? " 🎖️" : "";
-      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}${medals}`;
-    })
-    .join("\n");
-
-  const message = [
-    `🏆 <b>Congratulations to the winners in our Binance Weekly Session #${ama.session_no} - ${sessionDate}</b>\n`,
-    `🔶 ${ama.reward} was sent to each eligible winner based on the contest terms.\n`,
-    `🔶 The list of winners is here-below and good luck to everyone in the upcoming AMA session\n`,
-    `🎁 <b>Eligible winners:</b>\n`,
-    winnersList,
-    `\n🎉 We look forward to your future participation in the Binance Weekly Sessions.`,
-  ].join("\n");
+  const message = buildWinnersAnnouncement(ama, topWinners);
 
   await ctx.sendPhoto(congratsImg, {
     caption: message,
@@ -368,44 +295,11 @@ export async function handleWiinersBroadcast(
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  // De-duplicate by user and keep highest score
-  const uniqueScores = scores.reduce(
-    (acc, current) => {
-      const uid = String(current.user_id);
-      if (!acc[uid] || acc[uid].score < current.score) {
-        acc[uid] = current;
-      }
-      return acc;
-    },
-    {} as Record<string, ScoreData>
-  );
-
-  const sortedScores = Object.values(uniqueScores).sort(
-    (a, b) => b.score - a.score
-  );
+  const sortedScores = getSortedUniqueScores(scores);
 
   const topWinners = sortedScores.slice(0, 5); // Display top 5 only
 
-  const sessionDate = ama.created_at
-    ? dayjs(ama.created_at).format("MMMM D")
-    : "Unknown Date";
-
-  const winnersList = topWinners
-    .map((winner, index) => {
-      const emoji = placeEmojis[index] || `${index + 1}.`;
-      const medals = index < 3 ? " 🎖️" : "";
-      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}${medals}`;
-    })
-    .join("\n");
-
-  const message = [
-    `🏆 <b>Congratulations to the winners in our Binance Weekly Session #${ama.session_no} - ${sessionDate}</b>\n`,
-    `🔶 ${ama.reward} was sent to each eligible winner based on the contest terms.\n`,
-    `🔶 The list of winners is here-below and good luck to everyone in the upcoming AMA session\n`,
-    `🎁 <b>Eligible winners:</b>\n`,
-    winnersList,
-    `\n🎉 We look forward to your future participation in the Binance Weekly Sessions.`,
-  ].join("\n");
+  const message = buildWinnersAnnouncement(ama, topWinners);
 
   const publicGroupId = groupIds.public[ama.language];
 
