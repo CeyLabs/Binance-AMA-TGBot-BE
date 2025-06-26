@@ -50,6 +50,7 @@ export const CALLBACK_ACTIONS = {
   // Callback actions for winner selection
   SELECT_WINNERS: "select-winners",
   DISCARD_WINNER: "discard-winner",
+  RESET_WINNERS: "reset-winners",
   CONFIRM_WINNERS: "confirm-winners",
   CANCEL_WINNERS: "cancel-winners",
   BROADCAST_WINNERS: "broadcast-winners",

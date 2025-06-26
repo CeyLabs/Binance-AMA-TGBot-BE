@@ -36,6 +36,7 @@ import {
   endAMAbyCallback,
   handleEndAMA,
   handleWiinersBroadcast,
+  resetWinnersCallback,
   selectWinnersCallback,
 } from "./end-ama/end.ama";
 import { handleDiscardUser } from "./end-ama/end.ama";
@@ -243,7 +244,7 @@ export class AMAService {
 
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
-  async endAMA(ctx: Context): Promise<void> {
+  async endAMA(ctx: BotContext): Promise<void> {
     await handleEndAMA(
       ctx,
       this.getAMAsBySessionNo.bind(this),
@@ -375,7 +376,7 @@ export class AMAService {
 
   // end-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"))
-  async endAMASession(ctx: Context): Promise<void> {
+  async endAMASession(ctx: BotContext): Promise<void> {
     await endAMAbyCallback(
       ctx,
       this.getAMAById.bind(this),
@@ -403,6 +404,7 @@ export class AMAService {
     new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i")
   )
   async confirmWinners(ctx: Context): Promise<void> {
+    console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this),
@@ -430,7 +432,7 @@ export class AMAService {
     );
   }
 
-  //discard-user_(username)_(amaId)
+  //discard-user_(username)_(id)
   @Action(
     new RegExp(
       `^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`,
@@ -439,6 +441,16 @@ export class AMAService {
   )
   async discardUser(ctx: BotContext): Promise<void> {
     await handleDiscardUser(
+      ctx,
+      this.getAMAById.bind(this),
+      this.getScoresForAMA.bind(this)
+    );
+  }
+
+  //reset-winners_(amaId)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.RESET_WINNERS}_${UUID_PATTERN}`, "i"))
+  async resetWinners(ctx: BotContext): Promise<void> {
+    await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this)

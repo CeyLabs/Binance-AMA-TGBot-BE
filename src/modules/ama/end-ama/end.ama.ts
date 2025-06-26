@@ -9,7 +9,7 @@ import {
   validateIdPattern,
 } from "../helper/utils";
 import {
-  buildWinnersAnnouncement,
+  buildWinnersMessage,
   congratsImg,
   getSortedUniqueScores,
   placeEmojis,
@@ -126,7 +126,7 @@ async function selectWinners(
             ];
           }),
           [
-            {text: `✅ Confirm top ${ama.winner_count} winners`, callback_data: `confirm_${ama.id}_${ama.winner_count}`},
+            {text: `✅ Confirm top ${sortedScores.length} winners`, callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
           ],
         ],
       },
@@ -212,6 +212,170 @@ export async function selectWinnersCallback(
   });
 }
 
+
+export async function handleDiscardUser(
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+) {
+  if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
+    await ctx.answerCbQuery("Missing callback data.");
+    return;
+  }
+  const callbackData = ctx.callbackQuery.data;
+
+  const [, userIdStr, amaId] = callbackData.split("_");
+  const userId = parseInt(userIdStr, 10);
+  const id = amaId as UUID;
+
+  if (isNaN(userId) || !amaId) {
+    await ctx.answerCbQuery("Invalid user ID or AMA ID.");
+    return;
+  }
+
+  // Initialize session structure if needed
+  if (!ctx.session.discardedUsersByAMA) {
+    ctx.session.discardedUsersByAMA = {};
+  }
+
+  if (!ctx.session.discardedUsersByAMA[amaId]) {
+    ctx.session.discardedUsersByAMA[amaId] = [];
+  }
+
+  const alreadyDiscarded =
+    ctx.session.discardedUsersByAMA[amaId].includes(userId);
+
+  if (alreadyDiscarded) {
+    await ctx.answerCbQuery("User already discarded 🚫");
+    return;
+  }
+
+  // Add to discard list\
+  ctx.session.discardedUsersByAMA[amaId].push(userId);
+  const ama = await getAMAById(id);
+  if (!ama) {
+    return void ctx.answerCbQuery("AMA session not found.");
+  }
+  const scores = await getScoresForAMA(id);
+
+  const discardedUserIds = new Set(
+    (ctx.session.discardedUsersByAMA?.[id] ?? []).map(Number)
+  );
+
+  const sortedScores = getSortedUniqueScores(scores).filter(
+    (score) => !discardedUserIds.has(Number(score.user_id))
+  );
+
+  // prettier-ignore
+  const keyboard = [
+    ...sortedScores.slice(0, 10).map((user, index) => {
+      const place = `${(index + 1).toString().padStart(2, "0")}.`;
+      const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
+      const scoreDisplay = ` - Score: ${user.score}${medals}`;
+
+      return [
+        {text: `${place} ${user.username}${scoreDisplay}`,callback_data: `noop`},
+        {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`},
+      ];
+    }),
+    [
+      {text: `✅ Confirm top ${sortedScores.length} winners`, callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
+    ],
+    [
+      { text: "Reset", callback_data: `${CALLBACK_ACTIONS.RESET_WINNERS}_${ama.id}` },
+    ],
+  ];
+
+  await ctx.editMessageReplyMarkup({
+    inline_keyboard: keyboard,
+  });
+
+  await ctx.answerCbQuery("User discarded ✅");
+}
+
+// on reset should reset the discarded users and update the callback buttons to reflect the new state
+export async function resetWinnersCallback(
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+): Promise<void> {
+  const callbackData =
+    ctx.callbackQuery && "data" in ctx.callbackQuery
+      ? ctx.callbackQuery.data
+      : undefined;
+
+  if (!callbackData) {
+    return void ctx.answerCbQuery("Missing callback data.");
+  }
+
+  const regex = new RegExp(
+    `^${CALLBACK_ACTIONS.RESET_WINNERS}_${UUID_PATTERN}`,
+    "i"
+  );
+  const match = callbackData.match(regex);
+
+  if (!match) {
+    return void ctx.answerCbQuery("Invalid callback format.");
+  }
+
+  const amaId = match[1] as UUID;
+  const ama = await getAMAById(amaId);
+  if (!ama) {
+    return void ctx.reply("AMA session not found.");
+  }
+
+  // Reset discarded users for this AMA
+  if (ctx.session.discardedUsersByAMA?.[amaId]) {
+    delete ctx.session.discardedUsersByAMA[amaId];
+  }
+
+  // Fetch scores again after reset
+  const scores = await getScoresForAMA(ama.id);
+  if (scores.length === 0) {
+    return void ctx.answerCbQuery("No scores found for this AMA session.");
+  }
+  const sortedScores = getSortedUniqueScores(scores);
+  const discardedUserIds = new Set(
+    (ctx.session.discardedUsersByAMA?.[amaId] ?? []).map(Number)
+  );
+  const filteredScores = sortedScores.filter(
+    (score) => !discardedUserIds.has(Number(score.user_id))
+  );
+
+  // Create new keyboard with updated scores
+  const keyboard = [
+    ...filteredScores.slice(0, 10).map((user, index) => {
+      const place = `${(index + 1).toString().padStart(2, "0")}.`;
+
+      const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
+      const scoreDisplay = ` - Score: ${user.score}${medals}`;
+      return [
+        {
+          text: `${place} ${user.username}${scoreDisplay}`,
+          callback_data: "noop  ",
+        },
+        {
+          text: "❌",
+          callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`,
+        },
+      ];
+    }),
+    [
+      {
+        text: `✅ Confirm top ${filteredScores.length} winners`,
+        callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`,
+      },
+    ],
+  ];
+
+  await ctx.editMessageReplyMarkup({
+    inline_keyboard: keyboard,
+  });
+
+  await ctx.answerCbQuery("Winners reset successfully.");
+}
+
+
 export async function confirmWinnersCallback(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA | null>,
@@ -226,8 +390,10 @@ export async function confirmWinnersCallback(
     return void ctx.answerCbQuery("Missing callback data.");
   }
 
+  console.log("Callback Data:", callbackData);
+
   const regex = new RegExp(
-    `^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_FRAGMENT}$`,
+    `^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`,
     "i"
   );
   const match = callbackData.match(regex);
@@ -251,7 +417,7 @@ export async function confirmWinnersCallback(
 
   const topWinners = sortedScores.slice(0, 5); // Display top 5 only
 
-  const message = buildWinnersAnnouncement(ama, topWinners);
+  const message = buildWinnersMessage(ama, topWinners);
 
   await ctx.sendPhoto(congratsImg, {
     caption: message,
@@ -297,7 +463,7 @@ export async function handleWiinersBroadcast(
 
   const topWinners = sortedScores.slice(0, 5); // Display top 5 only
 
-  const message = buildWinnersAnnouncement(ama, topWinners);
+  const message = buildWinnersMessage(ama, topWinners);
 
   const publicGroupId = groupIds.public[ama.language];
 
@@ -327,81 +493,4 @@ export async function handleWiinersBroadcast(
   } else {
     return void ctx.reply("Failed to broadcast winners to the public group.");
   }
-}
-
-export async function handleDiscardUser(
-  ctx: BotContext,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
-) {
-  if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
-    await ctx.answerCbQuery("Missing callback data.");
-    return;
-  }
-  const callbackData = ctx.callbackQuery.data;
-
-  const [, userIdStr, amaId] = callbackData.split("_");
-  const userId = parseInt(userIdStr, 10);
-  const id = amaId as UUID;
-
-  if (isNaN(userId) || !amaId) {
-    await ctx.answerCbQuery("Invalid user ID or AMA ID.");
-    return;
-  }
-
-  // Initialize session structure if needed
-  if (!ctx.session.discardedUsersByAMA) {
-    ctx.session.discardedUsersByAMA = {};
-  }
-
-  if (!ctx.session.discardedUsersByAMA[amaId]) {
-    ctx.session.discardedUsersByAMA[amaId] = [];
-  }
-
-  const alreadyDiscarded =
-    ctx.session.discardedUsersByAMA[amaId].includes(userId);
-
-  if (alreadyDiscarded) {
-    await ctx.answerCbQuery("User already discarded 🚫");
-    return;
-  }
-
-  // Add to discard list
-  ctx.session.discardedUsersByAMA[amaId].push(userId);
-  const ama = await getAMAById(id);
-  if (!ama) {
-    return void ctx.answerCbQuery("AMA session not found.");
-  }
-  const scores = await getScoresForAMA(id);
-
-  const discardedUserIds = new Set(
-    (ctx.session.discardedUsersByAMA?.[id] ?? []).map(Number)
-  );
-
-  const sortedScores = getSortedUniqueScores(scores).filter(
-    (score) => !discardedUserIds.has(Number(score.user_id))
-  );
-
-  // prettier-ignore
-  const keyboard = [
-    ...sortedScores.slice(0, 10).map((user, index) => {
-      const place = `${(index + 1).toString().padStart(2, "0")}.`;
-      const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
-      const scoreDisplay = ` - Score: ${user.score}${medals}`;
-
-      return [
-        {text: `${place} ${user.username}${scoreDisplay}`,callback_data: `noop`},
-        {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`},
-      ];
-    }),
-    [
-      {text: `✅ Confirm op ${ama.winner_count} winners`, callback_data: `confirm_${ama.id}_${ama.winner_count}`},
-    ],
-  ];
-
-  await ctx.editMessageReplyMarkup({
-    inline_keyboard: keyboard,
-  });
-
-  await ctx.answerCbQuery("User discarded ✅");
 }
