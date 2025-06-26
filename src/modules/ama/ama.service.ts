@@ -243,18 +243,9 @@ export class AMAService {
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
   async endAMA(ctx: Context): Promise<void> {
-    const groupIds = {
-      public: {
-        en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
-        ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
-      },
-      admin: this.config.get<string>("ADMIN_GROUP_ID")!,
-    };
     await handleEndAMA(
       ctx,
-      groupIds,
       this.getAMAsBySessionNo.bind(this),
-      this.updateAMA.bind(this),
       this.getScoresForAMA.bind(this)
     );
   }
@@ -401,7 +392,6 @@ export class AMAService {
   }
 
   // select-winners_(id)_(winnerCount)
-  // select-winners_83a7aa46-2eaf-483c-a004-507e8b0c5f99_3
   @Action(
     new RegExp(
       `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
@@ -428,8 +418,7 @@ export class AMAService {
     );
   }
 
-
-  //broadcast-winners_83a7aa46-2eaf-483c-a004-507e8b0c5f99
+  //broadcast-winners_(id)
   @Action(
     new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
   )

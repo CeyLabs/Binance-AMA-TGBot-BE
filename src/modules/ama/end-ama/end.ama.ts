@@ -17,9 +17,7 @@ import {
 
 export async function handleEndAMA(
   ctx: Context,
-  groupIds: GroupInfo,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
   const text = ctx.text;
@@ -45,13 +43,7 @@ export async function handleEndAMA(
   const availableAMAs = existingAMAs.filter((ama) => ama.status === "active");
 
   if (availableAMAs.length === 1) {
-    return selectWinners(
-      ctx,
-      groupIds,
-      availableAMAs[0],
-      updateAMA,
-      getScoresForAMA
-    );
+    return selectWinners(ctx, availableAMAs[0], getScoresForAMA);
   } else if (availableAMAs.length > 1) {
     return void ctx.reply(`Select the community group to End AMA`, {
       reply_markup: {
@@ -86,15 +78,13 @@ export async function endAMAbyCallback(
   if (ama.status !== "active")
     return void ctx.reply("AMA session is not active.");
 
-  await selectWinners(ctx, groupIds, ama, updateAMA, getScoresForAMA);
+  await selectWinners(ctx, ama, getScoresForAMA);
 }
 
 // Generic function to start an AMA session
 async function selectWinners(
   ctx: Context,
-  groupIds: GroupInfo,
   ama: AMA,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
@@ -282,15 +272,14 @@ export async function handleWiinersBroadcast(
   if (!result) return;
 
   const id = result.id;
-  console.log("Selected AMA ID:", id);
   const ama = await getAMAById(id);
-  console.log("AMA retrieved:", ama);
+
   if (!ama) {
     return void ctx.reply("AMA session not found.");
   }
 
   const scores = await getScoresForAMA(ama.id);
-  console.log("Scores retrieved:", scores);
+
   if (scores.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
   }
