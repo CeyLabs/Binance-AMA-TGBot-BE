@@ -33,6 +33,7 @@ export interface SessionData {
     newValue?: string;
   };
   messagesToDelete?: number[];
+  discardedUsersByAMA?: Record<UUID, string[]>;
 }
 
 export interface BotContext extends Context {

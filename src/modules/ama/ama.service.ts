@@ -38,6 +38,7 @@ import {
   handleWiinersBroadcast,
   selectWinnersCallback,
 } from "./end-ama/end.ama";
+import { handleDiscardUser } from "./end-ama/end.ama";
 
 @Update()
 @Injectable()
@@ -426,6 +427,21 @@ export class AMAService {
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
       groupIds
+    );
+  }
+
+  //discard-user_(username)_(amaId)
+  @Action(
+    new RegExp(
+      `^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`,
+      "i"
+    )
+  )
+  async discardUser(ctx: BotContext): Promise<void> {
+    await handleDiscardUser(
+      ctx,
+      this.getAMAById.bind(this),
+      this.getScoresForAMA.bind(this)
     );
   }
 

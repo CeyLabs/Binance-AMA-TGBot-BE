@@ -7,7 +7,6 @@ export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️�
 export const congratsImg =
   "https://a.dropoverapp.com/cloud/download/002b40b8-631c-4431-8f4b-5b8a977f4cd3/29e8d620-b2fe-4159-bb05-412c491f8b9f";
 
-
 export function getSortedUniqueScores(scores: ScoreData[]): ScoreData[] {
   const uniqueScores = scores.reduce(
     (acc, current) => {
