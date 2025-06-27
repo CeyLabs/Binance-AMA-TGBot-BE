@@ -39,6 +39,7 @@ export const CALLBACK_ACTIONS = {
   BROADCAST_NOW: "broadcast-now",
   CANCEL_BROADCAST: "cancel-broadcast",
   TOGGLE_SCHEDULE: "toggle-schedule",
+  TOGGLE_DISABLED: "toggle-disabled",
 
   // Callback actions for edit confirmation
   EDIT_CONFIRM: "edit-confirm",
@@ -62,7 +63,7 @@ export const CALLBACK_ACTIONS = {
 
 export const AMA_DEFAULT_DATA = {
   date: dayjs().add(1, "day").format("YYYY-MM-DD"), // one day from now
-  time: "20:00:00",   // Example: "08:00pm KSA"
+  time: "20:00:00", // Example: "08:00pm KSA"
   total_pool: "100 FDUSD",
   reward: "33.3 FDUSD",
   winner_count: 3,

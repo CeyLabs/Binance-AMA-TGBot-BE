@@ -412,7 +412,15 @@ export class AMAService {
     new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`)
   )
   async onToggleSchedule(ctx: BotContext) {
-    await handleToggleSchedule(ctx);
+    await handleToggleSchedule(ctx, this.getAMAById.bind(this));
+  }
+
+  // Handle disabled toggle attempts
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`)
+  )
+  async onToggleDisabled(ctx: BotContext) {
+    await ctx.answerCbQuery("⏰ Cannot toggle - this time has already passed!");
   }
 
   // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)
