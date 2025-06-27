@@ -377,12 +377,14 @@ export class AMAService {
     await handleScheduleBroadcast(ctx, this.getAMAById.bind(this));
   }
 
-  @Action(new RegExp(`^cfm_${UUID_PATTERN}`, "i"))
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i")
+  )
   async confirmBroadcast(ctx: BotContext): Promise<void> {
     if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
     const callbackData = ctx.callbackQuery.data;
     const match = callbackData.match(
-      /^cfm_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i
+      `^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`
     );
 
     if (!match) {

@@ -285,7 +285,7 @@ function buildScheduleKeyboard(
 
   inline_keyboard.push([
     {text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${amaId}`},
-    { text: "Confirm", callback_data: `cfm_${amaId}` },
+    { text: "Confirm", callback_data: `${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${amaId}` },
   ]);
 
   return inline_keyboard;
