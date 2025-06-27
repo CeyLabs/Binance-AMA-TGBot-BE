@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, On, Update } from "nestjs-telegraf";
-import { handleNewAMA } from "./new-ama/new-ama";
+import { handleNewAMA, handleNewAMACancel } from "./new-ama/new-ama";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
@@ -26,7 +26,11 @@ import {
 } from "./new-ama/broadcast-ama";
 import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
 import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
-import { handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
+import {
+  handleCancelEdit,
+  handleConfirmEdit,
+  handleEdit,
+} from "./new-ama/edit-ama";
 import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
 import { handleAMAQuestion } from "./start-ama/handle-questions";
 import { getQuestionAnalysis } from "./helper/openai-utils";
@@ -73,6 +77,15 @@ export class AMAService {
       throw new Error("Failed to create AMA session");
     }
     return data[0].id as UUID; // Return the UUID of the created AMA
+  }
+
+  async deleteAMA(id: UUID): Promise<boolean> {
+    const result = await this.knexService
+      .knex("ama")
+      .where({ id })
+      .del()
+      .returning("*");
+    return result.length > 0;
   }
 
   async addScore(scoreData: ScoreData): Promise<boolean> {
@@ -386,19 +399,6 @@ export class AMAService {
     );
   }
 
-  // edit-cancel_(sessionNo)
-  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_(\\d+)$`))
-  async cancelEdit(ctx: BotContext): Promise<void> {
-    if (!ctx.session.editMode) {
-      await ctx.reply("⚠️ No pending update to cancel.");
-      return;
-    }
-    const { field } = ctx.session.editMode || {};
-    const column = EDITABLE_FIELDS[field].column;
-    delete ctx.session.editMode;
-    await ctx.reply(`${column} update cancelled.`);
-  }
-
   // start-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"))
   async startAMASession(ctx: Context): Promise<void> {
@@ -454,7 +454,7 @@ export class AMAService {
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
       this.addWinner.bind(this),
-      this.updateAMA.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
@@ -511,6 +511,28 @@ export class AMAService {
   )
   async cancelWinners(ctx: BotContext): Promise<void> {
     await cancelWinnersCallback(ctx, this.getAMAById.bind(this));
+  }
+
+  // cancel-ama_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"))
+  async cancelAMA(ctx: BotContext): Promise<void> {
+    await handleNewAMACancel(ctx, this.deleteAMA.bind(this));
+  }
+
+  // cancel-ama_(id)
+  // prettier-ignore
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${UUID_PATTERN}`, "i"))
+  async cancelBroadcastAMA(ctx: BotContext): Promise<void> {
+    if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
+      await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+      await ctx.answerCbQuery("Broadcast cancelled successfully.");
+    }
+  }
+
+  // cancel-edit_(id)
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i"))
+  async cancelEdit(ctx: BotContext): Promise<void> {
+    await handleCancelEdit(ctx);
   }
 
   // <<------------------------------------ Text Commands ------------------------------------>>

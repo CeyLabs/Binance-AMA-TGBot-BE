@@ -488,8 +488,10 @@ export async function cancelWinnersCallback(
     `Winner selection for AMA #${ama.session_no} has been cancelled.`
   );
 
-  // Delete the confirmation message
+  // Edit the confirmation message by removing the buttons
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
-    await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: [],
+    });
   }
 }

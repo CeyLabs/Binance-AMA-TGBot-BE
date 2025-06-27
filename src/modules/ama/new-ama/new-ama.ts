@@ -1,12 +1,14 @@
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
+  CALLBACK_ACTIONS,
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
+import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -109,6 +111,30 @@ export async function handleNewAMA(
     console.error("Error in handleNewAMA:", error);
     await ctx.reply(
       "An error occurred while processing your request. Please try again."
+    );
+  }
+}
+
+export async function handleNewAMACancel(
+  ctx: BotContext,
+  deleteAMA: (id: UUID) => Promise<boolean>
+): Promise<void> {
+  const result = await validateIdPattern(
+    ctx,
+    new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i")
+  );
+  if (!result) return;
+  const { id: AMA_ID } = result;
+
+  const deleted = await deleteAMA(AMA_ID);
+  if (deleted && ctx.callbackQuery && "message" in ctx.callbackQuery) {
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: [],
+    });
+    await ctx.reply("AMA session has been cancelled successfully.");
+  } else {
+    await ctx.answerCbQuery(
+      "Failed to cancel the AMA session. Please try again."
     );
   }
 }
