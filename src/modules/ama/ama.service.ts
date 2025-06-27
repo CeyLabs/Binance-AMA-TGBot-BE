@@ -117,7 +117,7 @@ export class AMAService {
     rank: number
   ): Promise<WinnerData | null> {
     const data = await this.knexService
-      .knex("winners")
+      .knex("winner")
       .insert({
         ama_id,
         user_id,
@@ -248,7 +248,7 @@ export class AMAService {
     const threeMonthsAgo = dayjs().subtract(3, "month").toDate();
 
     const result = await this.knexService
-      .knex<WinnerData>("winners")
+      .knex<WinnerData>("winner")
       .where("user_id", userId)
       .andWhere("created_at", ">=", threeMonthsAgo)
       .count<{ count: string }>("id as count")
