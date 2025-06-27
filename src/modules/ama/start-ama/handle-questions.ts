@@ -11,7 +11,11 @@ export async function handleAMAQuestion(
     question: string,
     topic?: string
   ) => Promise<OpenAIAnalysis | null>,
-  addScore: (scoreData: ScoreData) => Promise<boolean>
+  addScore: (
+    scoreData: ScoreData,
+    name?: string,
+    username?: string
+  ) => Promise<boolean>
 ): Promise<void> {
   const message = ctx.message;
 
@@ -87,8 +91,6 @@ export async function handleAMAQuestion(
         const scoreData: ScoreData = {
           ama_id: matchedAMA.id,
           user_id: message.from.id.toString(),
-          username: message.from.username || "Unknown",
-          name: message.from.first_name || "Unknown",
           question: question,
           originality: analysis?.originality?.score || 0,
           relevance: analysis?.relevance?.score || 0,
@@ -98,7 +100,11 @@ export async function handleAMAQuestion(
           score: analysis?.total_score || 0,
         };
 
-        const addScoreToDb = await addScore(scoreData);
+        const addScoreToDb = await addScore(
+          scoreData,
+          message.from.first_name || "Unknown",
+          message.from.username || "Unknown"
+        );
 
         if (addScoreToDb) {
           await ctx.telegram.callApi("setMessageReaction", {

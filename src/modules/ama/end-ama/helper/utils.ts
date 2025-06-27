@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { AMA, ScoreData, BotContext } from "../../types";
+import { AMA, ScoreData, ScoreWithUser, BotContext } from "../../types";
 import * as dayjs from "dayjs";
 import { CALLBACK_ACTIONS } from "../../ama.constants";
 import { UUID_PATTERN } from "../../helper/utils";
@@ -13,7 +13,9 @@ export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️�
 export const congratsImg =
   "https://a.dropoverapp.com/cloud/download/002b40b8-631c-4431-8f4b-5b8a977f4cd3/29e8d620-b2fe-4159-bb05-412c491f8b9f";
 
-export function getSortedUniqueScores(scores: ScoreData[]): ScoreData[] {
+export function getSortedUniqueScores(
+  scores: ScoreWithUser[]
+): ScoreWithUser[] {
   const uniqueScores = scores.reduce(
     (acc, current) => {
       const uid = String(current.user_id);
@@ -22,7 +24,7 @@ export function getSortedUniqueScores(scores: ScoreData[]): ScoreData[] {
       }
       return acc;
     },
-    {} as Record<string, ScoreData>
+    {} as Record<string, ScoreWithUser>
   );
 
   return Object.values(uniqueScores).sort((a, b) => b.score - a.score);
@@ -70,9 +72,9 @@ export function getDiscardedUserIds(ctx: BotContext, amaId: UUID): Set<number> {
  * Filter scores by removing discarded users
  */
 export function getFilteredSortedScores(
-  scores: ScoreData[],
+  scores: ScoreWithUser[],
   discardedUserIds: Set<number>
-): ScoreData[] {
+): ScoreWithUser[] {
   const sortedScores = getSortedUniqueScores(scores);
   return sortedScores.filter(
     (score) => !discardedUserIds.has(Number(score.user_id))
@@ -83,7 +85,7 @@ export function getFilteredSortedScores(
  * Generate the display text for a user's place and score
  */
 export function getUserDisplayText(
-  user: ScoreData,
+  user: ScoreWithUser,
   index: number
 ): { place: string; scoreDisplay: string } {
   const place = `${(index + 1).toString().padStart(2, "0")}.`;
@@ -96,7 +98,7 @@ export function getUserDisplayText(
  * Build winner selection keyboard with past winner indicators
  */
 export async function buildWinnerSelectionKeyboard(
-  scores: ScoreData[],
+  scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
@@ -175,15 +177,18 @@ export async function fetchAndValidateAMA(
  * Get filtered scores for an AMA with discarded users removed
  */
 export async function getAMAFilteredScores(
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   amaId: UUID,
   discardedUserIds: Set<number>
-): Promise<ScoreData[]> {
+): Promise<ScoreWithUser[]> {
   const scores = await getScoresForAMA(amaId);
   return getFilteredSortedScores(scores, discardedUserIds);
 }
 
-export function buildWinnersMessage(ama: AMA, winners: ScoreData[]): string {
+export function buildWinnersMessage(
+  ama: AMA,
+  winners: ScoreWithUser[]
+): string {
   const sessionDate = ama.created_at
     ? dayjs(ama.created_at).format("MMMM D")
     : "Unknown Date";
@@ -209,7 +214,7 @@ export function buildWinnersMessage(ama: AMA, winners: ScoreData[]): string {
  * Validate that scores exist for an AMA
  */
 export function validateScoresExist(
-  scores: ScoreData[],
+  scores: ScoreWithUser[],
   ctx: Context,
   amaSessionNo: number
 ): boolean {
@@ -225,7 +230,7 @@ export function validateScoresExist(
  */
 export function generateWinnerAnnouncementText(
   ama: AMA,
-  winners: ScoreData[]
+  winners: ScoreWithUser[]
 ): string {
   return [
     `🎯 <b>Winners Selected for AMA #${ama.session_no}:</b>\n`,
@@ -243,7 +248,7 @@ export function generateWinnerAnnouncementText(
 export async function generateAndSendCSV(
   ctx: Context,
   ama: AMA,
-  scores: ScoreData[]
+  scores: ScoreWithUser[]
 ): Promise<void> {
   try {
     // Generate CSV file

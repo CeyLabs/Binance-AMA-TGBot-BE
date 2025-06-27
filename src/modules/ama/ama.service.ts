@@ -17,6 +17,7 @@ import {
   BotContext,
   OpenAIAnalysis,
   ScoreData,
+  ScoreWithUser,
   WinnerData,
   SupportedLanguage,
 } from "./types";
@@ -88,14 +89,19 @@ export class AMAService {
     return result.length > 0;
   }
 
-  async addScore(scoreData: ScoreData): Promise<boolean> {
+  async addScore(
+    scoreData: ScoreData,
+    name?: string,
+    username?: string
+  ): Promise<boolean> {
+    // First, ensure user exists in users table
+    await this.upsertUser(scoreData.user_id, name, username);
+
     const data = await this.knexService
       .knex("scores")
       .insert({
         ama_id: scoreData.ama_id,
         user_id: scoreData.user_id,
-        name: scoreData.name,
-        username: scoreData.username,
         question: scoreData.question,
         originality: scoreData.originality,
         relevance: scoreData.relevance,
@@ -108,11 +114,29 @@ export class AMAService {
     return data.length > 0; // Return true if insert was successful
   }
 
+  async upsertUser(
+    user_id: string,
+    name?: string,
+    username?: string
+  ): Promise<void> {
+    await this.knexService
+      .knex("users")
+      .insert({
+        user_id,
+        name: name || null,
+        username: username || null,
+      })
+      .onConflict("user_id")
+      .merge({
+        name: name || null,
+        username: username || null,
+        updated_at: new Date(),
+      });
+  }
+
   async addWinner(
     ama_id: UUID,
     user_id: string,
-    name: string,
-    username: string,
     score: number,
     rank: number
   ): Promise<WinnerData | null> {
@@ -121,8 +145,6 @@ export class AMAService {
       .insert({
         ama_id,
         user_id,
-        name,
-        username,
         score,
         rank,
       })
@@ -233,13 +255,15 @@ export class AMAService {
   }
 
   // Get scores for a specific AMA
-  async getScoresForAMA(id: UUID): Promise<ScoreData[]> {
+  async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
     return this.knexService
-      .knex<ScoreData>("scores")
-      .where("ama_id", id)
+      .knex("scores")
+      .join("users", "scores.user_id", "users.user_id")
+      .select("scores.*", "users.name", "users.username")
+      .where("scores.ama_id", id)
       .orderBy([
-        { column: "score", order: "desc" },
-        { column: "created_at", order: "asc" },
+        { column: "scores.score", order: "desc" },
+        { column: "scores.created_at", order: "asc" },
       ]);
   }
 

@@ -1,7 +1,13 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, GroupInfo, ScoreData, WinnerData } from "../types";
+import {
+  AMA,
+  BotContext,
+  GroupInfo,
+  ScoreWithUser,
+  WinnerData,
+} from "../types";
 import {
   getLanguageText,
   UUID_FRAGMENT,
@@ -26,7 +32,7 @@ import {
 export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const text = ctx.text;
@@ -72,7 +78,7 @@ export async function handleEndAMA(
 export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = await validateIdPattern(
@@ -93,7 +99,7 @@ export async function endAMAbyCallback(
 async function selectWinners(
   ctx: Context,
   ama: AMA,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
@@ -138,7 +144,7 @@ async function selectWinners(
 export async function selectWinnersCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>
 ): Promise<void> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery
@@ -208,7 +214,7 @@ export async function selectWinnersCallback(
 export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
@@ -276,7 +282,7 @@ export async function handleDiscardUser(
 export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
@@ -319,12 +325,10 @@ export async function resetWinnersCallback(
 export async function confirmWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
   addWinner: (
     ama_id: UUID,
     user_id: string,
-    name: string,
-    username: string,
     score: number,
     rank: number
   ) => Promise<WinnerData | null>,
@@ -361,14 +365,7 @@ export async function confirmWinnersCallback(
   try {
     for (let i = 0; i < topWinners.length; i++) {
       const winner = topWinners[i];
-      await addWinner(
-        ama.id,
-        winner.user_id,
-        winner.name || "",
-        winner.username || "",
-        winner.score,
-        i + 1
-      );
+      await addWinner(ama.id, winner.user_id, winner.score, i + 1);
     }
   } catch (error) {
     console.error("Error adding winners to database:", error);
@@ -402,7 +399,7 @@ export async function confirmWinnersCallback(
 export async function handleWiinersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo
 ): Promise<void> {
   const result = await validateIdPattern(

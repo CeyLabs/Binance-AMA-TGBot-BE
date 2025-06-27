@@ -12,8 +12,6 @@ export async function up(knex: Knex): Promise<void> {
       .inTable("ama")
       .onDelete("CASCADE");
     table.string("user_id").notNullable();
-    table.string("name");
-    table.string("username")
     table.integer("score").notNullable();
     table.integer("rank").notNullable(); // 1st, 2nd, etc.
     table.timestamps(true, true);

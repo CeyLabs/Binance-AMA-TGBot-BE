@@ -54,11 +54,17 @@ export interface OpenAIAnalysis {
   total_score: number;
 }
 
+export interface User {
+  user_id: string;
+  name: string | null;
+  username: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ScoreData {
   ama_id: UUID;
   user_id: string;
-  name: string;
-  username: string;
   question: string;
   originality: number;
   relevance: number;
@@ -68,6 +74,12 @@ export interface ScoreData {
   score: number;
   created_at?: string;
   updated_at?: string;
+}
+
+// For queries that need user information with scores
+export interface ScoreWithUser extends ScoreData {
+  name: string | null;
+  username: string | null;
 }
 
 export interface PublicGroupInfo {
@@ -84,10 +96,14 @@ export interface WinnerData {
   id: UUID;
   ama_id: UUID;
   user_id: string;
-  name: string | null;
-  username: string | null;
   score: number;
   rank: number;
   created_at?: string;
   updated_at?: string;
+}
+
+// For queries that need user information with winner data
+export interface WinnerWithUser extends WinnerData {
+  name: string | null;
+  username: string | null;
 }
