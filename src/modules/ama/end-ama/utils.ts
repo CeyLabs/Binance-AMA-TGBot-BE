@@ -77,12 +77,6 @@ export function getFilteredSortedScores(
   );
 }
 
-/**
- * Generate medals for a given index
- */
-export function getMedals(index: number): string {
-  return index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
-}
 
 /**
  * Generate the display text for a user's place and score
@@ -92,42 +86,109 @@ export function getUserDisplayText(
   index: number
 ): { place: string; scoreDisplay: string } {
   const place = `${(index + 1).toString().padStart(2, "0")}.`;
-  const medals = getMedals(index);
-  const scoreDisplay = ` - Score: ${user.score}${medals}`;
+  const scoreDisplay = ` - Score: ${user.score}`;
 
   return { place, scoreDisplay };
 }
 
 /**
- * Build winner selection keyboard
+ * Build winner selection keyboard with past winner indicators
  */
-export function buildWinnerSelectionKeyboard(
+export async function buildWinnerSelectionKeyboard(
+  scores: ScoreData[],
+  amaId: UUID,
+  showResetButton = false,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+): Promise<any[][]> {
+  const keyboard: any[][] = [];
+
+  // Build keyboard rows for each user
+  for (let index = 0; index < Math.min(scores.length, 10); index++) {
+    const user = scores[index];
+    const { place, scoreDisplay } = getUserDisplayText(user, index);
+
+    let displayText = `${place} ${user.username}${scoreDisplay}`;
+
+    // Check if user is a past winner (if function is provided)
+    if (isUserWinner) {
+      try {
+        const { bool: isPastWinner } = await isUserWinner(user.user_id);
+        if (isPastWinner) {
+          displayText += " 🏁";
+        }
+      } catch (error) {
+        console.error("Error checking past winner status:", error);
+      }
+    }
+
+    keyboard.push([
+      {
+        text: displayText,
+        callback_data: "noop",
+      },
+      {
+        text: "❌",
+        callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`,
+      },
+    ]);
+  }
+
+  // Add confirm button
+  keyboard.push([
+    {
+      text: `✅ Confirm top ${scores.length} winners`,
+      callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${amaId}`,
+    },
+  ]);
+
+  // Add reset button if needed
+  if (showResetButton) {
+    keyboard.push([
+      {
+        text: "Reset",
+        callback_data: `${CALLBACK_ACTIONS.RESET_WINNERS}_${amaId}`,
+      },
+    ]);
+  }
+
+  return keyboard;
+}
+
+/**
+ * Build winner selection keyboard (synchronous version without past winner check)
+ */
+export function buildWinnerSelectionKeyboardSync(
   scores: ScoreData[],
   amaId: UUID,
   showResetButton = false
 ): any[][] {
-  const keyboard = [
-    ...scores.slice(0, 10).map((user, index) => {
-      const { place, scoreDisplay } = getUserDisplayText(user, index);
-      return [
-        {
-          text: `${place} ${user.username}${scoreDisplay}`,
-          callback_data: "noop",
-        },
-        {
-          text: "❌",
-          callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`,
-        },
-      ];
-    }),
-    [
-      {
-        text: `✅ Confirm top ${scores.length} winners`,
-        callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${amaId}`,
-      },
-    ],
-  ];
+  const keyboard: any[][] = [];
 
+  // Build keyboard rows for each user
+  scores.slice(0, 10).forEach((user, index) => {
+    const { place, scoreDisplay } = getUserDisplayText(user, index);
+
+    keyboard.push([
+      {
+        text: `${place} ${user.username}${scoreDisplay}`,
+        callback_data: "noop",
+      },
+      {
+        text: "❌",
+        callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`,
+      },
+    ]);
+  });
+
+  // Add confirm button
+  keyboard.push([
+    {
+      text: `✅ Confirm top ${scores.length} winners`,
+      callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${amaId}`,
+    },
+  ]);
+
+  // Add reset button if needed
   if (showResetButton) {
     keyboard.push([
       {

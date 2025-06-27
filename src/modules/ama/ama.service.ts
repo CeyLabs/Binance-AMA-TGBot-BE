@@ -17,6 +17,7 @@ import {
   BotContext,
   OpenAIAnalysis,
   ScoreData,
+  WinnerData,
   SupportedLanguage,
 } from "./types";
 import {
@@ -38,8 +39,10 @@ import {
   handleWiinersBroadcast,
   resetWinnersCallback,
   selectWinnersCallback,
+  cancelWinnersCallback,
 } from "./end-ama/end.ama";
 import { handleDiscardUser } from "./end-ama/end.ama";
+import * as dayjs from "dayjs";
 
 @Update()
 @Injectable()
@@ -89,6 +92,29 @@ export class AMAService {
       })
       .returning("*");
     return data.length > 0; // Return true if insert was successful
+  }
+
+  async addWinner(
+    ama_id: UUID,
+    user_id: string,
+    name: string,
+    username: string,
+    score: number,
+    rank: number
+  ): Promise<WinnerData | null> {
+    const data = await this.knexService
+      .knex("winners")
+      .insert({
+        ama_id,
+        user_id,
+        name,
+        username,
+        score,
+        rank,
+      })
+      .returning("*");
+
+    return data.length > 0 ? (data[0] as WinnerData) : null;
   }
 
   // Get AMA by ID
@@ -203,6 +229,21 @@ export class AMAService {
       ]);
   }
 
+  // Check if user is a winner of any AMA within past 3 months
+  async isUserWinner(userId: string): Promise<{ bool: boolean }> {
+    const threeMonthsAgo = dayjs().subtract(3, "month").toDate();
+
+    const result = await this.knexService
+      .knex<WinnerData>("winners")
+      .where("user_id", userId)
+      .andWhere("created_at", ">=", threeMonthsAgo)
+      .count<{ count: string }>("id as count")
+      .first();
+
+    const count = result ? parseInt(result.count, 10) : 0;
+    return { bool: count > 0 };
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(
@@ -248,7 +289,8 @@ export class AMAService {
     await handleEndAMA(
       ctx,
       this.getAMAsBySessionNo.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
@@ -380,7 +422,8 @@ export class AMAService {
     await endAMAbyCallback(
       ctx,
       this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
@@ -408,7 +451,8 @@ export class AMAService {
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
+      this.addWinner.bind(this)
     );
   }
 
@@ -443,7 +487,8 @@ export class AMAService {
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
@@ -453,8 +498,17 @@ export class AMAService {
     await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
+      this.isUserWinner.bind(this)
     );
+  }
+
+  //cancel-winners_(amaId)
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i")
+  )
+  async cancelWinners(ctx: BotContext): Promise<void> {
+    await cancelWinnersCallback(ctx, this.getAMAById.bind(this));
   }
 
   // <<------------------------------------ Text Commands ------------------------------------>>

@@ -1,7 +1,7 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, GroupInfo, ScoreData } from "../types";
+import { AMA, BotContext, GroupInfo, ScoreData, WinnerData } from "../types";
 import {
   getLanguageText,
   UUID_FRAGMENT,
@@ -25,7 +25,8 @@ import {
 export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -50,7 +51,7 @@ export async function handleEndAMA(
   const availableAMAs = existingAMAs.filter((ama) => ama.status === "active");
 
   if (availableAMAs.length === 1) {
-    return selectWinners(ctx, availableAMAs[0], getScoresForAMA);
+    return selectWinners(ctx, availableAMAs[0], getScoresForAMA, isUserWinner);
   } else if (availableAMAs.length > 1) {
     return void ctx.reply(`Select the community group to End AMA`, {
       reply_markup: {
@@ -70,7 +71,8 @@ export async function handleEndAMA(
 export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -83,14 +85,15 @@ export async function endAMAbyCallback(
   if (ama.status !== "active")
     return void ctx.reply("AMA session is not active.");
 
-  await selectWinners(ctx, ama, getScoresForAMA);
+  await selectWinners(ctx, ama, getScoresForAMA, isUserWinner);
 }
 
 // Generic function to start an AMA session
 async function selectWinners(
   ctx: Context,
   ama: AMA,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (amaId: UUID) => Promise<ScoreData[]>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
   await ctx.reply("TODO: CSV need to be generated and sent to the group.");
@@ -116,16 +119,19 @@ async function selectWinners(
     return;
   }
 
+  const keyboard = await buildWinnerSelectionKeyboard(
+    sortedScores,
+    ama.id,
+    false,
+    isUserWinner
+  );
+
   await ctx.reply(
     `🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`,
     {
       parse_mode: "HTML",
       reply_markup: {
-        inline_keyboard: buildWinnerSelectionKeyboard(
-          sortedScores,
-          ama.id,
-          false
-        ),
+        inline_keyboard: keyboard,
       },
     }
   );
@@ -193,7 +199,7 @@ export async function selectWinnersCallback(
       // prettier-ignore
       inline_keyboard: [
         [
-          {text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}s_${ama.id}`},
+          {text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}`},
           {text: "Confirm", callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
         ],
       ],
@@ -204,7 +210,8 @@ export async function selectWinnersCallback(
 export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -253,8 +260,15 @@ export async function handleDiscardUser(
     discardedUserIds
   );
 
+  const keyboard = await buildWinnerSelectionKeyboard(
+    filteredScores,
+    ama.id,
+    true,
+    isUserWinner
+  );
+
   await ctx.editMessageReplyMarkup({
-    inline_keyboard: buildWinnerSelectionKeyboard(filteredScores, ama.id, true),
+    inline_keyboard: keyboard,
   });
 
   await ctx.answerCbQuery("User discarded ✅");
@@ -264,7 +278,8 @@ export async function handleDiscardUser(
 export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;
@@ -289,12 +304,15 @@ export async function resetWinnersCallback(
   const discardedUserIds = getDiscardedUserIds(ctx, amaId);
   const filteredScores = getFilteredSortedScores(scores, discardedUserIds);
 
+  const keyboard = await buildWinnerSelectionKeyboard(
+    filteredScores,
+    ama.id,
+    false,
+    isUserWinner
+  );
+
   await ctx.editMessageReplyMarkup({
-    inline_keyboard: buildWinnerSelectionKeyboard(
-      filteredScores,
-      ama.id,
-      false
-    ),
+    inline_keyboard: keyboard,
   });
 
   await ctx.answerCbQuery("Winners reset successfully.");
@@ -303,7 +321,15 @@ export async function resetWinnersCallback(
 export async function confirmWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
+  getScoresForAMA: (id: UUID) => Promise<ScoreData[]>,
+  addWinner: (
+    ama_id: UUID,
+    user_id: string,
+    name: string,
+    username: string,
+    score: number,
+    rank: number
+  ) => Promise<WinnerData | null>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -326,6 +352,27 @@ export async function confirmWinnersCallback(
   }
 
   const topWinners = filteredScores.slice(0, 5); // Display top 5 only
+
+  // Add winners to database
+  try {
+    for (let i = 0; i < topWinners.length; i++) {
+      const winner = topWinners[i];
+      await addWinner(
+        ama.id,
+        winner.user_id,
+        winner.username || "",
+        winner.username || "",
+        winner.score,
+        i + 1
+      );
+    }
+  } catch (error) {
+    console.error("Error adding winners to database:", error);
+    return void ctx.reply(
+      "Error saving winners to database. Please try again."
+    );
+  }
+
   const message = buildWinnersMessage(ama, topWinners);
 
   await ctx.sendPhoto(congratsImg, {
@@ -344,7 +391,7 @@ export async function confirmWinnersCallback(
 
   // Delete the original message that allows discarding winners
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
-      await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+    await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
   }
 }
 
@@ -411,5 +458,34 @@ export async function handleWiinersBroadcast(
     );
   } else {
     return void ctx.reply("Failed to broadcast winners to the public group.");
+  }
+}
+
+export async function cancelWinnersCallback(
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>
+): Promise<void> {
+  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CANCEL_WINNERS);
+  if (!result) return;
+
+  const { amaId } = result;
+  const ama = await fetchAndValidateAMA(getAMAById, amaId);
+  if (!ama) {
+    return void ctx.reply("AMA session not found.");
+  }
+
+  // Reset discarded users for this AMA if any
+  if (ctx.session.discardedUsersByAMA?.[amaId]) {
+    delete ctx.session.discardedUsersByAMA[amaId];
+  }
+
+  await ctx.answerCbQuery("Winner selection cancelled.");
+  await ctx.reply(
+    `Winner selection for AMA #${ama.session_no} has been cancelled.`
+  );
+
+  // Delete the confirmation message
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+    await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
   }
 }

@@ -78,3 +78,15 @@ export interface GroupInfo {
   public: PublicGroupInfo;
   admin: string;
 }
+
+export interface WinnerData {
+  id: UUID;
+  ama_id: UUID;
+  user_id: string;
+  name: string | null;
+  username: string | null;
+  score: number;
+  rank: number;
+  created_at?: string;
+  updated_at?: string;
+}
