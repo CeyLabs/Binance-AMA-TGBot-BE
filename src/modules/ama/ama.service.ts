@@ -24,6 +24,7 @@ import {
   handleBroadcastNow,
   handleConfirmSchedule,
   handleScheduleBroadcast,
+  handleToggleSchedule,
 } from "./new-ama/broadcast-ama";
 import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
 import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
@@ -407,72 +408,11 @@ export class AMAService {
   }
 
   // Handle `toggle_5m_<amaId>` etc.
-  @Action(new RegExp(`^toggle_(\\w+)_(${UUID_PATTERN})$`))
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`)
+  )
   async onToggleSchedule(ctx: BotContext) {
-    if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
-    const callbackData = ctx.callbackQuery.data;
-    const match = callbackData?.match(
-      /^toggle_(\w+)_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/
-    );
-
-    if (!match) {
-      await ctx.answerCbQuery("Invalid toggle action.");
-      return;
-    }
-
-    const [, key, amaId] = match;
-
-    // Flip the toggle value in session
-    if (!ctx.session.broadcastOptions) ctx.session.broadcastOptions = {};
-    if (!ctx.session.broadcastOptions[amaId])
-      ctx.session.broadcastOptions[amaId] = {};
-
-    const current = ctx.session.broadcastOptions[amaId][key] ?? false;
-    ctx.session.broadcastOptions[amaId][key] = !current;
-
-    await ctx.answerCbQuery(`Toggled ${key}: ${!current ? "✅ ON" : "❌ OFF"}`);
-
-    // Edit the callback message to reflect the change editReplyMarkup
-    if (
-      ctx.callbackQuery.message &&
-      "reply_markup" in ctx.callbackQuery.message
-    ) {
-      const inline_keyboard =
-        ctx.callbackQuery.message.reply_markup?.inline_keyboard || [];
-
-      const updatedKeyboard: InlineKeyboardButton[][] = inline_keyboard.map(
-        (row: InlineKeyboardButton[]) => {
-          return row.map((btn: InlineKeyboardButton): InlineKeyboardButton => {
-            if (
-              "callback_data" in btn &&
-              btn.callback_data.startsWith(`toggle_${key}_`)
-            ) {
-              return {
-                ...btn,
-                text: btn.text.replace(
-                  current ? "✅" : "❌",
-                  current ? "❌" : "✅"
-                ),
-                callback_data: `toggle_${key}_${amaId}`,
-              };
-            }
-            return btn;
-          });
-        }
-      );
-
-      await ctx.editMessageReplyMarkup({ inline_keyboard: updatedKeyboard });
-    }
-
-    // Re-render schedule broadcast UI
-    const ama = await this.getAMAById(amaId as UUID);
-    if (!ama) {
-      await ctx.reply("AMA not found.");
-      return;
-    }
-
-    // Optionally reuse your `handleScheduleBroadcast()` logic here to refresh UI
-    await handleScheduleBroadcast(ctx, this.getAMAById.bind(this));
+    await handleToggleSchedule(ctx);
   }
 
   // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)

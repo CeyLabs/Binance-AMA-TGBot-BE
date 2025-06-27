@@ -38,6 +38,7 @@ export const CALLBACK_ACTIONS = {
   SCHEDULE_BROADCAST: "schedule-broadcast",
   BROADCAST_NOW: "broadcast-now",
   CANCEL_BROADCAST: "cancel-broadcast",
+  TOGGLE_SCHEDULE: "toggle-schedule",
 
   // Callback actions for edit confirmation
   EDIT_CONFIRM: "edit-confirm",
