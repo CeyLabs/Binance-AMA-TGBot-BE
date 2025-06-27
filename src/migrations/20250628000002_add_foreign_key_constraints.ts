@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  // Add foreign key constraint to scores table
+  // Add foreign key constraint from scores to users
   await knex.schema.alterTable("scores", (table) => {
     table
       .foreign("user_id")
@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       .onDelete("RESTRICT");
   });
 
-  // Add foreign key constraint to winner table
+  // Add foreign key constraint from winner to users
   await knex.schema.alterTable("winner", (table) => {
     table
       .foreign("user_id")
