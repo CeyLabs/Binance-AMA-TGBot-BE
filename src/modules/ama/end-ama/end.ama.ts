@@ -12,7 +12,14 @@ import {
   buildWinnersMessage,
   congratsImg,
   getSortedUniqueScores,
-  placeEmojis,
+  validateCallbackData,
+  getDiscardedUserIds,
+  getFilteredSortedScores,
+  buildWinnerSelectionKeyboard,
+  fetchAndValidateAMA,
+  getAMAFilteredScores,
+  validateScoresExist,
+  generateWinnerAnnouncementText,
 } from "./utils";
 
 export async function handleEndAMA(
@@ -105,30 +112,20 @@ async function selectWinners(
     .join("\n");
 
   // Send a mesage with top users with callback btns
-  if (topScores.length === 0) {
-    return void ctx.reply(`No scores found for AMA #${ama.session_no}.`);
+  if (!validateScoresExist(sortedScores, ctx, ama.session_no)) {
+    return;
   }
 
   await ctx.reply(
     `🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`,
     {
       parse_mode: "HTML",
-      // prettier-ignore
       reply_markup: {
-        inline_keyboard: [
-          ...sortedScores.slice(0, 10).map((user, index) => {
-            const place = `${(index + 1).toString().padStart(2, "0")}.`;
-            const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
-            const scoreDisplay = ` - Score: ${user.score}${medals}`;
-            return [
-              {text: `${place} ${user.username}${scoreDisplay}`, callback_data: `noop`},
-              {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`},
-            ];
-          }),
-          [
-            {text: `✅ Confirm top ${sortedScores.length} winners`, callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
-          ],
-        ],
+        inline_keyboard: buildWinnerSelectionKeyboard(
+          sortedScores,
+          ama.id,
+          false
+        ),
       },
     }
   );
@@ -166,33 +163,25 @@ export async function selectWinnersCallback(
     return void ctx.reply("Invalid winner count specified.");
   }
 
-  const ama = await getAMAById(amaId);
+  const ama = await fetchAndValidateAMA(getAMAById, amaId);
   if (!ama) {
     return void ctx.reply("AMA session not found.");
   }
 
   const scores = await getScoresForAMA(ama.id);
-  if (scores.length === 0) {
-    return void ctx.answerCbQuery("No scores found for this AMA session.");
+  if (!validateScoresExist(scores, ctx, ama.session_no)) {
+    return;
   }
 
   // De-duplicate by user and keep highest score
   const sortedScores = getSortedUniqueScores(scores);
-
   const topWinners = sortedScores.slice(0, winnerCount);
+
   if (topWinners.length === 0) {
     return void ctx.answerCbQuery("No winners found for this AMA session.");
   }
 
-  const winnersText = [
-    `🎯 <b>Winners Selected for AMA #${ama.session_no}:</b>\n`,
-    ...topWinners.map((winner, index) => {
-      const emoji = placeEmojis[index] || `${index + 1}.`;
-      const medals = index < 3 ? " 🌟".repeat(1 + (2 - index)) : "";
-      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}${medals}`;
-    }),
-    `\n🔔 Click below to officially announce them`,
-  ].join("\n");
+  const winnersText = generateWinnerAnnouncementText(ama, topWinners);
 
   await ctx.answerCbQuery(
     `Selected ${topWinners.length} winners for AMA #${ama.session_no}.`
@@ -211,7 +200,6 @@ export async function selectWinnersCallback(
     },
   });
 }
-
 
 export async function handleDiscardUser(
   ctx: BotContext,
@@ -250,44 +238,23 @@ export async function handleDiscardUser(
     return;
   }
 
-  // Add to discard list\
+  // Add to discard list
   ctx.session.discardedUsersByAMA[amaId].push(userId);
-  const ama = await getAMAById(id);
+
+  const ama = await fetchAndValidateAMA(getAMAById, id);
   if (!ama) {
     return void ctx.answerCbQuery("AMA session not found.");
   }
-  const scores = await getScoresForAMA(id);
 
-  const discardedUserIds = new Set(
-    (ctx.session.discardedUsersByAMA?.[id] ?? []).map(Number)
+  const discardedUserIds = getDiscardedUserIds(ctx, id);
+  const filteredScores = await getAMAFilteredScores(
+    getScoresForAMA,
+    id,
+    discardedUserIds
   );
-
-  const sortedScores = getSortedUniqueScores(scores).filter(
-    (score) => !discardedUserIds.has(Number(score.user_id))
-  );
-
-  // prettier-ignore
-  const keyboard = [
-    ...sortedScores.slice(0, 10).map((user, index) => {
-      const place = `${(index + 1).toString().padStart(2, "0")}.`;
-      const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
-      const scoreDisplay = ` - Score: ${user.score}${medals}`;
-
-      return [
-        {text: `${place} ${user.username}${scoreDisplay}`,callback_data: `noop`},
-        {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`},
-      ];
-    }),
-    [
-      {text: `✅ Confirm top ${sortedScores.length} winners`, callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`},
-    ],
-    [
-      { text: "Reset", callback_data: `${CALLBACK_ACTIONS.RESET_WINNERS}_${ama.id}` },
-    ],
-  ];
 
   await ctx.editMessageReplyMarkup({
-    inline_keyboard: keyboard,
+    inline_keyboard: buildWinnerSelectionKeyboard(filteredScores, ama.id, true),
   });
 
   await ctx.answerCbQuery("User discarded ✅");
@@ -299,27 +266,11 @@ export async function resetWinnersCallback(
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
-  const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
+  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
+  if (!result) return;
 
-  if (!callbackData) {
-    return void ctx.answerCbQuery("Missing callback data.");
-  }
-
-  const regex = new RegExp(
-    `^${CALLBACK_ACTIONS.RESET_WINNERS}_${UUID_PATTERN}`,
-    "i"
-  );
-  const match = callbackData.match(regex);
-
-  if (!match) {
-    return void ctx.answerCbQuery("Invalid callback format.");
-  }
-
-  const amaId = match[1] as UUID;
-  const ama = await getAMAById(amaId);
+  const { amaId } = result;
+  const ama = await fetchAndValidateAMA(getAMAById, amaId);
   if (!ama) {
     return void ctx.reply("AMA session not found.");
   }
@@ -334,89 +285,47 @@ export async function resetWinnersCallback(
   if (scores.length === 0) {
     return void ctx.answerCbQuery("No scores found for this AMA session.");
   }
-  const sortedScores = getSortedUniqueScores(scores);
-  const discardedUserIds = new Set(
-    (ctx.session.discardedUsersByAMA?.[amaId] ?? []).map(Number)
-  );
-  const filteredScores = sortedScores.filter(
-    (score) => !discardedUserIds.has(Number(score.user_id))
-  );
 
-  // Create new keyboard with updated scores
-  const keyboard = [
-    ...filteredScores.slice(0, 10).map((user, index) => {
-      const place = `${(index + 1).toString().padStart(2, "0")}.`;
-
-      const medals = index === 1 ? " 🥈🌟" : index === 2 ? " 🥉🌟" : "";
-      const scoreDisplay = ` - Score: ${user.score}${medals}`;
-      return [
-        {
-          text: `${place} ${user.username}${scoreDisplay}`,
-          callback_data: "noop  ",
-        },
-        {
-          text: "❌",
-          callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${ama.id}`,
-        },
-      ];
-    }),
-    [
-      {
-        text: `✅ Confirm top ${filteredScores.length} winners`,
-        callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${ama.id}`,
-      },
-    ],
-  ];
+  const discardedUserIds = getDiscardedUserIds(ctx, amaId);
+  const filteredScores = getFilteredSortedScores(scores, discardedUserIds);
 
   await ctx.editMessageReplyMarkup({
-    inline_keyboard: keyboard,
+    inline_keyboard: buildWinnerSelectionKeyboard(
+      filteredScores,
+      ama.id,
+      false
+    ),
   });
 
   await ctx.answerCbQuery("Winners reset successfully.");
 }
 
-
 export async function confirmWinnersCallback(
-  ctx: Context,
+  ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreData[]>
 ): Promise<void> {
-  const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
+  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
+  if (!result) return;
 
-  if (!callbackData) {
-    return void ctx.answerCbQuery("Missing callback data.");
-  }
-
-  console.log("Callback Data:", callbackData);
-
-  const regex = new RegExp(
-    `^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`,
-    "i"
-  );
-  const match = callbackData.match(regex);
-
-  if (!match) {
-    return void ctx.answerCbQuery("Invalid callback format.");
-  }
-
-  const amaId = match[1] as UUID;
-  const ama = await getAMAById(amaId);
+  const { amaId } = result;
+  const ama = await fetchAndValidateAMA(getAMAById, amaId);
   if (!ama) {
     return void ctx.reply("AMA session not found.");
   }
 
-  const scores = await getScoresForAMA(ama.id);
-  if (scores.length === 0) {
+  const discardedUserIds = getDiscardedUserIds(ctx, amaId);
+  const filteredScores = await getAMAFilteredScores(
+    getScoresForAMA,
+    ama.id,
+    discardedUserIds
+  );
+
+  if (filteredScores.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  const sortedScores = getSortedUniqueScores(scores);
-
-  const topWinners = sortedScores.slice(0, 5); // Display top 5 only
-
+  const topWinners = filteredScores.slice(0, 5); // Display top 5 only
   const message = buildWinnersMessage(ama, topWinners);
 
   await ctx.sendPhoto(congratsImg, {
@@ -453,18 +362,23 @@ export async function handleWiinersBroadcast(
     return void ctx.reply("AMA session not found.");
   }
 
-  const scores = await getScoresForAMA(ama.id);
+  // Filter out discarded users
+  const discardedUserIds = new Set(
+    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number)
+  );
 
-  if (scores.length === 0) {
+  const filteredScores = await getAMAFilteredScores(
+    getScoresForAMA,
+    ama.id,
+    discardedUserIds
+  );
+
+  if (filteredScores.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  const sortedScores = getSortedUniqueScores(scores);
-
-  const topWinners = sortedScores.slice(0, 5); // Display top 5 only
-
+  const topWinners = filteredScores.slice(0, 5); // Display top 5 only
   const message = buildWinnersMessage(ama, topWinners);
-
   const publicGroupId = groupIds.public[ama.language];
 
   const broadcastToPublic = await ctx.telegram.sendPhoto(

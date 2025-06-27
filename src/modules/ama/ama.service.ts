@@ -403,7 +403,7 @@ export class AMAService {
   @Action(
     new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i")
   )
-  async confirmWinners(ctx: Context): Promise<void> {
+  async confirmWinners(ctx: BotContext): Promise<void> {
     console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
