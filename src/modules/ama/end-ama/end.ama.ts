@@ -341,6 +341,11 @@ export async function confirmWinnersCallback(
       ],
     },
   });
+
+  // Delete the original message that allows discarding winners
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+      await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+  }
 }
 
 export async function handleWiinersBroadcast(
