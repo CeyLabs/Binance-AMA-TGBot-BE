@@ -262,7 +262,7 @@ export class AMAService {
   }
 
   async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
-    await this.knexService.knex("schedules").insert({
+    await this.knexService.knex("schedule").insert({
       ama_id,
       scheduled_time,
     });
@@ -272,7 +272,7 @@ export class AMAService {
   async getDueScheduledTimes(now: Date) {
     const minutesAgo = dayjs(now).subtract(10, "minute").toDate();
     const scheduleEntries = await this.knexService
-      .knex("schedules")
+      .knex("schedule")
       .whereBetween("scheduled_time", [minutesAgo, now])
       .select("id", "ama_id");
     return scheduleEntries.map((row) => ({
@@ -283,7 +283,7 @@ export class AMAService {
 
   // Delete a scheduled time by schedule ID
   async deleteScheduledTime(scheduleId: UUID): Promise<void> {
-    await this.knexService.knex("schedules").where({ id: scheduleId }).del();
+    await this.knexService.knex("schedule").where({ id: scheduleId }).del();
   }
 
   // <<------------------------------------ Analysis ------------------------------------>>
