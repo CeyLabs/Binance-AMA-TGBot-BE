@@ -27,7 +27,7 @@ export interface CSVScoreData {
  */
 export async function generateAMAScoresCSV(
   ama: AMA,
-  scores: ScoreWithUser[]
+  scores: ScoreWithUser[],
 ): Promise<string> {
   // Create temp directory if it doesn't exist
   const tempDir = path.join(process.cwd(), "temp");

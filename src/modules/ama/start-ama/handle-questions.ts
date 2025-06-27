@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
-import { AMA, GroupInfo, OpenAIAnalysis, ScoreData } from "../types";
+import { AMA, GroupInfo, OpenAIAnalysis, CreateScoreData } from "../types";
 import type { TelegramEmoji } from "telegraf/types";
 
 export async function handleAMAQuestion(
@@ -12,7 +12,7 @@ export async function handleAMAQuestion(
     topic?: string
   ) => Promise<OpenAIAnalysis | null>,
   addScore: (
-    scoreData: ScoreData,
+    scoreData: CreateScoreData,
     name?: string,
     username?: string
   ) => Promise<boolean>
@@ -88,7 +88,7 @@ export async function handleAMAQuestion(
           });
         }
 
-        const scoreData: ScoreData = {
+        const scoreData: CreateScoreData = {
           ama_id: matchedAMA.id,
           user_id: message.from.id.toString(),
           question: question,

@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { AMA, ScoreData, ScoreWithUser, BotContext } from "../../types";
+import { AMA, ScoreWithUser, BotContext } from "../../types";
 import * as dayjs from "dayjs";
 import { CALLBACK_ACTIONS } from "../../ama.constants";
 import { UUID_PATTERN } from "../../helper/utils";

@@ -63,6 +63,7 @@ export interface User {
 }
 
 export interface ScoreData {
+  id: UUID;
   ama_id: UUID;
   user_id: string;
   question: string;
@@ -74,6 +75,19 @@ export interface ScoreData {
   score: number;
   created_at?: string;
   updated_at?: string;
+}
+
+// For creating new score records (without auto-generated ID)
+export interface CreateScoreData {
+  ama_id: UUID;
+  user_id: string;
+  question: string;
+  originality: number;
+  relevance: number;
+  clarity: number;
+  engagement: number;
+  language: number;
+  score: number;
 }
 
 // For queries that need user information with scores
@@ -96,7 +110,7 @@ export interface WinnerData {
   id: UUID;
   ama_id: UUID;
   user_id: string;
-  score: number;
+  score_id: UUID;
   rank: number;
   created_at?: string;
   updated_at?: string;

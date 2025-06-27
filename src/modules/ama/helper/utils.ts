@@ -14,7 +14,7 @@ export const UUID_FRAGMENT =
 // This function validates the callback data against a given pattern
 export async function validateIdPattern(
   ctx: Context,
-  pattern: RegExp
+  pattern: RegExp,
 ): Promise<{ id: UUID } | null> {
   const callbackQuery = ctx.callbackQuery as any;
 

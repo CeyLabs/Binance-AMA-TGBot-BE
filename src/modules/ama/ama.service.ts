@@ -15,8 +15,8 @@ import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
   BotContext,
+  CreateScoreData,
   OpenAIAnalysis,
-  ScoreData,
   ScoreWithUser,
   WinnerData,
   SupportedLanguage,
@@ -77,7 +77,7 @@ export class AMAService {
     if (data.length === 0) {
       throw new Error("Failed to create AMA session");
     }
-    return data[0].id as UUID; // Return the UUID of the created AMA
+    return (data[0] as { id: UUID }).id; // Return the UUID of the created AMA
   }
 
   async deleteAMA(id: UUID): Promise<boolean> {
@@ -90,7 +90,7 @@ export class AMAService {
   }
 
   async addScore(
-    scoreData: ScoreData,
+    scoreData: CreateScoreData,
     name?: string,
     username?: string
   ): Promise<boolean> {
@@ -137,7 +137,7 @@ export class AMAService {
   async addWinner(
     ama_id: UUID,
     user_id: string,
-    score: number,
+    score_id: UUID,
     rank: number
   ): Promise<WinnerData | null> {
     const data = await this.knexService
@@ -145,7 +145,7 @@ export class AMAService {
       .insert({
         ama_id,
         user_id,
-        score,
+        score_id,
         rank,
       })
       .returning("*");
@@ -407,7 +407,7 @@ export class AMAService {
 
     return handleEditRequest(
       ctx,
-      field as (typeof EDIT_KEYS)[keyof typeof EDIT_KEYS],
+      field,
       `edit-${field}`,
       this.getAMAById.bind(this)
     );

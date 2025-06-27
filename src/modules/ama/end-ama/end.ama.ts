@@ -329,7 +329,7 @@ export async function confirmWinnersCallback(
   addWinner: (
     ama_id: UUID,
     user_id: string,
-    score: number,
+    score_id: UUID,
     rank: number
   ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>
@@ -365,7 +365,7 @@ export async function confirmWinnersCallback(
   try {
     for (let i = 0; i < topWinners.length; i++) {
       const winner = topWinners[i];
-      await addWinner(ama.id, winner.user_id, winner.score, i + 1);
+      await addWinner(ama.id, winner.user_id, winner.id, i + 1);
     }
   } catch (error) {
     console.error("Error adding winners to database:", error);

@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
         {
           useNative: true,
           enumName: "enum_status",
-        }
+        },
       )
       .notNullable()
       .defaultTo("pending");
