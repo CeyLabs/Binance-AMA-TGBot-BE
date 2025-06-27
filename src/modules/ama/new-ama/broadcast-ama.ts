@@ -1,9 +1,10 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, PublicGroupInfo } from "../types";
+import { AMA, BotContext, PublicGroupInfo } from "../types";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
+import * as dayjs from "dayjs";
 
 export async function handleBroadcastNow(
   ctx: Context,
@@ -64,16 +65,16 @@ export async function handleBroadcastNow(
   }
 }
 
-const scheduleOptions = [
-  { label: "2 Days Before", key: "2DAYS" },
-  { label: "24 Hours Before", key: "24H" },
-  { label: "6 Hours Before", key: "6H" },
+export const scheduleOptions = [
+  { key: "1m", label: "1 min before", offsetMinutes: 1 },
+  { key: "2m", label: "2 min before", offsetMinutes: 2 },
+  { key: "3m", label: "3 min before", offsetMinutes: 3 },
+  { key: "4m", label: "4 min before", offsetMinutes: 4 },
 ];
 
 export async function handleScheduleBroadcast(
-  ctx: Context,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
-  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -82,50 +83,153 @@ export async function handleScheduleBroadcast(
   if (!result) return;
 
   const { id: AMA_ID } = result;
-
   const ama = await getAMAById(AMA_ID);
+
   if (!ama) {
-    await ctx.reply("AMA session not found.");
+    await ctx.reply("❌ AMA session not found.");
     return;
   }
 
-  await ctx.reply("Schedule Announcement Broadcast", {
+  const amaDateTime = dayjs(
+    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
+    "YYYY-MM-DD HH:mm:ss"
+  );
+
+  if (!amaDateTime.isValid()) {
+    await ctx.reply("❌ Invalid AMA date/time.");
+    return;
+  }
+
+  const now = dayjs();
+  const session = ctx.session;
+
+  if (!session.broadcastOptions) session.broadcastOptions = {};
+
+  // Initialize valid future broadcast options
+  if (!session.broadcastOptions[AMA_ID]) {
+    const validOptions: Record<string, boolean> = {};
+    for (const option of scheduleOptions) {
+      const targetTime = amaDateTime.subtract(option.offsetMinutes, "minute");
+      if (targetTime.isAfter(now)) {
+        validOptions[option.key] = true;
+      }
+    }
+
+    if (Object.keys(validOptions).length === 0) {
+      await ctx.reply("⚠️ No valid times left for scheduling broadcast.");
+      return;
+    }
+
+    session.broadcastOptions[AMA_ID] = validOptions;
+  }
+
+  // Clean previous UI
+  if (ctx.callbackQuery?.message) {
+    await ctx.telegram.deleteMessage(
+      ctx.callbackQuery.message.chat.id,
+      ctx.callbackQuery.message.message_id
+    );
+  }
+
+  // Build keyboard dynamically
+  const inline_keyboard = scheduleOptions.map((opt) => {
+    const isEnabled = session.broadcastOptions?.[AMA_ID]?.[opt.key] ?? false;
+    return [
+      {
+        text: opt.label,
+        callback_data: "noop", // label only
+      },
+      {
+        text: isEnabled ? "✅" : "❎",
+        callback_data: `toggle_${opt.key}_${AMA_ID}`,
+      },
+    ];
+  });
+
+  inline_keyboard.push([
+    {
+      text: "Cancel",
+      callback_data: `${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${AMA_ID}`,
+    },
+    { text: "Confirm", callback_data: `cfm_${AMA_ID}` },
+  ]);
+
+  await ctx.reply("🕓 Select when to broadcast before AMA:", {
+    parse_mode: "HTML",
     reply_markup: {
-      inline_keyboard: [
-        ...scheduleOptions.map((option) => [
-          {
-            text: option.label,
-            callback_data: `schedule_${option.key}_${AMA_ID}`,
-          },
-          {
-            text: "✅ / ❎",
-            callback_data: `toggle_${option.key}_${AMA_ID}`,
-          },
-        ]),
-        [
-          {
-            text: "Cancel",
-            callback_data: `cancel_${AMA_ID}`,
-          },
-          {
-            text: "Confirm",
-            callback_data: `confirm_${AMA_ID}`,
-          },
-        ],
-      ],
+      inline_keyboard,
     },
   });
+}
 
-  // Schedule the broadcast for 1 minute later (for testing purposes)
-  const broadcastTime = new Date(Date.now() + 1 * 60 * 1000);
+export async function handleConfirmSchedule(
+  ctx: BotContext,
+  amaId: UUID,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  scheduleAMA: (id: UUID, time: Date) => Promise<void>
+) {
+  const ama = await getAMAById(amaId);
+  if (!ama) {
+    await ctx.reply("AMA not found.");
+    return;
+  }
 
-  // Update the AMA session with the scheduled broadcast time
-  await updateAMA(AMA_ID, {
-    scheduled_at: broadcastTime,
-    status: "scheduled",
-  });
-
-  await ctx.reply(
-    `Scheduled AMA session ${ama.session_no} broadcast for ${broadcastTime.toLocaleString()}.`
+  const amaDateTime = dayjs(
+    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
+    "YYYY-MM-DD HH:mm:ss"
   );
+  const toggles = ctx.session.broadcastOptions?.[amaId];
+  if (!toggles) {
+    await ctx.reply("No times selected.");
+    return;
+  }
+
+  // calculate scheduled times
+  if (Object.keys(toggles).length === 0) {
+    await ctx.reply("❌ No valid times selected for scheduling.");
+    return;
+  }
+
+  const scheduledTimes: Date[] = [];
+
+  // Get the ama date and time and then subtract the offset minutes and create all the scheduled times
+  for (const [key, enabled] of Object.entries(toggles)) {
+    if (!enabled) continue; // skip disabled options
+    const offsetMinutes = parseInt(key.replace("m", ""), 10);
+    const scheduledTime = amaDateTime
+      .subtract(offsetMinutes, "minute")
+      .toDate();
+    if (scheduledTime > new Date()) {
+      // only schedule future times
+      scheduledTimes.push(scheduledTime);
+    }
+  }
+
+  if (scheduledTimes.length === 0) {
+    await ctx.reply("❌ No valid times left for scheduling.");
+    return;
+  }
+  console.log("Scheduled Times:", scheduledTimes);
+  // Schedule each time
+  for (const scheduledTime of scheduledTimes) {
+    try {
+      await scheduleAMA(amaId, scheduledTime);
+      console.log(`Scheduled AMA ${amaId} at ${scheduledTime}`);
+    } catch (error) {
+      console.error(
+        `Failed to schedule AMA ${amaId} at ${scheduledTime}:`,
+        error
+      );
+      await ctx.reply(`❌ Failed to schedule AMA at ${scheduledTime}.`);
+      return;
+    } finally {
+      // Clean up the session for this AMA
+      if (ctx.session.broadcastOptions?.[amaId]) {
+        delete ctx.session.broadcastOptions[amaId];
+      }
+    }
+  }
+
+  await ctx.reply(`✅ Scheduled ${scheduledTimes.length} broadcast(s).`);
+  delete ctx.session.broadcastOptions?.[amaId]; // clear session
 }

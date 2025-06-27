@@ -33,6 +33,11 @@ export interface SessionData {
     newValue?: string;
   };
   messagesToDelete?: number[];
+  broadcastOptions?: {
+    [amaId: UUID]: {
+      [key: string]: boolean; // e.g., '5m': true
+    };
+  };
   discardedUsersByAMA?: Record<UUID, string[]>;
 }
 
@@ -90,4 +95,12 @@ export interface WinnerData {
   rank: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Schedule {
+  id: UUID;
+  ama_id: UUID;
+  scheduled_time: Date;
+  created_at: Date;
+  updated_at: Date;
 }
