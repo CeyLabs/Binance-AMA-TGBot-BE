@@ -77,7 +77,6 @@ export function getFilteredSortedScores(
   );
 }
 
-
 /**
  * Generate the display text for a user's place and score
  */
@@ -121,64 +120,12 @@ export async function buildWinnerSelectionKeyboard(
       }
     }
 
+    // prettier-ignore
     keyboard.push([
-      {
-        text: displayText,
-        callback_data: "noop",
-      },
-      {
-        text: "❌",
-        callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`,
-      },
+      {text: displayText, callback_data: "noop"},
+      {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`},
     ]);
   }
-
-  // Add confirm button
-  keyboard.push([
-    {
-      text: `✅ Confirm top ${scores.length} winners`,
-      callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${amaId}`,
-    },
-  ]);
-
-  // Add reset button if needed
-  if (showResetButton) {
-    keyboard.push([
-      {
-        text: "Reset",
-        callback_data: `${CALLBACK_ACTIONS.RESET_WINNERS}_${amaId}`,
-      },
-    ]);
-  }
-
-  return keyboard;
-}
-
-/**
- * Build winner selection keyboard (synchronous version without past winner check)
- */
-export function buildWinnerSelectionKeyboardSync(
-  scores: ScoreData[],
-  amaId: UUID,
-  showResetButton = false
-): any[][] {
-  const keyboard: any[][] = [];
-
-  // Build keyboard rows for each user
-  scores.slice(0, 10).forEach((user, index) => {
-    const { place, scoreDisplay } = getUserDisplayText(user, index);
-
-    keyboard.push([
-      {
-        text: `${place} ${user.username}${scoreDisplay}`,
-        callback_data: "noop",
-      },
-      {
-        text: "❌",
-        callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`,
-      },
-    ]);
-  });
 
   // Add confirm button
   keyboard.push([
@@ -232,19 +179,6 @@ export async function getAMAFilteredScores(
 ): Promise<ScoreData[]> {
   const scores = await getScoresForAMA(amaId);
   return getFilteredSortedScores(scores, discardedUserIds);
-}
-
-export function formatWinnersList(
-  winners: ScoreData[],
-  showMedals = true
-): string {
-  return winners
-    .map((winner, index) => {
-      const emoji = placeEmojis[index] || `${index + 1}.`;
-      const medals = showMedals && index < 3 ? " 🎖️" : "";
-      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}${medals}`;
-    })
-    .join("\n");
 }
 
 export function buildWinnersMessage(ama: AMA, winners: ScoreData[]): string {
