@@ -48,6 +48,7 @@ import {
 } from "./end-ama/end.ama";
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
+import { InlineKeyboardButton } from "telegraf/types";
 
 @Update()
 @Injectable()
@@ -401,7 +402,7 @@ export class AMAService {
       ctx,
       amaId as UUID,
       this.getAMAById.bind(this),
-      this.scheduleAMA.bind(this),
+      this.scheduleAMA.bind(this)
     );
   }
 
@@ -429,7 +430,39 @@ export class AMAService {
     const current = ctx.session.broadcastOptions[amaId][key] ?? false;
     ctx.session.broadcastOptions[amaId][key] = !current;
 
-    await ctx.answerCbQuery(`Toggled ${key}: ${!current ? "✅ ON" : "❎ OFF"}`);
+    await ctx.answerCbQuery(`Toggled ${key}: ${!current ? "✅ ON" : "❌ OFF"}`);
+
+    // Edit the callback message to reflect the change editReplyMarkup
+    if (
+      ctx.callbackQuery.message &&
+      "reply_markup" in ctx.callbackQuery.message
+    ) {
+      const inline_keyboard =
+        ctx.callbackQuery.message.reply_markup?.inline_keyboard || [];
+
+      const updatedKeyboard: InlineKeyboardButton[][] = inline_keyboard.map(
+        (row: InlineKeyboardButton[]) => {
+          return row.map((btn: InlineKeyboardButton): InlineKeyboardButton => {
+            if (
+              "callback_data" in btn &&
+              btn.callback_data.startsWith(`toggle_${key}_`)
+            ) {
+              return {
+                ...btn,
+                text: btn.text.replace(
+                  current ? "✅" : "❌",
+                  current ? "❌" : "✅"
+                ),
+                callback_data: `toggle_${key}_${amaId}`,
+              };
+            }
+            return btn;
+          });
+        }
+      );
+
+      await ctx.editMessageReplyMarkup({ inline_keyboard: updatedKeyboard });
+    }
 
     // Re-render schedule broadcast UI
     const ama = await this.getAMAById(amaId as UUID);
