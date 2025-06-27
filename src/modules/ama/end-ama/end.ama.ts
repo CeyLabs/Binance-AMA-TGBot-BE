@@ -21,7 +21,7 @@ import {
   validateScoresExist,
   generateWinnerAnnouncementText,
   generateAndSendCSV,
-} from "./utils";
+} from "./helper/utils";
 
 export async function handleEndAMA(
   ctx: Context,

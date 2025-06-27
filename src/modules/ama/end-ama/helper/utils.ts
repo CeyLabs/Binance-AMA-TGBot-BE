@@ -1,11 +1,10 @@
 import { UUID } from "crypto";
-import { AMA, ScoreData, BotContext } from "../types";
+import { AMA, ScoreData, BotContext } from "../../types";
 import * as dayjs from "dayjs";
-import { CALLBACK_ACTIONS } from "../ama.constants";
-import { UUID_PATTERN } from "../helper/utils";
+import { CALLBACK_ACTIONS } from "../../ama.constants";
+import { UUID_PATTERN } from "../../helper/utils";
 import { Context } from "telegraf";
-import { generateAMAScoresCSV, cleanupCSVFile } from "../helper/csv-utils";
-import { Input } from "telegraf";
+import { generateAMAScoresCSV, cleanupCSVFile } from "./csv-utils";
 import * as fs from "fs";
 
 //prettier-ignore

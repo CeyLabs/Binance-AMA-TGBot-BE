@@ -1,8 +1,7 @@
 import { createObjectCsvWriter } from "csv-writer";
 import * as fs from "fs";
 import * as path from "path";
-import { UUID } from "crypto";
-import { AMA, ScoreData } from "../types";
+import { AMA, ScoreData } from "../../types";
 import * as dayjs from "dayjs";
 
 export interface CSVScoreData {
