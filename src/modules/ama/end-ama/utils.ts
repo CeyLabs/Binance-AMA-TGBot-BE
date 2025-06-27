@@ -4,6 +4,9 @@ import * as dayjs from "dayjs";
 import { CALLBACK_ACTIONS } from "../ama.constants";
 import { UUID_PATTERN } from "../helper/utils";
 import { Context } from "telegraf";
+import { generateAMAScoresCSV, cleanupCSVFile } from "../helper/csv-utils";
+import { Input } from "telegraf";
+import * as fs from "fs";
 
 //prettier-ignore
 export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
@@ -233,4 +236,46 @@ export function generateWinnerAnnouncementText(
     }),
     `\n🔔 Click below to officially announce them`,
   ].join("\n");
+}
+
+/**
+ * Generate and send CSV file with AMA scores
+ */
+export async function generateAndSendCSV(
+  ctx: Context,
+  ama: AMA,
+  scores: ScoreData[]
+): Promise<void> {
+  try {
+    // Generate CSV file
+    const csvFilePath = await generateAMAScoresCSV(ama, scores);
+
+    // Check if file was created successfully
+    if (!fs.existsSync(csvFilePath)) {
+      throw new Error("CSV file was not created");
+    }
+
+    // Send the CSV file using file path
+    await ctx.replyWithDocument(
+      { source: csvFilePath },
+      {
+        caption:
+          `📊 AMA #${ama.session_no} Scores Report\n\n` +
+          `📅 Date: ${dayjs(ama.created_at).format("MMMM D, YYYY")}\n` +
+          `🌐 Language: ${ama.language.toUpperCase()}\n` +
+          `📝 Topic: ${ama.topic}\n`,
+        parse_mode: "HTML",
+      }
+    );
+
+    // Clean up the temporary file
+    setTimeout(() => {
+      cleanupCSVFile(csvFilePath);
+    }, 5000); // Clean up after 5 seconds
+  } catch (error) {
+    console.error("Error generating or sending CSV:", error);
+    await ctx.reply(
+      "❌ Failed to generate CSV report. Please try again later."
+    );
+  }
 }

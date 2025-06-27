@@ -20,6 +20,7 @@ import {
   getAMAFilteredScores,
   validateScoresExist,
   generateWinnerAnnouncementText,
+  generateAndSendCSV,
 } from "./utils";
 
 export async function handleEndAMA(
@@ -96,14 +97,22 @@ async function selectWinners(
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
-  await ctx.reply("TODO: CSV need to be generated and sent to the group.");
 
-  // Top 10 scores
-  const scores = await getScoresForAMA(ama.id);
+  // Get all scores for CSV generation
+  const allScores = await getScoresForAMA(ama.id);
 
-  const sortedScores = getSortedUniqueScores(scores);
+  // Generate and send CSV file
+  if (allScores.length > 0) {
+    await ctx.reply("📊 Generating CSV report...");
+    await generateAndSendCSV(ctx, ama, allScores);
+  } else {
+    await ctx.reply("No scores found to generate CSV report.");
+  }
 
-  // Send a mesage with top users with callback btns
+  // Top 10 scores for winner selection
+  const sortedScores = getSortedUniqueScores(allScores);
+
+  // Send a message with top users with callback btns
   if (!validateScoresExist(sortedScores, ctx, ama.session_no)) {
     return;
   }
