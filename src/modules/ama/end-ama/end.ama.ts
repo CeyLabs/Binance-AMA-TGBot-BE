@@ -103,17 +103,6 @@ async function selectWinners(
 
   const sortedScores = getSortedUniqueScores(scores);
 
-  // Create array of 10 entries, fill empty slots with placeholder
-  const topScores = Array(10)
-    .fill(null)
-    .map((_, index) => {
-      if (index < sortedScores.length) {
-        return `${index + 1}. ${sortedScores[index].username} - ${sortedScores[index].score}`;
-      }
-      return `${index + 1}. N/A - 0`;
-    })
-    .join("\n");
-
   // Send a mesage with top users with callback btns
   if (!validateScoresExist(sortedScores, ctx, ama.session_no)) {
     return;
@@ -329,7 +318,8 @@ export async function confirmWinnersCallback(
     username: string,
     score: number,
     rank: number
-  ) => Promise<WinnerData | null>
+  ) => Promise<WinnerData | null>,
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -353,6 +343,11 @@ export async function confirmWinnersCallback(
 
   const topWinners = filteredScores.slice(0, 5); // Display top 5 only
 
+  // End the AMA session
+  await updateAMA(ama.id, {
+    status: "ended",
+  });
+
   // Add winners to database
   try {
     for (let i = 0; i < topWinners.length; i++) {
@@ -360,7 +355,7 @@ export async function confirmWinnersCallback(
       await addWinner(
         ama.id,
         winner.user_id,
-        winner.username || "",
+        winner.name || "",
         winner.username || "",
         winner.score,
         i + 1

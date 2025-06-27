@@ -81,6 +81,7 @@ export class AMAService {
       .insert({
         ama_id: scoreData.ama_id,
         user_id: scoreData.user_id,
+        name: scoreData.name,
         username: scoreData.username,
         question: scoreData.question,
         originality: scoreData.originality,
@@ -452,7 +453,8 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.addWinner.bind(this)
+      this.addWinner.bind(this),
+      this.updateAMA.bind(this),
     );
   }
 

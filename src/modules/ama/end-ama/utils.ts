@@ -189,8 +189,7 @@ export function buildWinnersMessage(ama: AMA, winners: ScoreData[]): string {
   const winnersText = winners
     .map((user, i) => {
       const emoji = placeEmojis[i] || `${i + 1}.`;
-      const medal = i < 3 ? " 🌟" : "";
-      return `${emoji} <b>${user.username}</b> - Score: ${user.score}${medal}`;
+      return `${emoji} <b>${user.username}</b> - Score: ${user.score}`;
     })
     .join("\n");
 
@@ -230,8 +229,7 @@ export function generateWinnerAnnouncementText(
     `🎯 <b>Winners Selected for AMA #${ama.session_no}:</b>\n`,
     ...winners.map((winner, index) => {
       const emoji = placeEmojis[index] || `${index + 1}.`;
-      const medals = index < 3 ? " 🌟".repeat(1 + (2 - index)) : "";
-      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}${medals}`;
+      return `${emoji} <b>${winner.username}</b> - Score: ${winner.score}`;
     }),
     `\n🔔 Click below to officially announce them`,
   ].join("\n");

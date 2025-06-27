@@ -57,6 +57,7 @@ export interface OpenAIAnalysis {
 export interface ScoreData {
   ama_id: UUID;
   user_id: string;
+  name: string;
   username: string;
   question: string;
   originality: number;
