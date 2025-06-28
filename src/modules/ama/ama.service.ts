@@ -15,8 +15,9 @@ import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
   BotContext,
+  CreateScoreData,
   OpenAIAnalysis,
-  ScoreData,
+  ScoreWithUser,
   WinnerData,
   SupportedLanguage,
 } from "./types";
@@ -78,7 +79,7 @@ export class AMAService {
     if (data.length === 0) {
       throw new Error("Failed to create AMA session");
     }
-    return data[0].id as UUID; // Return the UUID of the created AMA
+    return (data[0] as { id: UUID }).id; // Return the UUID of the created AMA
   }
 
   async deleteAMA(id: UUID): Promise<boolean> {
@@ -90,14 +91,19 @@ export class AMAService {
     return result.length > 0;
   }
 
-  async addScore(scoreData: ScoreData): Promise<boolean> {
+  async addScore(
+    scoreData: CreateScoreData,
+    name?: string,
+    username?: string
+  ): Promise<boolean> {
+    // First, ensure user exists in users table
+    await this.upsertUser(scoreData.user_id, name, username);
+
     const data = await this.knexService
-      .knex("scores")
+      .knex("score")
       .insert({
         ama_id: scoreData.ama_id,
         user_id: scoreData.user_id,
-        name: scoreData.name,
-        username: scoreData.username,
         question: scoreData.question,
         originality: scoreData.originality,
         relevance: scoreData.relevance,
@@ -110,22 +116,38 @@ export class AMAService {
     return data.length > 0; // Return true if insert was successful
   }
 
+  async upsertUser(
+    user_id: string,
+    name?: string,
+    username?: string
+  ): Promise<void> {
+    await this.knexService
+      .knex("user")
+      .insert({
+        user_id,
+        name: name || null,
+        username: username || null,
+      })
+      .onConflict("user_id")
+      .merge({
+        name: name || null,
+        username: username || null,
+        updated_at: new Date(),
+      });
+  }
+
   async addWinner(
     ama_id: UUID,
     user_id: string,
-    name: string,
-    username: string,
-    score: number,
+    score_id: UUID,
     rank: number
   ): Promise<WinnerData | null> {
     const data = await this.knexService
-      .knex("winners")
+      .knex("winner")
       .insert({
         ama_id,
         user_id,
-        name,
-        username,
-        score,
+        score_id,
         rank,
       })
       .returning("*");
@@ -235,13 +257,15 @@ export class AMAService {
   }
 
   // Get scores for a specific AMA
-  async getScoresForAMA(id: UUID): Promise<ScoreData[]> {
+  async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
     return this.knexService
-      .knex<ScoreData>("scores")
-      .where("ama_id", id)
+      .knex("score")
+      .join("user", "score.user_id", "user.user_id")
+      .select("score.*", "user.name", "user.username")
+      .where("score.ama_id", id)
       .orderBy([
-        { column: "score", order: "desc" },
-        { column: "created_at", order: "asc" },
+        { column: "score.score", order: "desc" },
+        { column: "score.created_at", order: "asc" },
       ]);
   }
 
@@ -250,7 +274,7 @@ export class AMAService {
     const threeMonthsAgo = dayjs().subtract(3, "month").toDate();
 
     const result = await this.knexService
-      .knex<WinnerData>("winners")
+      .knex<WinnerData>("winner")
       .where("user_id", userId)
       .andWhere("created_at", ">=", threeMonthsAgo)
       .count<{ count: string }>("id as count")
@@ -453,7 +477,7 @@ export class AMAService {
 
     return handleEditRequest(
       ctx,
-      field as (typeof EDIT_KEYS)[keyof typeof EDIT_KEYS],
+      field,
       `edit-${field}`,
       this.getAMAById.bind(this)
     );

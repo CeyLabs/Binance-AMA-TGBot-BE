@@ -1,7 +1,7 @@
 import { createObjectCsvWriter } from "csv-writer";
 import * as fs from "fs";
 import * as path from "path";
-import { AMA, ScoreData } from "../../types";
+import { AMA, ScoreWithUser } from "../../types";
 import * as dayjs from "dayjs";
 
 export interface CSVScoreData {
@@ -22,12 +22,12 @@ export interface CSVScoreData {
 /**
  * Generate CSV file from AMA scores data
  * @param ama - AMA session data
- * @param scores - Array of score data
+ * @param scores - Array of score data with user info
  * @returns Promise<string> - Path to the generated CSV file
  */
 export async function generateAMAScoresCSV(
   ama: AMA,
-  scores: ScoreData[]
+  scores: ScoreWithUser[],
 ): Promise<string> {
   // Create temp directory if it doesn't exist
   const tempDir = path.join(process.cwd(), "temp");

@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-const tableName = "winners";
+const tableName = "winner";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
@@ -12,9 +12,12 @@ export async function up(knex: Knex): Promise<void> {
       .inTable("ama")
       .onDelete("CASCADE");
     table.string("user_id").notNullable();
-    table.string("name");
-    table.string("username")
-    table.integer("score").notNullable();
+    table
+      .uuid("score_id")
+      .notNullable()
+      .references("id")
+      .inTable("score")
+      .onDelete("CASCADE");
     table.integer("rank").notNullable(); // 1st, 2nd, etc.
     table.timestamps(true, true);
 
