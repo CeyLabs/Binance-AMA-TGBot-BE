@@ -2,11 +2,11 @@ import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   // Add foreign key constraint from scores to users
-  await knex.schema.alterTable("scores", (table) => {
+  await knex.schema.alterTable("score", (table) => {
     table
       .foreign("user_id")
       .references("user_id")
-      .inTable("users")
+      .inTable("user")
       .onDelete("RESTRICT");
   });
 
@@ -15,14 +15,14 @@ export async function up(knex: Knex): Promise<void> {
     table
       .foreign("user_id")
       .references("user_id")
-      .inTable("users")
+      .inTable("user")
       .onDelete("RESTRICT");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   // Remove foreign key constraints
-  await knex.schema.alterTable("scores", (table) => {
+  await knex.schema.alterTable("score", (table) => {
     table.dropForeign(["user_id"]);
   });
 

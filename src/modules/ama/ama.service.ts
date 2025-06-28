@@ -98,7 +98,7 @@ export class AMAService {
     await this.upsertUser(scoreData.user_id, name, username);
 
     const data = await this.knexService
-      .knex("scores")
+      .knex("score")
       .insert({
         ama_id: scoreData.ama_id,
         user_id: scoreData.user_id,
@@ -120,7 +120,7 @@ export class AMAService {
     username?: string
   ): Promise<void> {
     await this.knexService
-      .knex("users")
+      .knex("user")
       .insert({
         user_id,
         name: name || null,
@@ -257,13 +257,13 @@ export class AMAService {
   // Get scores for a specific AMA
   async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
     return this.knexService
-      .knex("scores")
-      .join("users", "scores.user_id", "users.user_id")
-      .select("scores.*", "users.name", "users.username")
-      .where("scores.ama_id", id)
+      .knex("score")
+      .join("user", "score.user_id", "user.user_id")
+      .select("score.*", "user.name", "user.username")
+      .where("score.ama_id", id)
       .orderBy([
-        { column: "scores.score", order: "desc" },
-        { column: "scores.created_at", order: "asc" },
+        { column: "score.score", order: "desc" },
+        { column: "score.created_at", order: "asc" },
       ]);
   }
 
