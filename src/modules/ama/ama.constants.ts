@@ -38,6 +38,9 @@ export const CALLBACK_ACTIONS = {
   SCHEDULE_BROADCAST: "schedule-broadcast",
   BROADCAST_NOW: "broadcast-now",
   CANCEL_BROADCAST: "cancel-broadcast",
+  TOGGLE_SCHEDULE: "toggle-schedule",
+  TOGGLE_DISABLED: "toggle-disabled",
+  CONFIRM_SCHEDULE: "confirm-schedule",
 
   // Callback actions for edit confirmation
   EDIT_CONFIRM: "edit-confirm",
@@ -46,12 +49,22 @@ export const CALLBACK_ACTIONS = {
   // Callback actions for AMA session management
   START_AMA: "start-ama",
   END_AMA: "end-ama",
+
+  // Callback actions for winner selection
+  SELECT_WINNERS: "select-winners",
+  DISCARD_WINNER: "discard-winner",
+  RESET_WINNERS: "reset-winners",
+  CONFIRM_WINNERS: "confirm-winners",
+  CANCEL_WINNERS: "cancel-winners",
+  BROADCAST_WINNERS: "broadcast-winners",
+
+  // Callback actions for claiming rewards
+  CLAIM_REWARD: "claim-reward",
 };
 
 export const AMA_DEFAULT_DATA = {
   date: dayjs().add(1, "day").format("YYYY-MM-DD"), // one day from now
-  // Example: "08:00pm KSA"
-  time: "20:00:00",
+  time: "20:00:00", // Example: "08:00pm KSA"
   total_pool: "100 FDUSD",
   reward: "33.3 FDUSD",
   winner_count: 3,

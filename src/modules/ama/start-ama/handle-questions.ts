@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
-import { AMA, GroupInfo, OpenAIAnalysis, ScoreData } from "../types";
+import { AMA, GroupInfo, OpenAIAnalysis, CreateScoreData } from "../types";
 import type { TelegramEmoji } from "telegraf/types";
 
 export async function handleAMAQuestion(
@@ -9,9 +9,13 @@ export async function handleAMAQuestion(
   getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
   getAnalysis: (
     question: string,
-    topic?: string
+    topic?: string,
   ) => Promise<OpenAIAnalysis | null>,
-  addScore: (scoreData: ScoreData) => Promise<boolean>
+  addScore: (
+    scoreData: CreateScoreData,
+    name?: string,
+    username?: string,
+  ) => Promise<boolean>,
 ): Promise<void> {
   const message = ctx.message;
 
@@ -19,7 +23,7 @@ export async function handleAMAQuestion(
 
   if (message.text && message.text.includes(`#${AMA_HASHTAG}`)) {
     const amaHashtagMatch = message.text.match(
-      new RegExp(`#${AMA_HASHTAG}(\\d+)`)
+      new RegExp(`#${AMA_HASHTAG}(\\d+)`),
     );
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
@@ -46,7 +50,7 @@ export async function handleAMAQuestion(
           message.message_id,
           {
             message_thread_id: matchedAMA.thread_id,
-          }
+          },
         );
 
         const analysis = await getAnalysis(question, matchedAMA.topic);
@@ -84,10 +88,9 @@ export async function handleAMAQuestion(
           });
         }
 
-        const scoreData: ScoreData = {
-          amaId: matchedAMA.id,
-          userId: message.from.id.toString(),
-          userName: message.from.first_name || "Unknown",
+        const scoreData: CreateScoreData = {
+          ama_id: matchedAMA.id,
+          user_id: message.from.id.toString(),
           question: question,
           originality: analysis?.originality?.score || 0,
           relevance: analysis?.relevance?.score || 0,
@@ -97,7 +100,11 @@ export async function handleAMAQuestion(
           score: analysis?.total_score || 0,
         };
 
-        const addScoreToDb = await addScore(scoreData);
+        const addScoreToDb = await addScore(
+          scoreData,
+          message.from.first_name || "Unknown",
+          message.from.username || "Unknown",
+        );
 
         if (addScoreToDb) {
           await ctx.telegram.callApi("setMessageReaction", {
@@ -108,7 +115,7 @@ export async function handleAMAQuestion(
         }
       } else {
         await ctx.reply(
-          "❌ This AMA is not currently active in this group or has ended."
+          "❌ This AMA is not currently active in this group or has ended.",
         );
       }
     }

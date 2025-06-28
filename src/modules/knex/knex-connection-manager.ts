@@ -80,7 +80,7 @@ export class KnexConnectionManager implements OnModuleInit, OnModuleDestroy {
             : 0;
 
         this.logger.log(
-          `Pool stats - Available: ${numFree}, Used: ${numUsed}, Pending: ${numPending}`
+          `Pool stats - Available: ${numFree}, Used: ${numUsed}, Pending: ${numPending}`,
         );
       }
 

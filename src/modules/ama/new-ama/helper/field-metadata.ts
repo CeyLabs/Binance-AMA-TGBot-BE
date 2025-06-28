@@ -45,7 +45,7 @@ export const EDITABLE_FIELDS = {
           error: "❌ Invalid time format. Use HH:MM or HH:MM AM/PM.",
         };
 
-      let [, hour, minute, period] = match;
+      const [, hour, minute, period] = match;
       let h = parseInt(hour, 10);
       if (period?.toUpperCase() === "PM" && h < 12) h += 12;
       if (period?.toUpperCase() === "AM" && h === 12) h = 0;

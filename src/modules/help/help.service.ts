@@ -10,7 +10,7 @@ export class HelpService {
   @Command("help")
   async handleHelpCommand(ctx: Context): Promise<void> {
     await ctx.reply(
-      "This is the help command. Here you can find information about how to use the bot."
+      "This is the help command. Here you can find information about how to use the bot.",
     );
   }
 }

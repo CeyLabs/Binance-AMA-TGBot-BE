@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-const tableName = "score";
+const tableName = "winner";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
@@ -10,21 +10,23 @@ export async function up(knex: Knex): Promise<void> {
       .notNullable()
       .references("id")
       .inTable("ama")
-      .onDelete("RESTRICT");
+      .onDelete("CASCADE");
     table
       .string("user_id")
       .notNullable()
       .references("user_id")
       .inTable("user")
       .onDelete("RESTRICT");
-    table.string("question").notNullable();
-    table.integer("originality").notNullable();
-    table.integer("relevance").notNullable();
-    table.integer("clarity").notNullable();
-    table.integer("engagement").notNullable();
-    table.integer("language").notNullable();
-    table.integer("score").notNullable();
+    table
+      .uuid("score_id")
+      .notNullable()
+      .references("id")
+      .inTable("score")
+      .onDelete("CASCADE");
+    table.integer("rank").notNullable(); // 1st, 2nd, etc.
     table.timestamps(true, true);
+
+    table.unique(["ama_id", "user_id"]); // prevent duplicate winners for the same AMA
   });
 }
 

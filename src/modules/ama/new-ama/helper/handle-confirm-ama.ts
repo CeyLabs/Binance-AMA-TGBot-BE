@@ -5,13 +5,22 @@ import { CALLBACK_ACTIONS } from "../../ama.constants";
 export async function handleConfirmAMA(ctx: Context): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i"),
   );
 
-  console.log("Result from validateIdPattern:", result);
   if (!result) return;
 
   const { id: AMA_ID } = result;
+
+  if (!AMA_ID) {
+    await ctx.reply("Invalid AMA ID.");
+    return;
+  }
+
+  // Edit the message to remove inline keyboard
+  await ctx.editMessageReplyMarkup({
+    inline_keyboard: [],
+  });
 
   await ctx.reply("Broadcast Announcement", {
     reply_markup: {
