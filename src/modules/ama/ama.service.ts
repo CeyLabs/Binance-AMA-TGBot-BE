@@ -49,7 +49,6 @@ import {
 } from "./end-ama/end.ama";
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
-import { InlineKeyboardButton } from "telegraf/types";
 
 @Update()
 @Injectable()
@@ -270,10 +269,9 @@ export class AMAService {
 
   // Get all AMAs that are scheduled within the last 10 minutes
   async getDueScheduledTimes(now: Date) {
-    const minutesAgo = dayjs(now).subtract(10, "minute").toDate();
     const scheduleEntries = await this.knexService
       .knex("schedule")
-      .whereBetween("scheduled_time", [minutesAgo, now])
+      .where("scheduled_time", "<=", now)
       .select("id", "ama_id");
     return scheduleEntries.map((row) => ({
       scheduleId: row.id,

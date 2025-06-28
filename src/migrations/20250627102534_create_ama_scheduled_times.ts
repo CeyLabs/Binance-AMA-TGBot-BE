@@ -4,7 +4,7 @@ const tableName = "schedule";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
-    table.increments("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
+    table.uuid("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
     table
       .uuid("ama_id")
       .notNullable()
