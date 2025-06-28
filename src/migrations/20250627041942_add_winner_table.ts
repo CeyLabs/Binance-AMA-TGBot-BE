@@ -11,7 +11,12 @@ export async function up(knex: Knex): Promise<void> {
       .references("id")
       .inTable("ama")
       .onDelete("CASCADE");
-    table.string("user_id").notNullable();
+    table
+      .string("user_id")
+      .notNullable()
+      .references("user_id")
+      .inTable("user")
+      .onDelete("RESTRICT");
     table
       .uuid("score_id")
       .notNullable()

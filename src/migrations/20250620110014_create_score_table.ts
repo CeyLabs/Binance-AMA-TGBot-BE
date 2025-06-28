@@ -13,7 +13,12 @@ export async function up(knex: Knex): Promise<void> {
       .references("id")
       .inTable("ama")
       .onDelete("RESTRICT");
-    table.string("user_id").notNullable();
+    table
+      .string("user_id")
+      .notNullable()
+      .references("user_id")
+      .inTable("user")
+      .onDelete("RESTRICT");
     table.string("question").notNullable();
     table.integer("originality").notNullable();
     table.integer("relevance").notNullable();
