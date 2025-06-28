@@ -13,7 +13,7 @@ export async function handleStartAMA(
   ctx: Context,
   groupIds: GroupInfo,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
+  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -24,19 +24,19 @@ export async function handleStartAMA(
   const sessionNo = match ? parseInt(match[1], 10) : NaN;
   if (!sessionNo || sessionNo <= 0) {
     return void ctx.reply(
-      "Invalid session number. Please provide a valid number."
+      "Invalid session number. Please provide a valid number.",
     );
   }
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
     return void ctx.reply(
-      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`
+      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`,
     );
   }
 
   const availableAMAs = existingAMAs.filter(
-    (ama) => ama.status !== "active" && ama.status !== "ended"
+    (ama) => ama.status !== "active" && ama.status !== "ended",
   );
 
   if (availableAMAs.length === 1) {
@@ -61,7 +61,7 @@ export async function startAMAbyCallback(
   ctx: Context,
   groupIds: GroupInfo,
   getAMAById: (id: string) => Promise<AMA | null>,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
+  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
 ): Promise<void> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery
@@ -71,7 +71,7 @@ export async function startAMAbyCallback(
 
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
 
@@ -87,7 +87,7 @@ async function startAMA(
   ctx: Context,
   groupIds: GroupInfo,
   ama: AMA,
-  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>
+  updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
 ): Promise<void> {
   const thread = await ctx.telegram.callApi("createForumTopic", {
     chat_id: groupIds.admin,
@@ -101,7 +101,7 @@ async function startAMA(
 
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has started!`);
   await ctx.reply(
-    "Binance AMA Bot is listening to the messages in Binance MENA group."
+    "Binance AMA Bot is listening to the messages in Binance MENA group.",
   );
 
   // Notify the public group about the AMA start

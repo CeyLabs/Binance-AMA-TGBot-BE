@@ -5,7 +5,7 @@ import { CALLBACK_ACTIONS } from "../../ama.constants";
 export async function handleConfirmAMA(ctx: Context): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i"),
   );
 
   if (!result) return;

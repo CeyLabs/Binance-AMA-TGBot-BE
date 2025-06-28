@@ -18,12 +18,12 @@ export async function handleNewAMA(
   createAMA: (
     sessionNo: number,
     language: SupportedLanguage,
-    topic?: string
+    topic?: string,
   ) => Promise<UUID>,
   isAMAExists: (
     sessionNo: number,
-    language: SupportedLanguage
-  ) => Promise<boolean>
+    language: SupportedLanguage,
+  ) => Promise<boolean>,
 ): Promise<void> {
   try {
     const text = ctx.text;
@@ -39,7 +39,7 @@ export async function handleNewAMA(
 
     if (!match) {
       await ctx.reply(
-        "Invalid command format. Use: /newama <language> <number>"
+        "Invalid command format. Use: /newama <language> <number>",
       );
       return;
     }
@@ -49,7 +49,7 @@ export async function handleNewAMA(
     //validate language by check if its "en" or "ar"
     if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguage)) {
       await ctx.reply(
-        "Invalid language. Please use 'en' for English or 'ar' for Arabic."
+        "Invalid language. Please use 'en' for English or 'ar' for Arabic.",
       );
       return;
     }
@@ -64,11 +64,11 @@ export async function handleNewAMA(
     // Check if the session number already exists
     const sessionExists = await isAMAExists(
       sessionNo,
-      language as SupportedLanguage
+      language as SupportedLanguage,
     );
     if (sessionExists) {
       await ctx.reply(
-        `AMA session number ${sessionNo} already exists. Please choose a different number.`
+        `AMA session number ${sessionNo} already exists. Please choose a different number.`,
       );
       return;
     }
@@ -90,7 +90,7 @@ export async function handleNewAMA(
     const AMA_ID = await createAMA(
       sessionNo,
       language as SupportedLanguage,
-      argsText.replace(match[0], "").trim()
+      argsText.replace(match[0], "").trim(),
     );
 
     if (!AMA_ID) {
@@ -110,18 +110,18 @@ export async function handleNewAMA(
   } catch (error) {
     console.error("Error in handleNewAMA:", error);
     await ctx.reply(
-      "An error occurred while processing your request. Please try again."
+      "An error occurred while processing your request. Please try again.",
     );
   }
 }
 
 export async function handleNewAMACancel(
   ctx: BotContext,
-  deleteAMA: (id: UUID) => Promise<boolean>
+  deleteAMA: (id: UUID) => Promise<boolean>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
   const { id: AMA_ID } = result;
@@ -134,7 +134,7 @@ export async function handleNewAMACancel(
     await ctx.reply("AMA session has been cancelled successfully.");
   } else {
     await ctx.answerCbQuery(
-      "Failed to cancel the AMA session. Please try again."
+      "Failed to cancel the AMA session. Please try again.",
     );
   }
 }

@@ -46,7 +46,7 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
           Markup.button.callback("❌ Cancel",`${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
         ],
       ]).reply_markup,
-    }
+    },
   );
 
   ctx.session.messagesToDelete.push(updatedMsg.message_id);
@@ -55,11 +55,11 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
 export async function handleConfirmEdit(
   ctx: BotContext,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
-  getAMAById: (id: UUID) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
   const { id: AMA_ID } = result;

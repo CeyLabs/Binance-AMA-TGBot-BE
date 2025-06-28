@@ -56,7 +56,7 @@ import * as dayjs from "dayjs";
 export class AMAService {
   constructor(
     private readonly config: ConfigService,
-    private readonly knexService: KnexService
+    private readonly knexService: KnexService,
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -94,7 +94,7 @@ export class AMAService {
   async addScore(
     scoreData: CreateScoreData,
     name?: string,
-    username?: string
+    username?: string,
   ): Promise<boolean> {
     // First, ensure user exists in users table
     await this.upsertUser(scoreData.user_id, name, username);
@@ -119,7 +119,7 @@ export class AMAService {
   async upsertUser(
     user_id: string,
     name?: string,
-    username?: string
+    username?: string,
   ): Promise<void> {
     await this.knexService
       .knex("user")
@@ -140,7 +140,7 @@ export class AMAService {
     ama_id: UUID,
     user_id: string,
     score_id: UUID,
-    rank: number
+    rank: number,
   ): Promise<WinnerData | null> {
     const data = await this.knexService
       .knex("winner")
@@ -183,7 +183,7 @@ export class AMAService {
   // Get AMA details by session number
   async getAMABySessionNoAndLang(
     sessionNo: number,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
@@ -225,7 +225,7 @@ export class AMAService {
 
   async isAMAExists(
     sessionNo: number,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ): Promise<boolean> {
     const session = await this.getAMABySessionNoAndLang(sessionNo, language);
     return Boolean(session);
@@ -312,7 +312,7 @@ export class AMAService {
 
   async getAnalysis(
     question: string,
-    topic?: string
+    topic?: string,
   ): Promise<OpenAIAnalysis | string> {
     return getQuestionAnalysis(question, topic);
   }
@@ -325,7 +325,7 @@ export class AMAService {
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this),
-      this.isAMAExists.bind(this)
+      this.isAMAExists.bind(this),
     );
   }
 
@@ -343,7 +343,7 @@ export class AMAService {
       ctx,
       groupIds,
       this.getAMAsBySessionNo.bind(this),
-      this.updateAMA.bind(this)
+      this.updateAMA.bind(this),
     );
   }
 
@@ -354,7 +354,7 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.isUserWinner.bind(this),
     );
   }
 
@@ -387,26 +387,26 @@ export class AMAService {
       ctx,
       publicGroupIds,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this)
+      this.updateAMA.bind(this),
     );
   }
 
   // schedule-broadcast_(sessionNo)
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i"),
   )
   async scheduleBroadcast(ctx: BotContext): Promise<void> {
     await handleScheduleBroadcast(ctx, this.getAMAById.bind(this));
   }
 
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i"),
   )
   async confirmBroadcast(ctx: BotContext): Promise<void> {
     if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
     const callbackData = ctx.callbackQuery.data;
     const match = callbackData.match(
-      `^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`
+      `^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`,
     );
 
     if (!match) {
@@ -427,13 +427,15 @@ export class AMAService {
       ctx,
       amaId as UUID,
       this.getAMAById.bind(this),
-      this.scheduleAMA.bind(this)
+      this.scheduleAMA.bind(this),
     );
   }
 
   // Handle `toggle_5m_<amaId>` etc.
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`)
+    new RegExp(
+      `^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`,
+    ),
   )
   async onToggleSchedule(ctx: BotContext) {
     await handleToggleSchedule(ctx, this.getAMAById.bind(this));
@@ -441,7 +443,9 @@ export class AMAService {
 
   // Handle disabled toggle attempts
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`)
+    new RegExp(
+      `^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`,
+    ),
   )
   async onToggleDisabled(ctx: BotContext) {
     await ctx.answerCbQuery("⏰ Cannot toggle - this time has already passed!");
@@ -451,8 +455,8 @@ export class AMAService {
   @Action(
     new RegExp(
       `^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`,
-      "i"
-    )
+      "i",
+    ),
   )
   async handleGenericEdit(ctx: BotContext) {
     if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
@@ -462,8 +466,8 @@ export class AMAService {
     const match = callbackData.match(
       new RegExp(
         `^edit-(${Object.values(EDIT_KEYS).join("|")})_(${UUID_PATTERN})$`,
-        "i"
-      )
+        "i",
+      ),
     );
 
     if (!match) return;
@@ -479,7 +483,7 @@ export class AMAService {
       ctx,
       field,
       `edit-${field}`,
-      this.getAMAById.bind(this)
+      this.getAMAById.bind(this),
     );
   }
 
@@ -489,7 +493,7 @@ export class AMAService {
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this),
-      this.getAMAById.bind(this)
+      this.getAMAById.bind(this),
     );
   }
 
@@ -507,7 +511,7 @@ export class AMAService {
       ctx,
       groupIds,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this)
+      this.updateAMA.bind(this),
     );
   }
 
@@ -518,7 +522,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.isUserWinner.bind(this),
     );
   }
 
@@ -526,20 +530,20 @@ export class AMAService {
   @Action(
     new RegExp(
       `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
-      "i"
-    )
+      "i",
+    ),
   )
   async selectWinners(ctx: Context): Promise<void> {
     await selectWinnersCallback(
       ctx,
       this.getAMAById.bind(this),
       // this.getScoresForAMA.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getScoresForAMA.bind(this),
     );
   }
 
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"),
   )
   async confirmWinners(ctx: BotContext): Promise<void> {
     console.log("Confirm Winners Callback Triggered");
@@ -548,13 +552,13 @@ export class AMAService {
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
       this.addWinner.bind(this),
-      this.updateAMA.bind(this)
+      this.updateAMA.bind(this),
     );
   }
 
   //broadcast-winners_(id)
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"),
   )
   async broadcastWinners(ctx: Context): Promise<void> {
     const groupIds = {
@@ -568,7 +572,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      groupIds
+      groupIds,
     );
   }
 
@@ -576,15 +580,15 @@ export class AMAService {
   @Action(
     new RegExp(
       `^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`,
-      "i"
-    )
+      "i",
+    ),
   )
   async discardUser(ctx: BotContext): Promise<void> {
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.isUserWinner.bind(this),
     );
   }
 
@@ -595,13 +599,13 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.isUserWinner.bind(this),
     );
   }
 
   //cancel-winners_(amaId)
   @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i"),
   )
   async cancelWinners(ctx: BotContext): Promise<void> {
     await cancelWinnersCallback(ctx, this.getAMAById.bind(this));
@@ -651,7 +655,7 @@ export class AMAService {
         groupIds,
         this.getAMAsByHashtag.bind(this),
         this.getAnalysis.bind(this),
-        this.addScore.bind(this)
+        this.addScore.bind(this),
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

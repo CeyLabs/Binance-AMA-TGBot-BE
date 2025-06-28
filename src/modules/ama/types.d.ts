@@ -121,7 +121,6 @@ export interface WinnerData {
   updated_at?: string;
 }
 
-
 export interface Schedule {
   id: UUID;
   ama_id: UUID;

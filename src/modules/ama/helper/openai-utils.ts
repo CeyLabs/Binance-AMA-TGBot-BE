@@ -13,7 +13,7 @@ const openAIClient = new OpenAI({
  */
 export async function getQuestionAnalysis(
   question: string,
-  topic?: string
+  topic?: string,
 ): Promise<OpenAIAnalysis | string> {
   try {
     const response = await openAIClient.responses.create({

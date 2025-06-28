@@ -14,7 +14,7 @@ export const congratsImg =
   "https://a.dropoverapp.com/cloud/download/002b40b8-631c-4431-8f4b-5b8a977f4cd3/29e8d620-b2fe-4159-bb05-412c491f8b9f";
 
 export function getSortedUniqueScores(
-  scores: ScoreWithUser[]
+  scores: ScoreWithUser[],
 ): ScoreWithUser[] {
   const uniqueScores = scores.reduce(
     (acc, current) => {
@@ -24,7 +24,7 @@ export function getSortedUniqueScores(
       }
       return acc;
     },
-    {} as Record<string, ScoreWithUser>
+    {} as Record<string, ScoreWithUser>,
   );
 
   return Object.values(uniqueScores).sort((a, b) => b.score - a.score);
@@ -35,7 +35,7 @@ export function getSortedUniqueScores(
  */
 export function validateCallbackData(
   ctx: Context,
-  action: string
+  action: string,
 ): { callbackData: string; amaId: UUID } | null {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery
@@ -73,11 +73,11 @@ export function getDiscardedUserIds(ctx: BotContext, amaId: UUID): Set<number> {
  */
 export function getFilteredSortedScores(
   scores: ScoreWithUser[],
-  discardedUserIds: Set<number>
+  discardedUserIds: Set<number>,
 ): ScoreWithUser[] {
   const sortedScores = getSortedUniqueScores(scores);
   return sortedScores.filter(
-    (score) => !discardedUserIds.has(Number(score.user_id))
+    (score) => !discardedUserIds.has(Number(score.user_id)),
   );
 }
 
@@ -86,7 +86,7 @@ export function getFilteredSortedScores(
  */
 export function getUserDisplayText(
   user: ScoreWithUser,
-  index: number
+  index: number,
 ): { place: string; scoreDisplay: string } {
   const place = `${(index + 1).toString().padStart(2, "0")}.`;
   const scoreDisplay = ` - Score: ${user.score}`;
@@ -101,7 +101,7 @@ export async function buildWinnerSelectionKeyboard(
   scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<any[][]> {
   const keyboard: any[][] = [];
 
@@ -158,7 +158,7 @@ export async function buildWinnerSelectionKeyboard(
 export async function fetchAndValidateAMA(
   getAMAById: (id: UUID) => Promise<AMA | null>,
   amaId: UUID,
-  requireActive = false
+  requireActive = false,
 ): Promise<AMA | null> {
   const ama = await getAMAById(amaId);
 
@@ -179,7 +179,7 @@ export async function fetchAndValidateAMA(
 export async function getAMAFilteredScores(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   amaId: UUID,
-  discardedUserIds: Set<number>
+  discardedUserIds: Set<number>,
 ): Promise<ScoreWithUser[]> {
   const scores = await getScoresForAMA(amaId);
   return getFilteredSortedScores(scores, discardedUserIds);
@@ -187,7 +187,7 @@ export async function getAMAFilteredScores(
 
 export function buildWinnersMessage(
   ama: AMA,
-  winners: ScoreWithUser[]
+  winners: ScoreWithUser[],
 ): string {
   const sessionDate = ama.created_at
     ? dayjs(ama.created_at).format("MMMM D")
@@ -216,7 +216,7 @@ export function buildWinnersMessage(
 export function validateScoresExist(
   scores: ScoreWithUser[],
   ctx: Context,
-  amaSessionNo: number
+  amaSessionNo: number,
 ): boolean {
   if (scores.length === 0) {
     ctx.reply(`No scores found for AMA #${amaSessionNo}.`);
@@ -230,7 +230,7 @@ export function validateScoresExist(
  */
 export function generateWinnerAnnouncementText(
   ama: AMA,
-  winners: ScoreWithUser[]
+  winners: ScoreWithUser[],
 ): string {
   return [
     `🎯 <b>Winners Selected for AMA #${ama.session_no}:</b>\n`,
@@ -248,7 +248,7 @@ export function generateWinnerAnnouncementText(
 export async function generateAndSendCSV(
   ctx: Context,
   ama: AMA,
-  scores: ScoreWithUser[]
+  scores: ScoreWithUser[],
 ): Promise<void> {
   try {
     // Generate CSV file
@@ -269,7 +269,7 @@ export async function generateAndSendCSV(
           `🌐 Language: ${ama.language.toUpperCase()}\n` +
           `📝 Topic: ${ama.topic}\n`,
         parse_mode: "HTML",
-      }
+      },
     );
 
     // Clean up the temporary file
@@ -279,7 +279,7 @@ export async function generateAndSendCSV(
   } catch (error) {
     console.error("Error generating or sending CSV:", error);
     await ctx.reply(
-      "❌ Failed to generate CSV report. Please try again later."
+      "❌ Failed to generate CSV report. Please try again later.",
     );
   }
 }

@@ -12,7 +12,7 @@ type KnexConfig = Record<string, Knex.Config>;
 interface IDbConnection {
   query: (
     sql: string,
-    callback: (err: Error | null, result?: unknown) => void
+    callback: (err: Error | null, result?: unknown) => void,
   ) => void;
 }
 
@@ -35,7 +35,7 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
       // Add a connection validator
       afterCreate: (
         conn: IDbConnection,
-        done: (err: Error | null, connection?: IDbConnection) => void
+        done: (err: Error | null, connection?: IDbConnection) => void,
       ) => {
         // Setup connection
         conn.query("SELECT 1", (err: Error | null) => {

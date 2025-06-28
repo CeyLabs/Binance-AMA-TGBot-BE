@@ -7,5 +7,4 @@ import { AMAModule } from "../ama/ama.module";
   providers: [SchedulerService],
   exports: [SchedulerService],
 })
-
 export class ScheduleServicesModule {}

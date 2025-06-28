@@ -11,7 +11,7 @@ export class SchedulerService {
   constructor(
     private readonly config: ConfigService,
     @InjectBot() private readonly bot: Telegraf,
-    private readonly amaService: AMAService
+    private readonly amaService: AMAService,
   ) {}
 
   @Cron("*/1 * * * *") // every minute
@@ -58,7 +58,7 @@ export class SchedulerService {
             message_thread_id: process.env.ADMIN_TOPIC_ID
               ? parseInt(process.env.ADMIN_TOPIC_ID)
               : undefined,
-          }
+          },
         );
 
         // Only delete the scheduled time if the broadcast was successful

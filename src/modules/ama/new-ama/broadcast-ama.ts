@@ -11,17 +11,17 @@ export async function handleBroadcastNow(
   ctx: Context,
   publicGroupIds: PublicGroupInfo,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
 
   const { id: AMA_ID } = result;
 
-  const ama = await getAMAById(AMA_ID as UUID);
+  const ama = await getAMAById(AMA_ID);
   if (!ama) {
     await ctx.reply("AMA session not found.");
     return;
@@ -61,7 +61,7 @@ export async function handleBroadcastNow(
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
     await ctx.telegram.deleteMessage(
       ctx.callbackQuery.message.chat.id,
-      ctx.callbackQuery.message.message_id
+      ctx.callbackQuery.message.message_id,
     );
   }
 }
@@ -74,11 +74,11 @@ export const scheduleOptions = [
 
 export async function handleScheduleBroadcast(
   ctx: BotContext,
-  getAMAById: (id: UUID) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
 
@@ -91,7 +91,7 @@ export async function handleScheduleBroadcast(
 
   const amaDateTime = dayjs(
     `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss"
+    "YYYY-MM-DD HH:mm:ss",
   );
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
@@ -118,7 +118,7 @@ export async function handleScheduleBroadcast(
   if (ctx.callbackQuery?.message) {
     await ctx.telegram.deleteMessage(
       ctx.callbackQuery.message.chat.id,
-      ctx.callbackQuery.message.message_id
+      ctx.callbackQuery.message.message_id,
     );
   }
 
@@ -131,11 +131,11 @@ export async function handleScheduleBroadcast(
 
 export async function handleToggleSchedule(
   ctx: BotContext,
-  getAMAById: (id: UUID) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
   const callbackData = (ctx.callbackQuery as any)?.data;
   const match = callbackData?.match(
-    `^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`
+    `^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`,
   );
   if (!match) await ctx.answerCbQuery("Invalid toggle action.");
 
@@ -150,7 +150,7 @@ export async function handleToggleSchedule(
 
   const amaDateTime = dayjs(
     `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss"
+    "YYYY-MM-DD HH:mm:ss",
   );
   if (!amaDateTime.isValid()) {
     await ctx.answerCbQuery("❌ Invalid AMA date/time.");
@@ -185,7 +185,7 @@ export async function handleToggleSchedule(
     inline_keyboard: buildScheduleKeyboard(
       amaId,
       ctx.session.broadcastOptions[amaId],
-      validOptions
+      validOptions,
     ),
   });
 }
@@ -194,7 +194,7 @@ export async function handleConfirmSchedule(
   ctx: BotContext,
   amaId: UUID,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  scheduleAMA: (id: UUID, time: Date) => Promise<void>
+  scheduleAMA: (id: UUID, time: Date) => Promise<void>,
 ): Promise<void> {
   const ama = await getAMAById(amaId);
   if (!ama) {
@@ -204,7 +204,7 @@ export async function handleConfirmSchedule(
 
   const amaDateTime = dayjs(
     `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss"
+    "YYYY-MM-DD HH:mm:ss",
   );
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
@@ -221,7 +221,7 @@ export async function handleConfirmSchedule(
   if (ctx.callbackQuery?.message) {
     await ctx.telegram.deleteMessage(
       ctx.callbackQuery.message.chat.id,
-      ctx.callbackQuery.message.message_id
+      ctx.callbackQuery.message.message_id,
     );
   }
 
