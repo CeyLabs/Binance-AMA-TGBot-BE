@@ -23,7 +23,9 @@ import {
 } from "./types";
 import {
   handleBroadcastNow,
+  handleConfirmSchedule,
   handleScheduleBroadcast,
+  handleToggleSchedule,
 } from "./new-ama/broadcast-ama";
 import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
 import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
@@ -282,6 +284,30 @@ export class AMAService {
     return { bool: count > 0 };
   }
 
+  async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
+    await this.knexService.knex("schedule").insert({
+      ama_id,
+      scheduled_time,
+    });
+  }
+
+  // Get all AMAs that are scheduled within the last 10 minutes
+  async getDueScheduledTimes(now: Date) {
+    const scheduleEntries = await this.knexService
+      .knex("schedule")
+      .where("scheduled_time", "<=", now)
+      .select("id", "ama_id");
+    return scheduleEntries.map((row) => ({
+      scheduleId: row.id,
+      amaId: row.ama_id,
+    }));
+  }
+
+  // Delete a scheduled time by schedule ID
+  async deleteScheduledTime(scheduleId: UUID): Promise<void> {
+    await this.knexService.knex("schedule").where({ id: scheduleId }).del();
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(
@@ -369,12 +395,56 @@ export class AMAService {
   @Action(
     new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
   )
-  async scheduleBroadcast(ctx: Context): Promise<void> {
-    await handleScheduleBroadcast(
-      ctx,
-      this.getAMAById.bind(this),
-      this.updateAMA.bind(this)
+  async scheduleBroadcast(ctx: BotContext): Promise<void> {
+    await handleScheduleBroadcast(ctx, this.getAMAById.bind(this));
+  }
+
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i")
+  )
+  async confirmBroadcast(ctx: BotContext): Promise<void> {
+    if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
+    const callbackData = ctx.callbackQuery.data;
+    const match = callbackData.match(
+      `^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`
     );
+
+    if (!match) {
+      await ctx.answerCbQuery("Invalid confirmation action.");
+      return;
+    }
+
+    const amaId = match[1];
+    const ama = await this.getAMAById(amaId as UUID);
+
+    if (!ama) {
+      await ctx.reply("AMA not found.");
+      return;
+    }
+
+    // Proceed with the broadcast logic
+    await handleConfirmSchedule(
+      ctx,
+      amaId as UUID,
+      this.getAMAById.bind(this),
+      this.scheduleAMA.bind(this)
+    );
+  }
+
+  // Handle `toggle_5m_<amaId>` etc.
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`)
+  )
+  async onToggleSchedule(ctx: BotContext) {
+    await handleToggleSchedule(ctx, this.getAMAById.bind(this));
+  }
+
+  // Handle disabled toggle attempts
+  @Action(
+    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`)
+  )
+  async onToggleDisabled(ctx: BotContext) {
+    await ctx.answerCbQuery("⏰ Cannot toggle - this time has already passed!");
   }
 
   // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)

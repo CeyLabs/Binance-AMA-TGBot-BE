@@ -1,9 +1,11 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, PublicGroupInfo } from "../types";
+import { AMA, BotContext, PublicGroupInfo } from "../types";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
+import * as dayjs from "dayjs";
+import { InlineKeyboardButton } from "telegraf/types";
 
 export async function handleBroadcastNow(
   ctx: Context,
@@ -64,16 +66,15 @@ export async function handleBroadcastNow(
   }
 }
 
-const scheduleOptions = [
-  { label: "2 Days Before", key: "2DAYS" },
-  { label: "24 Hours Before", key: "24H" },
-  { label: "6 Hours Before", key: "6H" },
+export const scheduleOptions = [
+  { key: "2d", label: "2 days before", offsetMinutes: 2880 },
+  { key: "24h", label: "24 hours before", offsetMinutes: 1440 },
+  { key: "6h", label: "6 hours before", offsetMinutes: 360 },
 ];
 
 export async function handleScheduleBroadcast(
-  ctx: Context,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
-  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -81,51 +82,211 @@ export async function handleScheduleBroadcast(
   );
   if (!result) return;
 
-  const { id: AMA_ID } = result;
-
-  const ama = await getAMAById(AMA_ID);
+  const amaId = result.id;
+  const ama = await getAMAById(amaId);
   if (!ama) {
-    await ctx.reply("AMA session not found.");
+    await ctx.reply("❌ AMA session not found.");
     return;
+  }
+
+  const amaDateTime = dayjs(
+    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
+    "YYYY-MM-DD HH:mm:ss"
+  );
+  if (!amaDateTime.isValid()) {
+    await ctx.reply("❌ Invalid AMA date/time.");
+    return;
+  }
+
+  const now = dayjs();
+  const validOptions: Record<string, boolean> = {};
+
+  for (const option of scheduleOptions) {
+    const scheduledTime = amaDateTime.subtract(option.offsetMinutes, "minute");
+    if (scheduledTime.isAfter(now)) validOptions[option.key] = true;
+  }
+
+  if (Object.keys(validOptions).length === 0) {
+    await ctx.reply("⚠️ No valid times left for scheduling broadcast.");
+    return;
+  }
+
+  ctx.session.broadcastOptions ??= {};
+  ctx.session.broadcastOptions[amaId] = validOptions;
+
+  // Clear previous UI
+  if (ctx.callbackQuery?.message) {
+    await ctx.telegram.deleteMessage(
+      ctx.callbackQuery.message.chat.id,
+      ctx.callbackQuery.message.message_id
+    );
   }
 
   await ctx.reply("Schedule Announcement Broadcast", {
     reply_markup: {
-      inline_keyboard: [
-        ...scheduleOptions.map((option) => [
-          {
-            text: option.label,
-            callback_data: `schedule_${option.key}_${AMA_ID}`,
-          },
-          {
-            text: "✅ / ❎",
-            callback_data: `toggle_${option.key}_${AMA_ID}`,
-          },
-        ]),
-        [
-          {
-            text: "Cancel",
-            callback_data: `cancel_${AMA_ID}`,
-          },
-          {
-            text: "Confirm",
-            callback_data: `confirm_${AMA_ID}`,
-          },
-        ],
-      ],
+      inline_keyboard: buildScheduleKeyboard(amaId, validOptions, validOptions),
     },
   });
+}
 
-  // Schedule the broadcast for 1 minute later (for testing purposes)
-  const broadcastTime = new Date(Date.now() + 1 * 60 * 1000);
-
-  // Update the AMA session with the scheduled broadcast time
-  await updateAMA(AMA_ID, {
-    scheduled_at: broadcastTime,
-    status: "scheduled",
-  });
-
-  await ctx.reply(
-    `Scheduled AMA session ${ama.session_no} broadcast for ${broadcastTime.toLocaleString()}.`
+export async function handleToggleSchedule(
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>
+): Promise<void> {
+  const callbackData = (ctx.callbackQuery as any)?.data;
+  const match = callbackData?.match(
+    `^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`
   );
+  if (!match) await ctx.answerCbQuery("Invalid toggle action.");
+
+  const [, key, amaId] = match;
+
+  // Get AMA to check if the scheduled time is still valid
+  const ama = await getAMAById(amaId);
+  if (!ama) {
+    await ctx.answerCbQuery("❌ AMA not found.");
+    return;
+  }
+
+  const amaDateTime = dayjs(
+    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
+    "YYYY-MM-DD HH:mm:ss"
+  );
+  if (!amaDateTime.isValid()) {
+    await ctx.answerCbQuery("❌ Invalid AMA date/time.");
+    return;
+  }
+
+  // Check if the specific time slot is still valid
+  const now = dayjs();
+  const offset = scheduleOptions.find((o) => o.key === key)?.offsetMinutes || 0;
+  const scheduledTime = amaDateTime.subtract(offset, "minute");
+
+  if (scheduledTime.isBefore(now)) {
+    await ctx.answerCbQuery("⏰ Cannot toggle - this time has already passed!");
+  }
+
+  ctx.session.broadcastOptions ??= {};
+  ctx.session.broadcastOptions[amaId] ??= {};
+
+  const current = ctx.session.broadcastOptions[amaId][key] ?? false;
+  ctx.session.broadcastOptions[amaId][key] = !current;
+
+  await ctx.answerCbQuery(`Toggled ${key}: ${!current ? "✅ ON" : "❌ OFF"}`);
+
+  // Refresh the full markup with updated valid options
+  const validOptions: Record<string, boolean> = {};
+  for (const option of scheduleOptions) {
+    const schedTime = amaDateTime.subtract(option.offsetMinutes, "minute");
+    if (schedTime.isAfter(now)) validOptions[option.key] = true;
+  }
+
+  await ctx.editMessageReplyMarkup({
+    inline_keyboard: buildScheduleKeyboard(
+      amaId,
+      ctx.session.broadcastOptions[amaId],
+      validOptions
+    ),
+  });
+}
+
+export async function handleConfirmSchedule(
+  ctx: BotContext,
+  amaId: UUID,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  scheduleAMA: (id: UUID, time: Date) => Promise<void>
+): Promise<void> {
+  const ama = await getAMAById(amaId);
+  if (!ama) {
+    await ctx.reply("❌ AMA not found.");
+    return;
+  }
+
+  const amaDateTime = dayjs(
+    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
+    "YYYY-MM-DD HH:mm:ss"
+  );
+  if (!amaDateTime.isValid()) {
+    await ctx.reply("❌ Invalid AMA date/time.");
+    return;
+  }
+
+  const toggles = ctx.session.broadcastOptions?.[amaId];
+  if (!toggles || Object.keys(toggles).length === 0) {
+    await ctx.reply("❌ No valid times selected for scheduling.");
+    return;
+  }
+
+  // Delete the callback message to clean up UI
+  if (ctx.callbackQuery?.message) {
+    await ctx.telegram.deleteMessage(
+      ctx.callbackQuery.message.chat.id,
+      ctx.callbackQuery.message.message_id
+    );
+  }
+
+  const now = dayjs();
+  const scheduledTimes: Date[] = [];
+
+  for (const [key, enabled] of Object.entries(toggles)) {
+    if (!enabled) continue;
+    const offset =
+      scheduleOptions.find((o) => o.key === key)?.offsetMinutes || 0;
+    const time = amaDateTime.subtract(offset, "minute");
+    if (time.isAfter(now)) scheduledTimes.push(time.toDate());
+  }
+
+  if (scheduledTimes.length === 0) {
+    await ctx.reply("❌ All selected times are in the past.");
+    return;
+  }
+
+  try {
+    for (const time of scheduledTimes) {
+      await scheduleAMA(amaId, time);
+      console.log(`✅ Scheduled AMA ${amaId} at ${time}`);
+    }
+    await ctx.reply(`✅ Scheduled ${scheduledTimes.length} broadcast(s).`);
+  } catch (err) {
+    console.error(err);
+    await ctx.reply("❌ Failed to schedule one or more broadcasts.");
+  } finally {
+    delete ctx.session.broadcastOptions?.[amaId];
+  }
+}
+
+//prettier-ignore
+function buildScheduleKeyboard(
+  amaId: UUID, 
+  options: Record<string, boolean>, 
+  validOptions?: Record<string, boolean>
+) {
+  const inline_keyboard: InlineKeyboardButton[][] = scheduleOptions.map(
+    (opt) => {
+      const enabled = options?.[opt.key] ?? false;
+      const isValid = validOptions?.[opt.key] ?? true;
+      
+      // If time has passed, show disabled state and use disabled callback
+      const toggleCallback = isValid 
+        ? `${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_${opt.key}_${amaId}`
+        : `${CALLBACK_ACTIONS.TOGGLE_DISABLED}_${opt.key}_${amaId}`;
+      
+      // Show different text for disabled options
+      const statusText = isValid 
+        ? (enabled ? "✅" : "❌")
+        : "⏰"; // Clock emoji to indicate time has passed
+      
+      return [
+        { text: opt.label, callback_data: "noop" },
+        { text: statusText, callback_data: toggleCallback },
+      ];
+    }
+  );
+
+  inline_keyboard.push([
+    {text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${amaId}`},
+    { text: "Confirm", callback_data: `${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${amaId}` },
+  ]);
+
+  return inline_keyboard;
 }

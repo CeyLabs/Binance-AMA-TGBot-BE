@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { SchedulerService } from "./schedule-services.service";
+import { SchedulerService } from "./schedule.service";
 import { AMAModule } from "../ama/ama.module";
 
 @Module({
