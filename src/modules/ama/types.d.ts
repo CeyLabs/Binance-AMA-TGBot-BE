@@ -128,6 +128,7 @@ export interface Schedule {
   scheduled_time: Date;
   created_at: Date;
   updated_at: Date;
+}
 
 // For queries that need user information with winner data
 export interface WinnerWithUser extends WinnerData {
