@@ -453,13 +453,17 @@ export async function handleWiinersBroadcast(
     },
   );
 
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+  }
+
   if (broadcastToPublic.message_id) {
     return void ctx.reply(
       "Winners broadcasted successfully to the public group.",
     );
-  } else {
-    return void ctx.reply("Failed to broadcast winners to the public group.");
   }
+
+  return void ctx.reply("Failed to broadcast winners to the public group.");
 }
 
 export async function cancelWinnersCallback(
