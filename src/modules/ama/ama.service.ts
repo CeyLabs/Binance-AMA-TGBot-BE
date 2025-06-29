@@ -247,14 +247,6 @@ export class AMAService {
     return true;
   }
 
-  // Get all scheduled AMAs that are due for broadcasting
-  async getScheduledAMAsToBroadcast(now: Date): Promise<AMA[]> {
-    return this.knexService
-      .knex<AMA>("ama")
-      .whereNotNull("scheduled_at")
-      .where("scheduled_at", "<=", now)
-      .where("status", "scheduled");
-  }
 
   // Get scores for a specific AMA
   async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
