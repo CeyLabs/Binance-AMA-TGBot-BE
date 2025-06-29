@@ -110,19 +110,21 @@ export async function buildWinnerSelectionKeyboard(
     const user = scores[index];
     const { place, scoreDisplay } = getUserDisplayText(user, index);
 
-    let displayText = `${place} ${user.username}${scoreDisplay}`;
+    let flagPrefix = "";
 
     // Check if user is a past winner (if function is provided)
     if (isUserWinner) {
       try {
         const { bool: isPastWinner } = await isUserWinner(user.user_id);
         if (isPastWinner) {
-          displayText += " 🏁";
+          flagPrefix = "🏁 ";
         }
       } catch (error) {
         console.error("Error checking past winner status:", error);
       }
     }
+
+    const displayText = `${place} ${flagPrefix}${user.username}${scoreDisplay}`;
 
     // prettier-ignore
     keyboard.push([
