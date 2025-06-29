@@ -175,7 +175,7 @@ export class AMAService {
   async getAMAsByHashtag(hashtag: string): Promise<AMA[] | []> {
     const ama = await this.knexService
       .knex<AMA>("ama")
-      .where({ hashtag })
+      .whereRaw("LOWER(hashtag) = ?", hashtag.toLowerCase())
       .orderBy("created_at", "desc");
     return ama || [];
   }
@@ -205,7 +205,7 @@ export class AMAService {
   async getAMAByHashtag(hashtag: string): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
-      .where({ hashtag })
+      .whereRaw("LOWER(hashtag) = ?", hashtag.toLowerCase())
       .first();
     return ama || null;
   }

@@ -21,9 +21,12 @@ export async function handleAMAQuestion(
 
   if (!message || !("text" in message) || message.from.is_bot) return;
 
-  if (message.text && message.text.includes(`#${AMA_HASHTAG}`)) {
+  if (
+    message.text &&
+    message.text.toLowerCase().includes(`#${AMA_HASHTAG.toLowerCase()}`)
+  ) {
     const amaHashtagMatch = message.text.match(
-      new RegExp(`#${AMA_HASHTAG}(\\d+)`),
+      new RegExp(`#${AMA_HASHTAG}(\\d+)`, "i"),
     );
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
