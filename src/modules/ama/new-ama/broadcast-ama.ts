@@ -12,6 +12,7 @@ export async function handleBroadcastNow(
   publicGroupIds: PublicGroupInfo,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
+  clearSchedules?: (amaId: UUID) => Promise<void>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -54,6 +55,11 @@ export async function handleBroadcastNow(
   await updateAMA(AMA_ID, {
     status: "broadcasted",
   });
+
+  // Remove any pending schedules for this AMA
+  if (clearSchedules) {
+    await clearSchedules(AMA_ID);
+  }
 
   await ctx.reply("Announcement Broadcasted to the group successfully!");
 

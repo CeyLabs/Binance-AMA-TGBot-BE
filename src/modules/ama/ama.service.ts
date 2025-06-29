@@ -308,6 +308,10 @@ export class AMAService {
     await this.knexService.knex("schedule").where({ id: scheduleId }).del();
   }
 
+  async clearSchedulesForAMA(amaId: UUID): Promise<void> {
+    await this.knexService.knex("schedule").where({ ama_id: amaId }).del();
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(
@@ -388,6 +392,7 @@ export class AMAService {
       publicGroupIds,
       this.getAMAById.bind(this),
       this.updateAMA.bind(this),
+      this.clearSchedulesForAMA.bind(this),
     );
   }
 
