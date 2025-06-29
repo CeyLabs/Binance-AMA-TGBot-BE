@@ -1,0 +1,147 @@
+name: Binance AMA Telegram Bot Deployment - Prod
+
+on:
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest      
+    env:
+      NODE_VERSION: "22.x"
+      PROJECT_NAME: "🪙 Binance AMA TG Bot - Prod"
+      DEPLOY_PATH: "/root/projects/binance/ama-bot/prod/"
+      PROJECT_DIR: "bot"
+      SERVICE_NAME: "binance_ama_bot_prod.service"
+      RUN_FIXTURES: "true"
+    
+    steps:
+      - name: Notify Build Start
+        run: |          
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.DEV_ACTIONS_BOT_TOKEN }}/sendMessage \
+          -d chat_id="${{ secrets.DEV_ACTIONS_GROUP_ID }}" \
+          -d text="
+          ${{ env.PROJECT_NAME }} Build Started 🚀
+          📁 Repository: ${{ github.repository }}
+          👤 Initiator: ${{ github.actor }}
+          🕒 Timestamp: ${{ github.event.head_commit.timestamp}} 
+          📝 Commit Message: ${{ github.event.head_commit.message }}"
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Build Environment
+        run: |
+          npm install -g pnpm@latest
+          pnpm install
+          pnpm run build
+
+      - name: Notify Build Complete
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.DEV_ACTIONS_BOT_TOKEN }}/sendMessage \
+            -d chat_id="${{ secrets.DEV_ACTIONS_GROUP_ID }}" \
+            -d text="
+          ${{ env.PROJECT_NAME }} Build Complete 🛠
+          📁 Repository: ${{ github.repository }}
+          👤 Initiator: ${{ github.actor }}
+          🕒 Timestamp: ${{ github.event.head_commit.timestamp }}
+          📝 Commit Message: ${{ github.event.head_commit.message }}"
+
+      - name: Create Deploy Path
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            sudo mkdir -p ${{ env.DEPLOY_PATH }}${{ env.PROJECT_DIR }}
+      
+      - name: Copy Files to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: "."
+          target: "${{ env.DEPLOY_PATH }}${{ env.PROJECT_DIR }}"
+          rm: true
+
+      - name: Deploy Application
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}          
+          script: | 
+            cd ${{ env.DEPLOY_PATH }}${{ env.PROJECT_DIR }}
+
+            # Setup Node.js environment if not already set up
+            if [ ! -d "$HOME/.nvm" ]; then
+              echo "Setting up Node.js environment..."
+              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              nvm install 22 && nvm use 22 && nvm alias default 22
+              npm install -g pnpm@latest
+            fi
+
+            # Load NVM and Node.js
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # Create environment file
+            echo "${{ vars.ENV_PRODUCTION }}" > .env.production
+
+            # Update service definition
+            sudo bash -c 'cat > "/etc/systemd/system/${{ env.SERVICE_NAME }}" <<- EOM
+            [Unit]
+            Description=${{ env.PROJECT_NAME }}
+            After=network.target
+
+            [Service]
+            Type=simple
+            Restart=always
+            RestartSec=5s
+            WorkingDirectory=${{ env.DEPLOY_PATH }}${{ env.PROJECT_DIR }}
+            ExecStart=/bin/bash -c '\''source $HOME/.nvm/nvm.sh && exec node -r dotenv/config ${{ env.DEPLOY_PATH }}${{ env.PROJECT_DIR }}/dist/src/main.js dotenv_config_path=.env.production'\''
+            Environment=NODE_ENV=production
+            Environment=HOME=/root
+            Environment=NVM_DIR=/root/.nvm
+            Environment=NODE_VERSION=22.x
+            
+            [Install]
+            WantedBy=multi-user.target
+            EOM'
+
+            # Install dependencies and run migrations
+            pnpm install
+            NODE_ENV=production pnpm run migrate
+            [[ "${{ env.RUN_FIXTURES }}" = "true" ]] && NODE_ENV=production pnpm run fixtures
+            
+            sudo systemctl daemon-reload
+            sudo systemctl enable ${{ env.SERVICE_NAME }}
+            sudo systemctl restart ${{ env.SERVICE_NAME }}
+
+      - name: Notify Deploy Complete
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.DEV_ACTIONS_BOT_TOKEN }}/sendMessage \
+            -d chat_id="${{ secrets.DEV_ACTIONS_GROUP_ID }}" \
+            -d text="
+          ${{ env.PROJECT_NAME }} Deploy Complete ✅
+          📁 Repository: ${{ github.repository }}
+          👤 Initiator: ${{ github.actor }}
+          🕒 Timestamp: ${{ github.event.head_commit.timestamp }}
+          📝 Commit Message: ${{ github.event.head_commit.message }}"
