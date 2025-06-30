@@ -11,7 +11,7 @@ export class SchedulerService {
   constructor(
     private readonly config: ConfigService,
     @InjectBot() private readonly bot: Telegraf,
-    private readonly amaService: AMAService,
+    private readonly amaService: AMAService
   ) {}
 
   @Cron("*/1 * * * *") // every minute
@@ -31,6 +31,7 @@ export class SchedulerService {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
 
     for (const { scheduleId, amaId } of scheduledItems) {
+      let broadcastSuccessful = false;
       try {
         const ama = await this.amaService.getAMAById(amaId);
         if (!ama) {
@@ -51,24 +52,41 @@ export class SchedulerService {
 
         await this.bot.telegram.pinChatMessage(groupId, sent.message_id);
 
-        const broadcastMsg = await this.bot.telegram.sendMessage(
-          adminGroupId,
-          `✅ AMA session ${ama.session_no} has been broadcasted.`,
-          {
-            message_thread_id: process.env.ADMIN_TOPIC_ID
-              ? parseInt(process.env.ADMIN_TOPIC_ID)
-              : undefined,
-          },
-        );
+        // Mark as successful after main broadcast
+        broadcastSuccessful = true;
 
-        console.log("Message sent successfully:", sent.message_id);
-
-        // Only delete the scheduled time if the broadcast was successful
-        if (broadcastMsg.message_id) {
-          await this.amaService.deleteScheduledTime(scheduleId);
+        // Try to send admin notification
+        try {
+          await this.bot.telegram.sendMessage(
+            adminGroupId,
+            `✅ AMA session ${ama.session_no} has been broadcasted.`,
+            {
+              message_thread_id: process.env.ADMIN_TOPIC_ID
+                ? parseInt(process.env.ADMIN_TOPIC_ID)
+                : undefined,
+            }
+          );
+        } catch (adminError) {
+          console.error(
+            `Failed to send admin notification for AMA ${amaId}:`,
+            adminError
+          );
         }
-      } catch {
-        console.error(`Failed to broadcast AMA with ID ${amaId}:`, Error);
+
+        // Delete the scheduled time since the main broadcast was successful
+        if (broadcastSuccessful) {
+          try {
+            await this.amaService.deleteScheduledTime(scheduleId);
+            console.log(`Scheduled time ${scheduleId} deleted successfully`);
+          } catch (deleteError) {
+            console.error(
+              `Failed to delete scheduled time ${scheduleId}:`,
+              deleteError
+            );
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to broadcast AMA with ID ${amaId}:`, error);
       }
     }
   }
