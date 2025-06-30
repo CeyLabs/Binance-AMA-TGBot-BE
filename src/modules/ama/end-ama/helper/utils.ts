@@ -6,6 +6,7 @@ import { UUID_PATTERN } from "../../helper/utils";
 import { Context } from "telegraf";
 import { generateAMAScoresCSV, cleanupCSVFile } from "./csv-utils";
 import * as fs from "fs";
+import { Message } from "telegraf/types";
 
 //prettier-ignore
 export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
@@ -117,7 +118,7 @@ export async function buildWinnerSelectionKeyboard(
       try {
         const { bool: isPastWinner } = await isUserWinner(user.user_id);
         if (isPastWinner) {
-          displayText += " 🏁";
+          displayText = "🏆 " + displayText;
         }
       } catch (error) {
         console.error("Error checking past winner status:", error);
@@ -249,7 +250,7 @@ export async function generateAndSendCSV(
   ctx: Context,
   ama: AMA,
   scores: ScoreWithUser[],
-): Promise<void> {
+): Promise<Message | undefined> {
   try {
     // Generate CSV file
     const csvFilePath = await generateAMAScoresCSV(ama, scores);
@@ -260,7 +261,7 @@ export async function generateAndSendCSV(
     }
 
     // Send the CSV file using file path
-    await ctx.replyWithDocument(
+    const message = await ctx.replyWithDocument(
       { source: csvFilePath },
       {
         caption:
@@ -272,14 +273,18 @@ export async function generateAndSendCSV(
       },
     );
 
+
     // Clean up the temporary file
     setTimeout(() => {
       cleanupCSVFile(csvFilePath);
     }, 5000); // Clean up after 5 seconds
+
+    return message;
   } catch (error) {
     console.error("Error generating or sending CSV:", error);
     await ctx.reply(
       "❌ Failed to generate CSV report. Please try again later.",
     );
+    return;
   }
 }

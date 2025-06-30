@@ -20,7 +20,6 @@ export interface AMA {
   special_guest?: string;
   topic: string;
   hashtag: string;
-  scheduled_at?: Date;
   thread_id?: number;
   created_at?: Date;
   updated_at?: Date;
@@ -32,6 +31,7 @@ export interface SessionData {
     field: EditableFieldKey;
     newValue?: string;
   };
+  editingAnnouncementMsgId?: number;
   messagesToDelete?: number[];
   broadcastOptions?: {
     [amaId: UUID]: {

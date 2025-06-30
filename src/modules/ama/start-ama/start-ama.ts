@@ -79,6 +79,11 @@ export async function startAMAbyCallback(
   if (!ama) return void ctx.answerCbQuery("AMA session not found.");
   if (ama.status === "active" || ama.status === "ended") return;
 
+  // Delete the callback query message to clean up
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+    await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+  }
+
   await startAMA(ctx, groupIds, ama, updateAMA);
 }
 

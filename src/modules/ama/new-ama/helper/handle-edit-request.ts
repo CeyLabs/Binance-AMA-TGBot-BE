@@ -9,11 +9,11 @@ export async function handleEditRequest(
   ctx: BotContext,
   field: EditableFieldKey,
   action: string,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${action}_${UUID_PATTERN}`, "i"),
+    new RegExp(`^${action}_${UUID_PATTERN}`, "i")
   );
 
   console.log("Result from validateIdPattern:", result);
@@ -35,7 +35,8 @@ export async function handleEditRequest(
   ctx.session.editMode = { amaId: AMA_ID, field };
 
   const prompt = EDITABLE_FIELDS[field]?.prompt || "Enter new value:";
-  const newValMsg = await ctx.reply(prompt);
+  const promptMsg = await ctx.reply(prompt);
 
-  ctx.session.messagesToDelete.push(newValMsg.message_id);
+  // Store both the prompt message ID and prepare for new value message ID to delete later
+  ctx.session.messagesToDelete.push(promptMsg.message_id);
 }
