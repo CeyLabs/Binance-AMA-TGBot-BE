@@ -9,13 +9,13 @@ export async function handleAMAQuestion(
   getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
   getAnalysis: (
     question: string,
-    topic?: string,
+    topic?: string
   ) => Promise<OpenAIAnalysis | null>,
   addScore: (
     scoreData: CreateScoreData,
     name?: string,
-    username?: string,
-  ) => Promise<boolean>,
+    username?: string
+  ) => Promise<boolean>
 ): Promise<void> {
   const message = ctx.message;
 
@@ -23,12 +23,22 @@ export async function handleAMAQuestion(
 
   if (message.text && message.text.includes(`#${AMA_HASHTAG}`)) {
     const amaHashtagMatch = message.text.match(
-      new RegExp(`#${AMA_HASHTAG}(\\d+)`),
+      new RegExp(`#${AMA_HASHTAG}(\\d+)`)
     );
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
     if (hashtag) {
       const amas = await getAMAsByHashtag(hashtag);
+
+      // Early exit if no AMAs found for this hashtag
+      if (!amas || amas.length === 0) {
+        await ctx.reply("❌ No AMA found with this hashtag.", {
+          reply_parameters: {
+            message_id: message.message_id,
+          },
+        });
+        return;
+      }
 
       const publicChatId = message.chat.id.toString();
 
@@ -50,7 +60,7 @@ export async function handleAMAQuestion(
           message.message_id,
           {
             message_thread_id: matchedAMA.thread_id,
-          },
+          }
         );
 
         const analysis = await getAnalysis(question, matchedAMA.topic);
@@ -103,7 +113,7 @@ export async function handleAMAQuestion(
         const addScoreToDb = await addScore(
           scoreData,
           message.from.first_name || "Unknown",
-          message.from.username || "Unknown",
+          message.from.username || "Unknown"
         );
 
         if (addScoreToDb) {
@@ -115,7 +125,12 @@ export async function handleAMAQuestion(
         }
       } else {
         await ctx.reply(
-          "❌ This AMA is not currently active in this group or has ended.",
+          "❌ No active AMA found for this hashtag in this group, or the AMA has not been started yet.",
+          {
+            reply_parameters: {
+              message_id: message.message_id,
+            },
+          }
         );
       }
     }
