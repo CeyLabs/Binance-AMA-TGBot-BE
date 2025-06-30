@@ -107,6 +107,11 @@ async function selectWinners(
   // Get all scores for CSV generation
   const allScores = await getScoresForAMA(ama.id);
 
+  // Delete the original message that allows discarding winners
+  if (ctx.callbackQuery && ctx.callbackQuery.message) {
+    await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+  }
+
   // Generate and send CSV file
   if (allScores.length > 0) {
     await ctx.reply("📊 Generating CSV report...");
