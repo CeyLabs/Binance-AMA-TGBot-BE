@@ -117,7 +117,7 @@ export async function buildWinnerSelectionKeyboard(
       try {
         const { bool: isPastWinner } = await isUserWinner(user.user_id);
         if (isPastWinner) {
-          displayText += " 🏁";
+          displayText = "🏆 " + displayText;
         }
       } catch (error) {
         console.error("Error checking past winner status:", error);
