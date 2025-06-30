@@ -31,6 +31,7 @@ export interface SessionData {
     field: EditableFieldKey;
     newValue?: string;
   };
+  editingAnnouncementMsgId?: number;
   messagesToDelete?: number[];
   broadcastOptions?: {
     [amaId: UUID]: {

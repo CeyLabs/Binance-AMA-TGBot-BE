@@ -29,6 +29,20 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
     ctx.session.editMode.newValue = String(validated.value);
   }
 
+  // Edit the editingAnnouncementMsgId if it exists to remove the inline keyboard
+  if (ctx.session.editingAnnouncementMsgId) {
+    try {
+      await ctx.telegram.editMessageReplyMarkup(
+        ctx.chat?.id,
+        ctx.session.editingAnnouncementMsgId,
+        undefined,
+        { inline_keyboard: [] }
+      );
+    } catch (err) {
+      console.error("Failed to edit message reply markup:", err);
+    }
+  }
+
   // Initialize messagesToDelete array if needed
   ctx.session.messagesToDelete ??= [];
 
@@ -46,7 +60,7 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
           Markup.button.callback("❌ Cancel",`${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
         ],
       ]).reply_markup,
-    },
+    }
   );
 
   ctx.session.messagesToDelete.push(updatedMsg.message_id);
@@ -55,11 +69,11 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
 export async function handleConfirmEdit(
   ctx: BotContext,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"),
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
   const { id: AMA_ID } = result;
@@ -119,6 +133,13 @@ export async function handleConfirmEdit(
 }
 
 export async function handleCancelEdit(ctx: BotContext): Promise<void> {
+  const result = await validateIdPattern(
+    ctx,
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i")
+  );
+  if (!result) return;
+  const { id: AMA_ID } = result;
+
   if (!ctx.session.editMode) {
     await ctx.reply("⚠️ No pending update to cancel.");
     return;
@@ -140,4 +161,18 @@ export async function handleCancelEdit(ctx: BotContext): Promise<void> {
   ctx.session.messagesToDelete = [];
   await ctx.reply(`⚠️ Edit for ${fieldName} has been cancelled.`);
   await ctx.answerCbQuery("Edit cancelled successfully.");
+
+  // If editingAnnouncementMsgId exists, add the inline keyboard reply_markup: NewAMAKeyboard(AMA_ID),
+  if (ctx.session.editingAnnouncementMsgId) {
+    try {
+      await ctx.telegram.editMessageReplyMarkup(
+        ctx.chat?.id,
+        ctx.session.editingAnnouncementMsgId,
+        undefined,
+        NewAMAKeyboard(AMA_ID)
+      );
+    } catch (err) {
+      console.error("Failed to edit message reply markup:", err);
+    }
+  }
 }

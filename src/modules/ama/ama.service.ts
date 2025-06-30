@@ -56,7 +56,7 @@ import * as dayjs from "dayjs";
 export class AMAService {
   constructor(
     private readonly config: ConfigService,
-    private readonly knexService: KnexService,
+    private readonly knexService: KnexService
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -94,7 +94,7 @@ export class AMAService {
   async addScore(
     scoreData: CreateScoreData,
     name?: string,
-    username?: string,
+    username?: string
   ): Promise<boolean> {
     // First, ensure user exists in users table
     await this.upsertUser(scoreData.user_id, name, username);
@@ -119,7 +119,7 @@ export class AMAService {
   async upsertUser(
     user_id: string,
     name?: string,
-    username?: string,
+    username?: string
   ): Promise<void> {
     await this.knexService
       .knex("user")
@@ -140,7 +140,7 @@ export class AMAService {
     ama_id: UUID,
     user_id: string,
     score_id: UUID,
-    rank: number,
+    rank: number
   ): Promise<WinnerData | null> {
     const data = await this.knexService
       .knex("winner")
@@ -183,7 +183,7 @@ export class AMAService {
   // Get AMA details by session number
   async getAMABySessionNoAndLang(
     sessionNo: number,
-    language: SupportedLanguage,
+    language: SupportedLanguage
   ): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
@@ -225,7 +225,7 @@ export class AMAService {
 
   async isAMAExists(
     sessionNo: number,
-    language: SupportedLanguage,
+    language: SupportedLanguage
   ): Promise<boolean> {
     const session = await this.getAMABySessionNoAndLang(sessionNo, language);
     return Boolean(session);
@@ -303,7 +303,7 @@ export class AMAService {
 
   async getAnalysis(
     question: string,
-    topic?: string,
+    topic?: string
   ): Promise<OpenAIAnalysis | string> {
     return getQuestionAnalysis(question, topic);
   }
@@ -316,7 +316,7 @@ export class AMAService {
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this),
-      this.isAMAExists.bind(this),
+      this.isAMAExists.bind(this)
     );
   }
 
@@ -334,7 +334,7 @@ export class AMAService {
       ctx,
       groupIds,
       this.getAMAsBySessionNo.bind(this),
-      this.updateAMA.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
@@ -345,7 +345,7 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
@@ -378,7 +378,7 @@ export class AMAService {
       ctx,
       publicGroupIds,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
@@ -418,7 +418,7 @@ export class AMAService {
       ctx,
       amaId as UUID,
       this.getAMAById.bind(this),
-      this.scheduleAMA.bind(this),
+      this.scheduleAMA.bind(this)
     );
   }
 
@@ -466,11 +466,20 @@ export class AMAService {
       return;
     }
 
+    // Add the parent message ID to the editingAnnouncementMsgId
+    if (
+      ctx.callbackQuery.message &&
+      "message_id" in ctx.callbackQuery.message
+    ) {
+      ctx.session.editingAnnouncementMsgId =
+        ctx.callbackQuery.message.message_id;
+    }
+
     return handleEditRequest(
       ctx,
       field,
       `edit-${field}`,
-      this.getAMAById.bind(this),
+      this.getAMAById.bind(this)
     );
   }
 
@@ -480,7 +489,7 @@ export class AMAService {
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this),
-      this.getAMAById.bind(this),
+      this.getAMAById.bind(this)
     );
   }
 
@@ -498,7 +507,7 @@ export class AMAService {
       ctx,
       groupIds,
       this.getAMAById.bind(this),
-      this.updateAMA.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
@@ -509,7 +518,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
@@ -525,7 +534,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       // this.getScoresForAMA.bind(this),
-      this.getScoresForAMA.bind(this),
+      this.getScoresForAMA.bind(this)
     );
   }
 
@@ -539,7 +548,7 @@ export class AMAService {
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
       this.addWinner.bind(this),
-      this.updateAMA.bind(this),
+      this.updateAMA.bind(this)
     );
   }
 
@@ -559,7 +568,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      groupIds,
+      groupIds
     );
   }
 
@@ -575,7 +584,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this),
+      this.isUserWinner.bind(this)
     );
   }
 
