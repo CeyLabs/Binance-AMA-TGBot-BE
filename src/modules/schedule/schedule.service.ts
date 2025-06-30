@@ -29,6 +29,7 @@ export class SchedulerService {
       ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
     };
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    const adminTopicId = process.env.ADMIN_TOPIC_ID;
 
     for (const { scheduleId, amaId } of scheduledItems) {
       let broadcastSuccessful = false;
@@ -55,16 +56,17 @@ export class SchedulerService {
         // Mark as successful after main broadcast
         broadcastSuccessful = true;
 
-        // Try to send admin notification
+        // Try to send admin notification (If topic ID is 1, it's genral chat)
         try {
+          const messageThreadId =
+            adminTopicId && adminTopicId !== "1"
+              ? parseInt(adminTopicId)
+              : undefined;
+
           await this.bot.telegram.sendMessage(
             adminGroupId,
-            `✅ AMA session ${ama.session_no} has been broadcasted.`,
-            {
-              message_thread_id: process.env.ADMIN_TOPIC_ID
-                ? parseInt(process.env.ADMIN_TOPIC_ID)
-                : undefined,
-            }
+            `✅ AMA session #${ama.session_no} has been broadcasted.`,
+            { message_thread_id: messageThreadId }
           );
         } catch (adminError) {
           console.error(
