@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       .references("user_id")
       .inTable("user")
       .onDelete("RESTRICT");
-    table.string("question").notNullable();
+    table.text("question").notNullable();
     table.integer("originality").notNullable();
     table.integer("relevance").notNullable();
     table.integer("clarity").notNullable();

@@ -61,8 +61,10 @@ export class SchedulerService {
           },
         );
 
+        console.log("Message sent successfully:", sent.message_id);
+
         // Only delete the scheduled time if the broadcast was successful
-        if (broadcastMsg) {
+        if (broadcastMsg.message_id) {
           await this.amaService.deleteScheduledTime(scheduleId);
         }
       } catch {

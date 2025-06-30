@@ -34,7 +34,6 @@ export async function up(knex: Knex): Promise<void> {
     table.string("special_guest");
     table.string("topic");
     table.string("hashtag").notNullable();
-    table.timestamp("scheduled_at");
     table.integer("thread_id");
     table.timestamps(true, true);
   });
