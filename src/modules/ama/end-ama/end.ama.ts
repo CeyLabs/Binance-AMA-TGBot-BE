@@ -33,7 +33,7 @@ export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -44,14 +44,14 @@ export async function handleEndAMA(
   const sessionNo = match ? parseInt(match[1], 10) : NaN;
   if (!sessionNo || sessionNo <= 0) {
     return void ctx.reply(
-      "Invalid session number. Please provide a valid number.",
+      "Invalid session number. Please provide a valid number."
     );
   }
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
     return void ctx.reply(
-      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`,
+      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`
     );
   }
 
@@ -79,11 +79,11 @@ export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"),
+    new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
 
@@ -100,7 +100,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
 
@@ -127,7 +127,7 @@ async function selectWinners(
     sortedScores,
     ama.id,
     false,
-    isUserWinner,
+    isUserWinner
   );
 
   await ctx.reply(
@@ -137,14 +137,14 @@ async function selectWinners(
       reply_markup: {
         inline_keyboard: keyboard,
       },
-    },
+    }
   );
 }
 
 export async function selectWinnersCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>
 ): Promise<void> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery
@@ -158,7 +158,7 @@ export async function selectWinnersCallback(
   // Inline regex parsing
   const regex = new RegExp(
     `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
-    "i",
+    "i"
   );
   const match = callbackData.match(regex);
 
@@ -194,7 +194,7 @@ export async function selectWinnersCallback(
   const winnersText = generateWinnerAnnouncementText(ama, topWinners);
 
   await ctx.answerCbQuery(
-    `Selected ${topWinners.length} winners for AMA #${ama.session_no}.`,
+    `Selected ${topWinners.length} winners for AMA #${ama.session_no}.`
   );
 
   await ctx.reply(`${winnersText}`, {
@@ -215,7 +215,7 @@ export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -261,14 +261,14 @@ export async function handleDiscardUser(
   const filteredScores = await getAMAFilteredScores(
     getScoresForAMA,
     id,
-    discardedUserIds,
+    discardedUserIds
   );
 
   const keyboard = await buildWinnerSelectionKeyboard(
     filteredScores,
     ama.id,
     true,
-    isUserWinner,
+    isUserWinner
   );
 
   await ctx.editMessageReplyMarkup({
@@ -283,7 +283,7 @@ export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;
@@ -312,7 +312,7 @@ export async function resetWinnersCallback(
     filteredScores,
     ama.id,
     false,
-    isUserWinner,
+    isUserWinner
   );
 
   await ctx.editMessageReplyMarkup({
@@ -330,9 +330,9 @@ export async function confirmWinnersCallback(
     ama_id: UUID,
     user_id: string,
     score_id: UUID,
-    rank: number,
+    rank: number
   ) => Promise<WinnerData | null>,
-  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -347,7 +347,7 @@ export async function confirmWinnersCallback(
   const filteredScores = await getAMAFilteredScores(
     getScoresForAMA,
     ama.id,
-    discardedUserIds,
+    discardedUserIds
   );
 
   if (filteredScores.length === 0) {
@@ -370,7 +370,7 @@ export async function confirmWinnersCallback(
   } catch (error) {
     console.error("Error adding winners to database:", error);
     return void ctx.reply(
-      "Error saving winners to database. Please try again.",
+      "Error saving winners to database. Please try again."
     );
   }
 
@@ -400,11 +400,11 @@ export async function handleWiinersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  groupIds: GroupInfo,
+  groupIds: GroupInfo
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"),
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
   );
   if (!result) return;
 
@@ -417,13 +417,13 @@ export async function handleWiinersBroadcast(
 
   // Filter out discarded users
   const discardedUserIds = new Set(
-    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number),
+    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number)
   );
 
   const filteredScores = await getAMAFilteredScores(
     getScoresForAMA,
     ama.id,
-    discardedUserIds,
+    discardedUserIds
   );
 
   if (filteredScores.length === 0) {
@@ -450,12 +450,19 @@ export async function handleWiinersBroadcast(
           ],
         ],
       },
-    },
+    }
   );
+
+  // Remove the callback buttons from the message
+  if (ctx.callbackQuery && ctx.callbackQuery.message && broadcastToPublic) {
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: [],
+    });
+  }
 
   if (broadcastToPublic.message_id) {
     return void ctx.reply(
-      "Winners broadcasted successfully to the public group.",
+      "Winners broadcasted successfully to the public group."
     );
   } else {
     return void ctx.reply("Failed to broadcast winners to the public group.");
@@ -464,7 +471,7 @@ export async function handleWiinersBroadcast(
 
 export async function cancelWinnersCallback(
   ctx: BotContext,
-  getAMAById: (id: UUID) => Promise<AMA | null>,
+  getAMAById: (id: UUID) => Promise<AMA | null>
 ): Promise<void> {
   const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CANCEL_WINNERS);
   if (!result) return;
@@ -482,7 +489,7 @@ export async function cancelWinnersCallback(
 
   await ctx.answerCbQuery("Winner selection cancelled.");
   await ctx.reply(
-    `Winner selection for AMA #${ama.session_no} has been cancelled.`,
+    `Winner selection for AMA #${ama.session_no} has been cancelled.`
   );
 
   // Edit the confirmation message by removing the buttons
