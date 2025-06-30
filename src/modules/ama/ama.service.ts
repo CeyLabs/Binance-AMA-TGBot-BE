@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
-import { Action, Command, On, Update } from "nestjs-telegraf";
+import { Action, Command, On, Start, Update } from "nestjs-telegraf";
 import { handleNewAMA, handleNewAMACancel } from "./new-ama/new-ama";
 import {
   AMA_COMMANDS,
@@ -50,6 +50,7 @@ import {
 } from "./end-ama/end.ama";
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
+import { handleStart } from "./claim-reward/claim-reward";
 
 @Update()
 @Injectable()
@@ -299,6 +300,14 @@ export class AMAService {
     await this.knexService.knex("schedule").where({ id: scheduleId }).del();
   }
 
+  // Get winners by AMA ID
+  async getWinnersByAMA(amaId: UUID): Promise<WinnerData[]> {
+    return this.knexService
+      .knex<WinnerData>("winner")
+      .where({ ama_id: amaId })
+      .orderBy("rank", "asc");
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(
@@ -309,6 +318,16 @@ export class AMAService {
   }
 
   // <<------------------------------------ Commands ------------------------------------>>
+
+  // Handle /start command with deep links for claiming rewards
+  @Start()
+  async start(ctx: BotContext): Promise<void> {
+    await handleStart(
+      ctx,
+      this.getAMAById.bind(this),
+      this.getWinnersByAMA.bind(this)
+    );
+  }
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
@@ -568,7 +587,8 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this),
       this.getScoresForAMA.bind(this),
-      groupIds
+      groupIds,
+      this.config.get<string>("BOT_USERNAME")!
     );
   }
 

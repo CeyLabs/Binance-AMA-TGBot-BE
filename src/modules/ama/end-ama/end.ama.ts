@@ -100,7 +100,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
 
@@ -414,7 +414,8 @@ export async function handleWiinersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  groupIds: GroupInfo
+  groupIds: GroupInfo,
+  botUsername: string
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -459,7 +460,7 @@ export async function handleWiinersBroadcast(
           [
             {
               text: "Claim Reward",
-              url: `${ama.form_link}`,
+              url: `https://t.me/${botUsername}?start=${CALLBACK_ACTIONS.CLAIM_REWARD}_${ama.id}`,
             },
           ],
         ],
