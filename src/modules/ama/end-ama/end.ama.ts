@@ -100,22 +100,31 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
 
   // Get all scores for CSV generation
   const allScores = await getScoresForAMA(ama.id);
 
-  // Delete the original message that allows discarding winners
+  // Delete the original message
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
     await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
   }
 
   // Generate and send CSV file
   if (allScores.length > 0) {
-    await ctx.reply("📊 Generating CSV report...");
-    await generateAndSendCSV(ctx, ama, allScores);
+    const loading = await ctx.reply("📊 Generating CSV report...");
+    const sendCSV = await generateAndSendCSV(ctx, ama, allScores);
+
+    if (sendCSV?.message_id) {
+      await ctx.deleteMessage(loading.message_id);
+    } else {
+      await ctx.editMessageText(
+        "❌ CSV generation failed. Please try again later."
+      );
+      return;
+    }
   } else {
     await ctx.reply("No scores found to generate CSV report.");
   }
