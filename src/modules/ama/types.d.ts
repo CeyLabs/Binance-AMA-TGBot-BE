@@ -78,6 +78,8 @@ export interface ScoreData {
   engagement: number;
   language: number;
   score: number;
+  processed: boolean;
+  tg_msg_id: number;
   created_at?: string;
   updated_at?: string;
 }
