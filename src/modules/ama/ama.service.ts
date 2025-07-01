@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, On, Start, Update } from "nestjs-telegraf";
@@ -11,12 +11,12 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
-import { MessageQueueService } from "../message-queue/message-queue.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
   BotContext,
   CreateScoreData,
+  MessageWithAma,
   OpenAIAnalysis,
   ScoreWithUser,
   WinnerData,
@@ -55,8 +55,6 @@ export class AMAService {
   constructor(
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
-    @Inject(forwardRef(() => MessageQueueService))
-    private readonly messageQueueService: MessageQueueService,
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -630,103 +628,54 @@ export class AMAService {
         ctx,
         groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
-        this.getAnalysis.bind(this) as (
-          question: string,
-          topic?: string,
-        ) => Promise<OpenAIAnalysis | null>,
-        this.addScore.bind(this) as (
-          scoreData: CreateScoreData,
-          name?: string,
-          username?: string,
-        ) => Promise<boolean>,
-        this.messageQueueService,
-        this.trackForwardedMessage.bind(this) as (
-          original_msg_id: number,
-          forwarded_msg_id: number,
-          ama_id: UUID,
-        ) => Promise<boolean>,
+        this.knexService,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");
     }
   }
 
-  async addInitialMessage(
-    ama_id: UUID,
-    user_id: string,
-    question: string,
-    tg_msg_id: number,
-    name?: string,
-    username?: string,
-  ): Promise<UUID | null> {
-    // First, ensure user exists in users table
-    await this.upsertUser(user_id, name, username);
+  // Methods related to message queue processing have been removed
+  // These are now handled by the message processor service
 
-    // Create initial message record with default values for analytics fields
-    const data = await this.knexService
-      .knex("message")
-      .insert({
-        ama_id,
-        user_id,
-        question,
-        originality: 0,
-        relevance: 0,
-        clarity: 0,
-        engagement: 0,
-        language: 0,
-        score: 0,
-        processed: false,
-        tg_msg_id,
-      })
-      .returning("id");
+  // Methods for tracking forwarded messages have been removed
+  // as they are no longer needed with the new MessageProcessor approach
 
-    return data.length > 0 ? (data[0] as { id: UUID }).id : null;
+  // Methods for message processing
+  async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
+    return this.knexService
+      .knex("message as m")
+      .join("ama as a", "m.ama_id", "a.id")
+      .select("m.*", "a.thread_id", "a.topic")
+      .where("m.processed", false)
+      .orderBy("m.created_at", "asc")
+      .limit(batchSize);
   }
 
-  async updateMessageAnalysis(tg_msg_id: number, scoreData: CreateScoreData): Promise<boolean> {
-    const data = await this.knexService
-      .knex("message")
-      .where({ tg_msg_id })
-      .update({
-        originality: scoreData.originality,
-        relevance: scoreData.relevance,
-        clarity: scoreData.clarity,
-        engagement: scoreData.engagement,
-        language: scoreData.language,
-        score: scoreData.score,
-        processed: true,
-      })
-      .returning("*");
-
-    return data.length > 0;
+  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      forwarded_msg_id: forwardedMsgId,
+    });
   }
 
-  async trackForwardedMessage(
-    original_msg_id: number,
-    forwarded_msg_id: number,
-    ama_id: UUID,
-  ): Promise<boolean> {
-    const data = await this.knexService
-      .knex("forwarded_message")
-      .insert({
-        original_msg_id,
-        forwarded_msg_id,
-        ama_id,
-      })
-      .returning("*");
-
-    return data.length > 0;
+  async updateMessageWithAnalysis(
+    messageId: UUID,
+    analysisData: {
+      originality: number;
+      relevance: number;
+      clarity: number;
+      engagement: number;
+      language: number;
+      score: number;
+      processed: boolean;
+    },
+  ): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update(analysisData);
   }
 
-  async getForwardedMessageId(
-    original_msg_id: number,
-  ): Promise<{ forwarded_msg_id: number } | null> {
-    const data = await this.knexService
-      .knex<{ forwarded_msg_id: number }>("forwarded_message")
-      .select("forwarded_msg_id")
-      .where("original_msg_id", original_msg_id)
-      .first();
-
-    return data || null;
+  async markMessageAsProcessed(messageId: UUID): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      processed: true,
+    });
   }
 }

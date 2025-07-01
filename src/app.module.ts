@@ -17,7 +17,6 @@ import { AMAModule } from "./modules/ama/ama.module";
 import { session } from "telegraf";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ScheduleServicesModule } from "./modules/schedule/schedule.module";
-import { MessageQueueModule } from "./modules/message-queue/message-queue.module";
 
 // Load environment variables
 config();
@@ -74,7 +73,6 @@ config();
     KnexModule,
     AMAModule,
     ScheduleServicesModule,
-    MessageQueueModule,
   ],
 
   controllers: [AppController],
