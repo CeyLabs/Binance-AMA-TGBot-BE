@@ -29,11 +29,7 @@ import {
 } from "./new-ama/broadcast-ama";
 import { handleEditRequest } from "./new-ama/helper/handle-edit-request";
 import { EDITABLE_FIELDS } from "./new-ama/helper/field-metadata";
-import {
-  handleCancelEdit,
-  handleConfirmEdit,
-  handleEdit,
-} from "./new-ama/edit-ama";
+import { handleCancelEdit, handleConfirmEdit, handleEdit } from "./new-ama/edit-ama";
 import { handleStartAMA, startAMAbyCallback } from "./start-ama/start-ama";
 import { handleAMAQuestion } from "./start-ama/handle-questions";
 import { getQuestionAnalysis } from "./helper/openai-utils";
@@ -57,7 +53,7 @@ import { handleStart } from "./claim-reward/claim-reward";
 export class AMAService {
   constructor(
     private readonly config: ConfigService,
-    private readonly knexService: KnexService
+    private readonly knexService: KnexService,
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -84,19 +80,11 @@ export class AMAService {
   }
 
   async deleteAMA(id: UUID): Promise<boolean> {
-    const result = await this.knexService
-      .knex("ama")
-      .where({ id })
-      .del()
-      .returning("*");
+    const result = await this.knexService.knex("ama").where({ id }).del().returning("*");
     return result.length > 0;
   }
 
-  async addScore(
-    scoreData: CreateScoreData,
-    name?: string,
-    username?: string
-  ): Promise<boolean> {
+  async addScore(scoreData: CreateScoreData, name?: string, username?: string): Promise<boolean> {
     // First, ensure user exists in users table
     await this.upsertUser(scoreData.user_id, name, username);
 
@@ -117,11 +105,7 @@ export class AMAService {
     return data.length > 0; // Return true if insert was successful
   }
 
-  async upsertUser(
-    user_id: string,
-    name?: string,
-    username?: string
-  ): Promise<void> {
+  async upsertUser(user_id: string, name?: string, username?: string): Promise<void> {
     await this.knexService
       .knex("user")
       .insert({
@@ -141,7 +125,7 @@ export class AMAService {
     ama_id: UUID,
     user_id: string,
     score_id: UUID,
-    rank: number
+    rank: number,
   ): Promise<WinnerData | null> {
     const data = await this.knexService
       .knex("winner")
@@ -184,7 +168,7 @@ export class AMAService {
   // Get AMA details by session number
   async getAMABySessionNoAndLang(
     sessionNo: number,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ): Promise<AMA | null> {
     const ama = await this.knexService
       .knex<AMA>("ama")
@@ -195,10 +179,7 @@ export class AMAService {
   }
 
   async getAMABySessionNo(sessionNo: number): Promise<AMA | null> {
-    const ama = await this.knexService
-      .knex<AMA>("ama")
-      .where({ session_no: sessionNo })
-      .first();
+    const ama = await this.knexService.knex<AMA>("ama").where({ session_no: sessionNo }).first();
     return ama || null;
   }
 
@@ -224,10 +205,7 @@ export class AMAService {
     return Boolean(session);
   }
 
-  async isAMAExists(
-    sessionNo: number,
-    language: SupportedLanguage
-  ): Promise<boolean> {
+  async isAMAExists(sessionNo: number, language: SupportedLanguage): Promise<boolean> {
     const session = await this.getAMABySessionNoAndLang(sessionNo, language);
     return Boolean(session);
   }
@@ -289,7 +267,7 @@ export class AMAService {
       .knex("schedule")
       .where("scheduled_time", "<=", now)
       .select("id", "ama_id");
-    return scheduleEntries.map((row) => ({
+    return scheduleEntries.map((row: { id: UUID; ama_id: UUID }) => ({
       scheduleId: row.id,
       amaId: row.ama_id,
     }));
@@ -310,10 +288,7 @@ export class AMAService {
 
   // <<------------------------------------ Analysis ------------------------------------>>
 
-  async getAnalysis(
-    question: string,
-    topic?: string
-  ): Promise<OpenAIAnalysis | string> {
+  async getAnalysis(question: string, topic?: string): Promise<OpenAIAnalysis | string> {
     return getQuestionAnalysis(question, topic);
   }
 
@@ -324,8 +299,8 @@ export class AMAService {
   async start(ctx: BotContext): Promise<void> {
     await handleStart(
       ctx,
-      this.getAMAById.bind(this),
-      this.getWinnersByAMA.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
     );
   }
 
@@ -334,8 +309,15 @@ export class AMAService {
   async newAMA(ctx: BotContext): Promise<void> {
     await handleNewAMA(
       ctx,
-      this.createAMA.bind(this),
-      this.isAMAExists.bind(this)
+      this.createAMA.bind(this) as (
+        sessionNo: number,
+        language: SupportedLanguage,
+        topic?: string,
+      ) => Promise<UUID>,
+      this.isAMAExists.bind(this) as (
+        sessionNo: number,
+        language: SupportedLanguage,
+      ) => Promise<boolean>,
     );
   }
 
@@ -352,8 +334,8 @@ export class AMAService {
     await handleStartAMA(
       ctx,
       groupIds,
-      this.getAMAsBySessionNo.bind(this),
-      this.updateAMA.bind(this)
+      this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
+      this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
     );
   }
 
@@ -362,9 +344,9 @@ export class AMAService {
   async endAMA(ctx: BotContext): Promise<void> {
     await handleEndAMA(
       ctx,
-      this.getAMAsBySessionNo.bind(this),
-      this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
     );
   }
 
@@ -396,28 +378,25 @@ export class AMAService {
     await handleBroadcastNow(
       ctx,
       publicGroupIds,
-      this.getAMAById.bind(this),
-      this.updateAMA.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
     );
   }
 
   // schedule-broadcast_(sessionNo)
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i")
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleBroadcast(ctx: BotContext): Promise<void> {
-    await handleScheduleBroadcast(ctx, this.getAMAById.bind(this));
+    await handleScheduleBroadcast(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+    );
   }
 
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i")
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}`, "i"))
   async confirmBroadcast(ctx: BotContext): Promise<void> {
     if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
     const callbackData = ctx.callbackQuery.data;
-    const match = callbackData.match(
-      `^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`
-    );
+    const match = callbackData.match(`^${CALLBACK_ACTIONS.CONFIRM_SCHEDULE}_${UUID_PATTERN}$`);
 
     if (!match) {
       await ctx.answerCbQuery("Invalid confirmation action.");
@@ -436,44 +415,35 @@ export class AMAService {
     await handleConfirmSchedule(
       ctx,
       amaId as UUID,
-      this.getAMAById.bind(this),
-      this.scheduleAMA.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.scheduleAMA.bind(this) as (id: UUID, time: Date) => Promise<void>,
     );
   }
 
   // Handle `toggle_5m_<amaId>` etc.
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`)
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`))
   async onToggleSchedule(ctx: BotContext) {
-    await handleToggleSchedule(ctx, this.getAMAById.bind(this));
+    await handleToggleSchedule(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+    );
   }
 
   // Handle disabled toggle attempts
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`)
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_DISABLED}_(\\w+)_(${UUID_PATTERN})$`))
   async onToggleDisabled(ctx: BotContext) {
     await ctx.answerCbQuery("⏰ Cannot toggle - this time has already passed!");
   }
 
   // edit-(date|time|sessionNo|reward|winnerCount|formLink|topic|guest)_(id)
-  @Action(
-    new RegExp(
-      `^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`,
-      "i"
-    )
-  )
+  @Action(new RegExp(`^edit-(${Object.values(EDIT_KEYS).join("|")})_${UUID_PATTERN}`, "i"))
   async handleGenericEdit(ctx: BotContext) {
     if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) return;
     const callbackData = ctx.callbackQuery.data;
     if (!callbackData) return;
 
     const match = callbackData.match(
-      new RegExp(
-        `^edit-(${Object.values(EDIT_KEYS).join("|")})_(${UUID_PATTERN})$`,
-        "i"
-      )
+      new RegExp(`^edit-(${Object.values(EDIT_KEYS).join("|")})_(${UUID_PATTERN})$`, "i"),
     );
 
     if (!match) return;
@@ -486,19 +456,15 @@ export class AMAService {
     }
 
     // Add the parent message ID to the editingAnnouncementMsgId
-    if (
-      ctx.callbackQuery.message &&
-      "message_id" in ctx.callbackQuery.message
-    ) {
-      ctx.session.editingAnnouncementMsgId =
-        ctx.callbackQuery.message.message_id;
+    if (ctx.callbackQuery.message && "message_id" in ctx.callbackQuery.message) {
+      ctx.session.editingAnnouncementMsgId = ctx.callbackQuery.message.message_id;
     }
 
     return handleEditRequest(
       ctx,
       field,
       `edit-${field}`,
-      this.getAMAById.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
     );
   }
 
@@ -507,8 +473,8 @@ export class AMAService {
   async confirmEdit(ctx: BotContext): Promise<void> {
     await handleConfirmEdit(
       ctx,
-      this.updateAMA.bind(this),
-      this.getAMAById.bind(this)
+      this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
     );
   }
 
@@ -525,8 +491,8 @@ export class AMAService {
     await startAMAbyCallback(
       ctx,
       groupIds,
-      this.getAMAById.bind(this),
-      this.updateAMA.bind(this)
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
     );
   }
 
@@ -535,46 +501,41 @@ export class AMAService {
   async endAMASession(ctx: BotContext): Promise<void> {
     await endAMAbyCallback(
       ctx,
-      this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
     );
   }
 
   // select-winners_(id)_(winnerCount)
-  @Action(
-    new RegExp(
-      `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
-      "i"
-    )
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`, "i"))
   async selectWinners(ctx: Context): Promise<void> {
     await selectWinnersCallback(
       ctx,
-      this.getAMAById.bind(this),
-      // this.getScoresForAMA.bind(this),
-      this.getScoresForAMA.bind(this)
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
     );
   }
 
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i")
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
     console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
-      this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this),
-      this.addWinner.bind(this),
-      this.updateAMA.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
+      this.addWinner.bind(this) as (
+        ama_id: UUID,
+        user_id: string,
+        score_id: UUID,
+        rank: number,
+      ) => Promise<WinnerData | null>,
+      this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
     );
   }
 
   //broadcast-winners_(id)
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"))
   async broadcastWinners(ctx: Context): Promise<void> {
     const groupIds = {
       public: {
@@ -585,26 +546,21 @@ export class AMAService {
     };
     await handleWiinersBroadcast(
       ctx,
-      this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this),
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
-      this.config.get<string>("BOT_USERNAME")!
+      this.config.get<string>("BOT_USERNAME")!,
     );
   }
 
   //discard-user_(username)_(id)
-  @Action(
-    new RegExp(
-      `^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`,
-      "i"
-    )
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`, "i"))
   async discardUser(ctx: BotContext): Promise<void> {
     await handleDiscardUser(
       ctx,
-      this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
+      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
     );
   }
 
@@ -613,24 +569,25 @@ export class AMAService {
   async resetWinners(ctx: BotContext): Promise<void> {
     await resetWinnersCallback(
       ctx,
-      this.getAMAById.bind(this),
-      this.getScoresForAMA.bind(this),
-      this.isUserWinner.bind(this)
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
+      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
     );
   }
 
   //cancel-winners_(amaId)
-  @Action(
-    new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i")
-  )
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i"))
   async cancelWinners(ctx: BotContext): Promise<void> {
-    await cancelWinnersCallback(ctx, this.getAMAById.bind(this));
+    await cancelWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+    );
   }
 
   // cancel-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelAMA(ctx: BotContext): Promise<void> {
-    await handleNewAMACancel(ctx, this.deleteAMA.bind(this));
+    await handleNewAMACancel(ctx, this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>);
   }
 
   // cancel-ama_(id)
@@ -669,9 +626,16 @@ export class AMAService {
       await handleAMAQuestion(
         ctx,
         groupIds,
-        this.getAMAsByHashtag.bind(this),
-        this.getAnalysis.bind(this),
-        this.addScore.bind(this)
+        this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
+        this.getAnalysis.bind(this) as (
+          question: string,
+          topic?: string,
+        ) => Promise<OpenAIAnalysis | null>,
+        this.addScore.bind(this) as (
+          scoreData: CreateScoreData,
+          name?: string,
+          username?: string,
+        ) => Promise<boolean>,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

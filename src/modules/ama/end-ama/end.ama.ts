@@ -1,19 +1,8 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
-import {
-  AMA,
-  BotContext,
-  GroupInfo,
-  ScoreWithUser,
-  WinnerData,
-} from "../types";
-import {
-  getLanguageText,
-  UUID_FRAGMENT,
-  UUID_PATTERN,
-  validateIdPattern,
-} from "../helper/utils";
+import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData } from "../types";
+import { getLanguageText, UUID_FRAGMENT, UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import {
   buildWinnersMessage,
   congratsImg,
@@ -33,26 +22,20 @@ export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
 
-  const match = text
-    .replace(new RegExp(`^/${AMA_COMMANDS.END}\\s+`), "")
-    .match(/^(\d+)/);
+  const match = text.replace(new RegExp(`^/${AMA_COMMANDS.END}\\s+`), "").match(/^(\d+)/);
   const sessionNo = match ? parseInt(match[1], 10) : NaN;
   if (!sessionNo || sessionNo <= 0) {
-    return void ctx.reply(
-      "Invalid session number. Please provide a valid number."
-    );
+    return void ctx.reply("Invalid session number. Please provide a valid number.");
   }
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
-    return void ctx.reply(
-      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`
-    );
+    return void ctx.reply(`No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`);
   }
 
   const availableAMAs = existingAMAs.filter((ama) => ama.status === "active");
@@ -79,18 +62,14 @@ export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
-  const result = await validateIdPattern(
-    ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i")
-  );
+  const result = await validateIdPattern(ctx, new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"));
   if (!result) return;
 
   const ama = await getAMAById(result.id);
   if (!ama) return void ctx.answerCbQuery("AMA session not found.");
-  if (ama.status !== "active")
-    return void ctx.reply("AMA session is not active.");
+  if (ama.status !== "active") return void ctx.reply("AMA session is not active.");
 
   await selectWinners(ctx, ama, getScoresForAMA, isUserWinner);
 }
@@ -100,7 +79,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
 
@@ -120,9 +99,7 @@ async function selectWinners(
     if (sendCSV?.message_id) {
       await ctx.deleteMessage(loading.message_id);
     } else {
-      await ctx.editMessageText(
-        "❌ CSV generation failed. Please try again later."
-      );
+      await ctx.editMessageText("❌ CSV generation failed. Please try again later.");
       return;
     }
   } else {
@@ -133,47 +110,33 @@ async function selectWinners(
   const sortedScores = getSortedUniqueScores(allScores);
 
   // Send a message with top users with callback btns
-  if (!validateScoresExist(sortedScores, ctx, ama.session_no)) {
+  if (!(await validateScoresExist(sortedScores, ctx, ama.session_no))) {
     return;
   }
 
-  const keyboard = await buildWinnerSelectionKeyboard(
-    sortedScores,
-    ama.id,
-    false,
-    isUserWinner
-  );
+  const keyboard = await buildWinnerSelectionKeyboard(sortedScores, ama.id, false, isUserWinner);
 
-  await ctx.reply(
-    `🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`,
-    {
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: keyboard,
-      },
-    }
-  );
+  await ctx.reply(`🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`, {
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: keyboard,
+    },
+  });
 }
 
 export async function selectWinnersCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
-  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>
+  getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
 ): Promise<void> {
-  const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
+  const callbackData = ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
 
   if (!callbackData) {
     return void ctx.answerCbQuery("Missing callback data.");
   }
 
   // Inline regex parsing
-  const regex = new RegExp(
-    `^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`,
-    "i"
-  );
+  const regex = new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`, "i");
   const match = callbackData.match(regex);
 
   if (!match) {
@@ -193,7 +156,7 @@ export async function selectWinnersCallback(
   }
 
   const scores = await getScoresForAMA(ama.id);
-  if (!validateScoresExist(scores, ctx, ama.session_no)) {
+  if (!(await validateScoresExist(scores, ctx, ama.session_no))) {
     return;
   }
 
@@ -207,9 +170,7 @@ export async function selectWinnersCallback(
 
   const winnersText = generateWinnerAnnouncementText(ama, topWinners);
 
-  await ctx.answerCbQuery(
-    `Selected ${topWinners.length} winners for AMA #${ama.session_no}.`
-  );
+  await ctx.answerCbQuery(`Selected ${topWinners.length} winners for AMA #${ama.session_no}.`);
 
   await ctx.reply(`${winnersText}`, {
     parse_mode: "HTML",
@@ -229,7 +190,7 @@ export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -256,7 +217,7 @@ export async function handleDiscardUser(
   }
 
   const alreadyDiscarded =
-    ctx.session.discardedUsersByAMA[amaId].includes(userId);
+    Array.isArray(ctx.session.discardedUsersByAMA[amaId]) && ctx.session.discardedUsersByAMA[amaId].includes(userId);
 
   if (alreadyDiscarded) {
     await ctx.answerCbQuery("User already discarded 🚫");
@@ -264,7 +225,13 @@ export async function handleDiscardUser(
   }
 
   // Add to discard list
-  ctx.session.discardedUsersByAMA[amaId].push(userId);
+  const discardedUsers = (ctx.session.discardedUsersByAMA?.[amaId] ?? []) as number[];
+  if (Array.isArray(discardedUsers)) {
+    discardedUsers.push(userId);
+    ctx.session.discardedUsersByAMA[amaId] = discardedUsers;
+  } else {
+    ctx.session.discardedUsersByAMA[amaId] = [userId];
+  }
 
   const ama = await fetchAndValidateAMA(getAMAById, id);
   if (!ama) {
@@ -272,18 +239,9 @@ export async function handleDiscardUser(
   }
 
   const discardedUserIds = getDiscardedUserIds(ctx, id);
-  const filteredScores = await getAMAFilteredScores(
-    getScoresForAMA,
-    id,
-    discardedUserIds
-  );
+  const filteredScores = await getAMAFilteredScores(getScoresForAMA, id, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(
-    filteredScores,
-    ama.id,
-    true,
-    isUserWinner
-  );
+  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, true, isUserWinner);
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,
@@ -297,9 +255,9 @@ export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>
+  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
-  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
+  const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;
 
   const { amaId } = result;
@@ -322,12 +280,7 @@ export async function resetWinnersCallback(
   const discardedUserIds = getDiscardedUserIds(ctx, amaId);
   const filteredScores = getFilteredSortedScores(scores, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(
-    filteredScores,
-    ama.id,
-    false,
-    isUserWinner
-  );
+  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, false, isUserWinner);
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,
@@ -340,15 +293,10 @@ export async function confirmWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  addWinner: (
-    ama_id: UUID,
-    user_id: string,
-    score_id: UUID,
-    rank: number
-  ) => Promise<WinnerData | null>,
-  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>
+  addWinner: (ama_id: UUID, user_id: string, score_id: UUID, rank: number) => Promise<WinnerData | null>,
+  updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
 ): Promise<void> {
-  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
+  const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
 
   const { amaId } = result;
@@ -358,11 +306,7 @@ export async function confirmWinnersCallback(
   }
 
   const discardedUserIds = getDiscardedUserIds(ctx, amaId);
-  const filteredScores = await getAMAFilteredScores(
-    getScoresForAMA,
-    ama.id,
-    discardedUserIds
-  );
+  const filteredScores = await getAMAFilteredScores(getScoresForAMA, ama.id, discardedUserIds);
 
   if (filteredScores.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
@@ -383,9 +327,7 @@ export async function confirmWinnersCallback(
     }
   } catch (error) {
     console.error("Error adding winners to database:", error);
-    return void ctx.reply(
-      "Error saving winners to database. Please try again."
-    );
+    return void ctx.reply("Error saving winners to database. Please try again.");
   }
 
   const message = buildWinnersMessage(ama, topWinners);
@@ -415,11 +357,11 @@ export async function handleWiinersBroadcast(
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
-  botUsername: string
+  botUsername: string,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
 
@@ -431,15 +373,9 @@ export async function handleWiinersBroadcast(
   }
 
   // Filter out discarded users
-  const discardedUserIds = new Set(
-    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number)
-  );
+  const discardedUserIds = new Set(((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number));
 
-  const filteredScores = await getAMAFilteredScores(
-    getScoresForAMA,
-    ama.id,
-    discardedUserIds
-  );
+  const filteredScores = await getAMAFilteredScores(getScoresForAMA, ama.id, discardedUserIds);
 
   if (filteredScores.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
@@ -449,24 +385,20 @@ export async function handleWiinersBroadcast(
   const message = buildWinnersMessage(ama, topWinners);
   const publicGroupId = groupIds.public[ama.language];
 
-  const broadcastToPublic = await ctx.telegram.sendPhoto(
-    publicGroupId,
-    congratsImg,
-    {
-      caption: message,
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "Claim Reward",
-              url: `https://t.me/${botUsername}?start=${CALLBACK_ACTIONS.CLAIM_REWARD}_${ama.id}`,
-            },
-          ],
+  const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {
+    caption: message,
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "Claim Reward",
+            url: `https://t.me/${botUsername}?start=${CALLBACK_ACTIONS.CLAIM_REWARD}_${ama.id}`,
+          },
         ],
-      },
-    }
-  );
+      ],
+    },
+  });
 
   // Remove the callback buttons from the message
   if (ctx.callbackQuery && ctx.callbackQuery.message && broadcastToPublic) {
@@ -476,9 +408,7 @@ export async function handleWiinersBroadcast(
   }
 
   if (broadcastToPublic.message_id) {
-    return void ctx.reply(
-      "Winners broadcasted successfully to the public group."
-    );
+    return void ctx.reply("Winners broadcasted successfully to the public group.");
   } else {
     return void ctx.reply("Failed to broadcast winners to the public group.");
   }
@@ -486,9 +416,9 @@ export async function handleWiinersBroadcast(
 
 export async function cancelWinnersCallback(
   ctx: BotContext,
-  getAMAById: (id: UUID) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
-  const result = validateCallbackData(ctx, CALLBACK_ACTIONS.CANCEL_WINNERS);
+  const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CANCEL_WINNERS);
   if (!result) return;
 
   const { amaId } = result;
@@ -503,9 +433,7 @@ export async function cancelWinnersCallback(
   }
 
   await ctx.answerCbQuery("Winner selection cancelled.");
-  await ctx.reply(
-    `Winner selection for AMA #${ama.session_no} has been cancelled.`
-  );
+  await ctx.reply(`Winner selection for AMA #${ama.session_no} has been cancelled.`);
 
   // Edit the confirmation message by removing the buttons
   if (ctx.callbackQuery && ctx.callbackQuery.message) {

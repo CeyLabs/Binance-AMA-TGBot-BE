@@ -2,28 +2,28 @@ import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { SupportedLanguage } from "../types";
 
-export const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const UUID_PATTERN =
-  "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$";
+export const UUID_PATTERN = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$";
 
-export const UUID_FRAGMENT =
-  "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
+export const UUID_FRAGMENT = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
 
 // This function validates the callback data against a given pattern
-export async function validateIdPattern(
-  ctx: Context,
-  pattern: RegExp,
-): Promise<{ id: UUID } | null> {
-  const callbackQuery = ctx.callbackQuery as any;
+export async function validateIdPattern(ctx: Context, pattern: RegExp): Promise<{ id: UUID } | null> {
+  const callbackQuery = ctx.callbackQuery;
 
-  if (!callbackQuery?.data) {
+  if (!callbackQuery) {
     await ctx.answerCbQuery("Missing callback data.", { show_alert: true });
     return null;
   }
 
-  const match = callbackQuery.data.match(pattern);
+  const data = "data" in callbackQuery ? callbackQuery.data : undefined;
+  if (!data) {
+    await ctx.answerCbQuery("Missing callback data.", { show_alert: true });
+    return null;
+  }
+
+  const match = data.match(pattern);
 
   if (!match || !match[1] || !UUID_REGEX.test(match[1])) {
     await ctx.answerCbQuery("Invalid callback format.", { show_alert: true });
