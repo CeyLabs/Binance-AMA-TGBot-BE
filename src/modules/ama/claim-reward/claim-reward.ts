@@ -8,14 +8,21 @@ import { CALLBACK_ACTIONS } from "../ama.constants";
 export async function handleStart(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>
+  getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
 ): Promise<void> {
   const messageText = ctx.text || "";
   const args = messageText.split(" ");
 
   // Check if this is a claim reward deep link
-  if (args && args.length > 1 && args[1].startsWith(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`)) {
-    const amaId = args[1].replace(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`, "") as UUID;
+  if (
+    args &&
+    args.length > 1 &&
+    args[1].startsWith(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`)
+  ) {
+    const amaId = args[1].replace(
+      `${CALLBACK_ACTIONS.CLAIM_REWARD}_`,
+      "",
+    ) as UUID;
 
     try {
       const ama = await getAMAById(amaId);
@@ -49,19 +56,19 @@ export async function handleStart(
                 ],
               ],
             },
-          }
+          },
         );
       } else {
         // User is not a winner
         await ctx.reply(
           `❌ You are not a winner for AMA #${ama.session_no}.\n\n` +
-            `Only winners can claim rewards for this session.`
+            `Only winners can claim rewards for this session.`,
         );
       }
     } catch (error) {
       console.error("Error processing claim:", error);
       await ctx.reply(
-        "❌ Error processing your claim. Please try again later."
+        "❌ Error processing your claim. Please try again later.",
       );
     }
   } else {
@@ -72,7 +79,7 @@ export async function handleStart(
         "Use the following commands:\n" +
         "• /newama - Create a new AMA session\n" +
         "• /startama - Start an existing AMA session\n" +
-        "• /endama - End an AMA session and select winners"
+        "• /endama - End an AMA session and select winners",
     );
   }
 }

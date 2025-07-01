@@ -83,7 +83,7 @@ Respond in the following JSON format:
       .replace(/```$/, "")
       .trim();
 
-    const parsed: OpenAIAnalysis = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as OpenAIAnalysis;
     return parsed;
   } catch (error) {
     console.error("Error fetching analysis:", error);

@@ -6,7 +6,7 @@ import { UUID_PATTERN } from "../../helper/utils";
 import { Context } from "telegraf";
 import { generateAMAScoresCSV, cleanupCSVFile } from "./csv-utils";
 import * as fs from "fs";
-import { Message } from "telegraf/types";
+import { InlineKeyboardButton, Message } from "telegraf/types";
 
 //prettier-ignore
 export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
@@ -34,17 +34,17 @@ export function getSortedUniqueScores(
 /**
  * Extract callback data validation logic
  */
-export function validateCallbackData(
+export async function validateCallbackData(
   ctx: Context,
   action: string,
-): { callbackData: string; amaId: UUID } | null {
+): Promise<{ callbackData: string; amaId: UUID } | null> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery
       ? ctx.callbackQuery.data
       : undefined;
 
   if (!callbackData) {
-    ctx.answerCbQuery("Missing callback data.");
+    await ctx.answerCbQuery("Missing callback data.");
     return null;
   }
 
@@ -52,7 +52,7 @@ export function validateCallbackData(
   const match = callbackData.match(regex);
 
   if (!match) {
-    ctx.answerCbQuery("Invalid callback format.");
+    await ctx.answerCbQuery("Invalid callback format.");
     return null;
   }
 
@@ -103,8 +103,8 @@ export async function buildWinnerSelectionKeyboard(
   amaId: UUID,
   showResetButton = false,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
-): Promise<any[][]> {
-  const keyboard: any[][] = [];
+): Promise<InlineKeyboardButton[][]> {
+  const keyboard: InlineKeyboardButton[][] = [];
 
   // Build keyboard rows for each user
   for (let index = 0; index < Math.min(scores.length, 10); index++) {
@@ -214,13 +214,13 @@ export function buildWinnersMessage(
 /**
  * Validate that scores exist for an AMA
  */
-export function validateScoresExist(
+export async function validateScoresExist(
   scores: ScoreWithUser[],
   ctx: Context,
   amaSessionNo: number,
-): boolean {
+): Promise<boolean> {
   if (scores.length === 0) {
-    ctx.reply(`No scores found for AMA #${amaSessionNo}.`);
+    await ctx.reply(`No scores found for AMA #${amaSessionNo}.`);
     return false;
   }
   return true;
@@ -272,7 +272,6 @@ export async function generateAndSendCSV(
         parse_mode: "HTML",
       },
     );
-
 
     // Clean up the temporary file
     setTimeout(() => {

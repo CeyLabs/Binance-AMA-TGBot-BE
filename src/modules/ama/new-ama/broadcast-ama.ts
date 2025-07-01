@@ -133,16 +133,25 @@ export async function handleToggleSchedule(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
-  const callbackData = (ctx.callbackQuery as any)?.data;
-  const match = callbackData?.match(
-    `^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`,
+  if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
+    await ctx.answerCbQuery("Invalid callback query.");
+    return;
+  }
+
+  const callbackData = ctx.callbackQuery.data;
+  const match = callbackData.match(
+    new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`),
   );
-  if (!match) await ctx.answerCbQuery("Invalid toggle action.");
+
+  if (!match) {
+    await ctx.answerCbQuery("Invalid toggle action.");
+    return;
+  }
 
   const [, key, amaId] = match;
 
   // Get AMA to check if the scheduled time is still valid
-  const ama = await getAMAById(amaId);
+  const ama = await getAMAById(amaId as UUID);
   if (!ama) {
     await ctx.answerCbQuery("❌ AMA not found.");
     return;
@@ -167,10 +176,13 @@ export async function handleToggleSchedule(
   }
 
   ctx.session.broadcastOptions ??= {};
-  ctx.session.broadcastOptions[amaId] ??= {};
+  ctx.session.broadcastOptions[amaId as UUID] ??= {};
 
-  const current = ctx.session.broadcastOptions[amaId][key] ?? false;
-  ctx.session.broadcastOptions[amaId][key] = !current;
+  const current = ctx.session.broadcastOptions[amaId as UUID]?.[key] ?? false;
+  const options = ctx.session.broadcastOptions[amaId as UUID];
+  if (options) {
+    options[key] = !current;
+  }
 
   await ctx.answerCbQuery(`Toggled ${key}: ${!current ? "✅ ON" : "❌ OFF"}`);
 
@@ -183,8 +195,8 @@ export async function handleToggleSchedule(
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: buildScheduleKeyboard(
-      amaId,
-      ctx.session.broadcastOptions[amaId],
+      amaId as UUID,
+      ctx.session.broadcastOptions[amaId as UUID] ?? {},
       validOptions,
     ),
   });
@@ -230,8 +242,7 @@ export async function handleConfirmSchedule(
 
   for (const [key, enabled] of Object.entries(toggles)) {
     if (!enabled) continue;
-    const offset =
-      scheduleOptions.find((o) => o.key === key)?.offsetMinutes || 0;
+    const offset = scheduleOptions.find((o) => o.key === key)?.offsetMinutes || 0;
     const time = amaDateTime.subtract(offset, "minute");
     if (time.isAfter(now)) scheduledTimes.push(time.toDate());
   }
@@ -244,7 +255,7 @@ export async function handleConfirmSchedule(
   try {
     for (const time of scheduledTimes) {
       await scheduleAMA(amaId, time);
-      console.log(`✅ Scheduled AMA ${amaId} at ${time}`);
+      console.log(`✅ Scheduled AMA ${amaId} at ${time.toISOString()}`);
     }
     await ctx.reply(`✅ Scheduled ${scheduledTimes.length} broadcast(s).`);
   } catch (err) {
