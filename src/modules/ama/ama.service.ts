@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject, forwardRef } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 import { Action, Command, On, Start, Update } from "nestjs-telegraf";
@@ -11,6 +11,7 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
+import { MessageQueueService } from "../message-queue/message-queue.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
@@ -54,6 +55,8 @@ export class AMAService {
   constructor(
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
+    @Inject(forwardRef(() => MessageQueueService))
+    private readonly messageQueueService: MessageQueueService,
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -636,9 +639,94 @@ export class AMAService {
           name?: string,
           username?: string,
         ) => Promise<boolean>,
+        this.messageQueueService,
+        this.trackForwardedMessage.bind(this) as (
+          original_msg_id: number,
+          forwarded_msg_id: number,
+          ama_id: UUID,
+        ) => Promise<boolean>,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");
     }
+  }
+
+  async addInitialMessage(
+    ama_id: UUID,
+    user_id: string,
+    question: string,
+    tg_msg_id: number,
+    name?: string,
+    username?: string,
+  ): Promise<UUID | null> {
+    // First, ensure user exists in users table
+    await this.upsertUser(user_id, name, username);
+
+    // Create initial message record with default values for analytics fields
+    const data = await this.knexService
+      .knex("message")
+      .insert({
+        ama_id,
+        user_id,
+        question,
+        originality: 0,
+        relevance: 0,
+        clarity: 0,
+        engagement: 0,
+        language: 0,
+        score: 0,
+        processed: false,
+        tg_msg_id,
+      })
+      .returning("id");
+
+    return data.length > 0 ? (data[0] as { id: UUID }).id : null;
+  }
+
+  async updateMessageAnalysis(tg_msg_id: number, scoreData: CreateScoreData): Promise<boolean> {
+    const data = await this.knexService
+      .knex("message")
+      .where({ tg_msg_id })
+      .update({
+        originality: scoreData.originality,
+        relevance: scoreData.relevance,
+        clarity: scoreData.clarity,
+        engagement: scoreData.engagement,
+        language: scoreData.language,
+        score: scoreData.score,
+        processed: true,
+      })
+      .returning("*");
+
+    return data.length > 0;
+  }
+
+  async trackForwardedMessage(
+    original_msg_id: number,
+    forwarded_msg_id: number,
+    ama_id: UUID,
+  ): Promise<boolean> {
+    const data = await this.knexService
+      .knex("forwarded_message")
+      .insert({
+        original_msg_id,
+        forwarded_msg_id,
+        ama_id,
+      })
+      .returning("*");
+
+    return data.length > 0;
+  }
+
+  async getForwardedMessageId(
+    original_msg_id: number,
+  ): Promise<{ forwarded_msg_id: number } | null> {
+    const data = await this.knexService
+      .knex<{ forwarded_msg_id: number }>("forwarded_message")
+      .select("forwarded_msg_id")
+      .where("original_msg_id", original_msg_id)
+      .first();
+
+    return data || null;
   }
 }
