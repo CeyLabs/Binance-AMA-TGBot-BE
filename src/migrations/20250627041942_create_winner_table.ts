@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       .uuid("score_id")
       .notNullable()
       .references("id")
-      .inTable("score")
+      .inTable("message")
       .onDelete("CASCADE");
     table.integer("rank").notNullable(); // 1st, 2nd, etc.
     table.timestamps(true, true);
