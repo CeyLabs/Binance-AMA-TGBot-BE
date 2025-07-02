@@ -11,7 +11,7 @@ export async function handleAMAQuestion(
     userId: string,
     question: string,
     chatId: number,
-    messageId: number,    
+    messageId: number,
     firstName: string,
     username: string,
   ) => Promise<void>,
@@ -23,6 +23,32 @@ export async function handleAMAQuestion(
   if (message.text && message.text.toLowerCase().includes(`#${AMA_HASHTAG.toLowerCase()}`)) {
     const amaHashtagMatch = message.text.match(new RegExp(`#${AMA_HASHTAG}(\\d+)`, "i"));
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
+
+    // Check if user has first_name
+    if (!message.from.first_name) {
+      await ctx.reply(
+        "⚠️ Please set up a name in your Telegram profile before asking questions in the AMA.",
+        {
+          reply_parameters: {
+            message_id: message.message_id,
+          },
+        },
+      );
+      return;
+    }
+
+    // Check if user has username
+    if (!message.from.username) {
+      await ctx.reply(
+        "⚠️ Please set up a username in your Telegram profile before asking questions in the AMA.",
+        {
+          reply_parameters: {
+            message_id: message.message_id,
+          },
+        },
+      );
+      return;
+    }
 
     if (hashtag) {
       const amas = await getAMAsByHashtag(hashtag);
