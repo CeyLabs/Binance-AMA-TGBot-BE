@@ -67,9 +67,13 @@ export async function handleBroadcastNow(
 }
 
 export const scheduleOptions = [
+  { key: "3d", label: "3 days before", offsetMinutes: 4320 },
   { key: "2d", label: "2 days before", offsetMinutes: 2880 },
   { key: "24h", label: "24 hours before", offsetMinutes: 1440 },
+  { key: "18h", label: "18 hours before", offsetMinutes: 1080 },
+  { key: "12h", label: "12 hours before", offsetMinutes: 720 },
   { key: "6h", label: "6 hours before", offsetMinutes: 360 },
+  { key: "1h", label: "1 hour before", offsetMinutes: 60 },
 ];
 
 export async function handleScheduleBroadcast(

@@ -617,7 +617,6 @@ export class AMAService {
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
-      this.config.get<string>("BOT_USERNAME")!,
     );
   }
 
