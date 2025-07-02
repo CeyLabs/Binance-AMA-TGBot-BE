@@ -1,13 +1,20 @@
 import { Context } from "telegraf";
 import { AMA_HASHTAG } from "../ama.constants";
 import { AMA, GroupInfo } from "../types";
-import { KnexService } from "../../knex/knex.service";
 
 export async function handleAMAQuestion(
   ctx: Context,
   groupIds: GroupInfo,
   getAMAsByHashtag: (hashtag: string) => Promise<AMA[]>,
-  knexService: KnexService,
+  storeAMAQuestion: (
+    amaId: string,
+    userId: string,
+    question: string,
+    chatId: number,
+    messageId: number,    
+    firstName: string,
+    username: string,
+  ) => Promise<void>,
 ): Promise<void> {
   const message = ctx.message;
 
@@ -45,38 +52,15 @@ export async function handleAMAQuestion(
 
         // Store message in database without analytics
         try {
-          // First, ensure user exists in the user table
-          await knexService
-            .knex("user")
-            .insert({
-              user_id: message.from.id.toString(),
-              name: message.from.first_name || "Unknown",
-              username: message.from.username || "Unknown",
-            })
-            .onConflict("user_id")
-            .merge({
-              name: message.from.first_name || "Unknown",
-              username: message.from.username || "Unknown",
-              updated_at: new Date(),
-            });
-
-          // Store the message in the database
-          await knexService.knex("message").insert({
-            ama_id: matchedAMA.id,
-            user_id: message.from.id.toString(),
-            question: question,
-            chat_id: message.chat.id,
-            tg_msg_id: message.message_id,
-            // Set default values for score fields
-            originality: 0,
-            relevance: 0,
-            clarity: 0,
-            engagement: 0,
-            language: 0,
-            score: 0,
-            // Mark as unprocessed so the cron job will pick it up
-            processed: false,
-          });
+          await storeAMAQuestion(
+            matchedAMA.id,
+            message.from.id.toString(),
+            question,
+            message.chat.id,
+            message.message_id,
+            message.from.first_name || "Unknown",
+            message.from.username || "Unknown",
+          );
         } catch (error) {
           console.error("Error processing AMA question:", error);
         }

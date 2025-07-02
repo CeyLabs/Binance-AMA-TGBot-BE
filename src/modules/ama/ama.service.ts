@@ -287,6 +287,73 @@ export class AMAService {
       .orderBy("rank", "asc");
   }
 
+  // Methods for message processing
+  async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
+    return this.knexService
+      .knex("message")
+      .join("ama", "message.ama_id", "ama.id")
+      .select("message.*", "ama.thread_id", "ama.topic")
+      .where("message.processed", false)
+      .orderBy("message.created_at", "asc")
+      .limit(batchSize);
+  }
+
+  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      forwarded_msg_id: forwardedMsgId,
+    });
+  }
+
+  async updateMessageWithAnalysis(
+    messageId: UUID,
+    analysisData: {
+      originality: number;
+      relevance: number;
+      clarity: number;
+      engagement: number;
+      language: number;
+      score: number;
+      processed: boolean;
+    },
+  ): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update(analysisData);
+  }
+
+  async markMessageAsProcessed(messageId: UUID): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      processed: true,
+    });
+  }
+
+  async storeAMAQuestion(
+    amaId: UUID,
+    userId: string,
+    question: string,
+    chatId: number,
+    messageId: number,
+    name?: string,
+    username?: string,
+  ): Promise<void> {
+    // First, ensure user exists in the user table
+    await this.upsertUser(userId, name, username);
+
+    // Store the message in the database
+    await this.knexService.knex("message").insert({
+      ama_id: amaId,
+      user_id: userId,
+      question: question,
+      chat_id: chatId,
+      tg_msg_id: messageId,
+      originality: 0,
+      relevance: 0,
+      clarity: 0,
+      engagement: 0,
+      language: 0,
+      score: 0,
+      processed: false, // Mark as unprocessed so the cron job will pick it up
+    });
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(question: string, topic?: string): Promise<OpenAIAnalysis | string> {
@@ -628,54 +695,18 @@ export class AMAService {
         ctx,
         groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
-        this.knexService,
+        this.storeAMAQuestion.bind(this) as (
+          amaId: UUID,
+          userId: string,
+          question: string,
+          chatId: number,
+          messageId: number,
+          name?: string,
+          username?: string,
+        ) => Promise<void>,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");
     }
-  }
-
-  // Methods related to message queue processing have been removed
-  // These are now handled by the message processor service
-
-  // Methods for tracking forwarded messages have been removed
-  // as they are no longer needed with the new MessageProcessor approach
-
-  // Methods for message processing
-  async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
-    return this.knexService
-      .knex("message as m")
-      .join("ama as a", "m.ama_id", "a.id")
-      .select("m.*", "a.thread_id", "a.topic")
-      .where("m.processed", false)
-      .orderBy("m.created_at", "asc")
-      .limit(batchSize);
-  }
-
-  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
-    await this.knexService.knex("message").where("id", messageId).update({
-      forwarded_msg_id: forwardedMsgId,
-    });
-  }
-
-  async updateMessageWithAnalysis(
-    messageId: UUID,
-    analysisData: {
-      originality: number;
-      relevance: number;
-      clarity: number;
-      engagement: number;
-      language: number;
-      score: number;
-      processed: boolean;
-    },
-  ): Promise<void> {
-    await this.knexService.knex("message").where("id", messageId).update(analysisData);
-  }
-
-  async markMessageAsProcessed(messageId: UUID): Promise<void> {
-    await this.knexService.knex("message").where("id", messageId).update({
-      processed: true,
-    });
   }
 }
