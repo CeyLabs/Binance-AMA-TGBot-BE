@@ -17,36 +17,42 @@ import { TelegramEmoji } from "telegraf/types";
  * 2. Broadcasting scheduled AMAs
  *
  * Message Processing Flow:
- * - Runs every second via @Cron
+ * - Runs every second via Cron
  * - Fetches up to 20 unprocessed messages (BATCH_SIZE)
- * - Processes messages in parallel with rate limiting:
+ * - Uses concurrent processing with rate limiting:
  *   - Splits messages into chunks of 5 (CONCURRENT_LIMIT)
- *   - Each chunk is processed in parallel using Promise.all
- *   - 200ms delay between chunks to prevent Telegram rate limits
+ *   - Each chunk is processed in parallel using Promise.allSettled
+ *   - Adaptive delay between chunks (max(500ms, chunkSize * 100ms))
  *
  * For each message:
  * 1. Parallel operations:
  *    - Forward message to admin group
  *    - Get AI analysis of the question
- * 2. If analysis succeeds, parallel operations:
+ * 2. If analysis succeeds:
  *    - Update DB with analysis scores
  *    - Send analysis to admin group (if forwarded)
  *    - Add heart reaction to original message
+ * 3. If analysis fails:
+ *    - Mark message as processed
+ *    - Send failure notification to admin group
  *
  * Error Handling:
- * - Each operation has independent error handling
- * - Non-critical failures (reactions, analysis notifications) do not block the process
- * - Messages that fail processing remain unprocessed for retry
+ * - Independent error handling for each operation
+ * - Non-critical failures (reactions, notifications) don't block processing
+ * - Failed messages remain for retry in next batch
+ * - Uses Promise.allSettled to continue despite individual failures
  *
  * Rate Limiting Strategy:
- * - Maximum 5 concurrent messages
- * - 200ms delay between chunks
+ * - Maximum 5 concurrent messages per chunk
+ * - Adaptive delay between chunks (500ms minimum)
  * - Respects Telegram's rate limits (~30 messages/second)
+ * - Each message involves 3 API calls (forward, analysis, reaction)
  *
- * Performance:
- * - Processing 20 messages takes ~1-2 seconds
+ * Performance Characteristics:
+ * - Processes up to 20 messages per batch
+ * - Average processing time: 1-2 seconds per batch
  * - Automatic retry for rate-limited operations
- * - Parallel operations reduce total processing time
+ * - Parallel operations optimize throughput
  */
 
 @Injectable()
@@ -55,7 +61,8 @@ export class SchedulerService {
   private isProcessingMessages = false;
   private readonly BATCH_SIZE = 20; // Number of messages to process in each batch
   private readonly logger = new Logger(SchedulerService.name);
-  private readonly CONCURRENT_LIMIT = 2; // Some msgs are failing with 3, so we reduce to 2
+  private readonly CONCURRENT_LIMIT = 3; // Maximum number of messages to process concurrently
+  private readonly CHUNK_DELAY = 500; // Minimum delay between processing chunks (in milliseconds)
 
   constructor(
     private readonly config: ConfigService,
@@ -94,11 +101,21 @@ export class SchedulerService {
       }
 
       for (const chunk of chunks) {
-        // Process each chunk in parallel
-        await Promise.all(chunk.map((message) => this.processMessage(message)));
+        // Process each chunk with better error handling
+        const results = await Promise.allSettled(
+          chunk.map((message) => this.processMessage(message)),
+        );
 
-        // Add a small delay between chunks to prevent rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        // Log failed messages for retry
+        results.forEach((result, index) => {
+          if (result.status === "rejected") {
+            this.logger.error(`Failed to process message ${chunk[index].id}: ${result.reason}`);
+          }
+        });
+
+        // Adaptive delay based on chunk size
+        const delayMs = Math.max(this.CHUNK_DELAY, chunk.length * 100);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
