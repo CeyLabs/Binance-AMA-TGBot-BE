@@ -64,7 +64,10 @@ export async function endAMAbyCallback(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
-  const result = await validateIdPattern(ctx, new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"));
+  const result = await validateIdPattern(
+    ctx,
+    new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"),
+  );
   if (!result) return;
 
   const ama = await getAMAById(result.id);
@@ -129,7 +132,8 @@ export async function selectWinnersCallback(
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
 ): Promise<void> {
-  const callbackData = ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
+  const callbackData =
+    ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
 
   if (!callbackData) {
     return void ctx.answerCbQuery("Missing callback data.");
@@ -217,7 +221,8 @@ export async function handleDiscardUser(
   }
 
   const alreadyDiscarded =
-    Array.isArray(ctx.session.discardedUsersByAMA[amaId]) && ctx.session.discardedUsersByAMA[amaId].includes(userId);
+    Array.isArray(ctx.session.discardedUsersByAMA[amaId]) &&
+    ctx.session.discardedUsersByAMA[amaId].includes(userId);
 
   if (alreadyDiscarded) {
     await ctx.answerCbQuery("User already discarded 🚫");
@@ -293,7 +298,12 @@ export async function confirmWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  addWinner: (ama_id: UUID, user_id: string, score_id: UUID, rank: number) => Promise<WinnerData | null>,
+  addWinner: (
+    ama_id: UUID,
+    user_id: string,
+    score_id: UUID,
+    rank: number,
+  ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
@@ -357,7 +367,7 @@ export async function handleWiinersBroadcast(
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
-  botUsername: string,
+  // botUsername: string,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -373,7 +383,9 @@ export async function handleWiinersBroadcast(
   }
 
   // Filter out discarded users
-  const discardedUserIds = new Set(((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number));
+  const discardedUserIds = new Set(
+    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number),
+  );
 
   const filteredScores = await getAMAFilteredScores(getScoresForAMA, ama.id, discardedUserIds);
 
@@ -388,17 +400,25 @@ export async function handleWiinersBroadcast(
   const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {
     caption: message,
     parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "Claim Reward",
-            url: `https://t.me/${botUsername}?start=${CALLBACK_ACTIONS.CLAIM_REWARD}_${ama.id}`,
-          },
-        ],
-      ],
-    },
+    // reply_markup: {
+    //   // prettier-ignore
+    //   inline_keyboard: [
+    //     [
+    //       { text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}` },
+    //       { text: "Broadcast Now", callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}` },
+    //     ],
+    //   ],
+    // },
   });
+
+  // Pin the congratulation message in the public group
+  if (broadcastToPublic.message_id) {
+    try {
+      await ctx.telegram.pinChatMessage(publicGroupId, broadcastToPublic.message_id);
+    } catch (error) {
+      console.error("Error pinning winner announcement:", error);
+    }
+  }
 
   // Remove the callback buttons from the message
   if (ctx.callbackQuery && ctx.callbackQuery.message && broadcastToPublic) {
