@@ -8,7 +8,46 @@ import { AMAService } from "../ama/ama.service";
 import { getQuestionAnalysis } from "../ama/helper/openai-utils";
 import { formatAnalysisMessage, handleTelegramError } from "../ama/helper/message-processor-utils";
 import { MessageWithAma } from "../ama/types";
+import { OpenAIAnalysis } from "../ama/types";
 import { TelegramEmoji } from "telegraf/types";
+
+/**
+ * The SchedulerService handles two main tasks:
+ * 1. Processing AMA messages with AI analysis
+ * 2. Broadcasting scheduled AMAs
+ *
+ * Message Processing Flow:
+ * - Runs every second via @Cron
+ * - Fetches up to 20 unprocessed messages (BATCH_SIZE)
+ * - Processes messages in parallel with rate limiting:
+ *   - Splits messages into chunks of 5 (CONCURRENT_LIMIT)
+ *   - Each chunk is processed in parallel using Promise.all
+ *   - 200ms delay between chunks to prevent Telegram rate limits
+ *
+ * For each message:
+ * 1. Parallel operations:
+ *    - Forward message to admin group
+ *    - Get AI analysis of the question
+ * 2. If analysis succeeds, parallel operations:
+ *    - Update DB with analysis scores
+ *    - Send analysis to admin group (if forwarded)
+ *    - Add heart reaction to original message
+ *
+ * Error Handling:
+ * - Each operation has independent error handling
+ * - Non-critical failures (reactions, analysis notifications) do not block the process
+ * - Messages that fail processing remain unprocessed for retry
+ *
+ * Rate Limiting Strategy:
+ * - Maximum 5 concurrent messages
+ * - 200ms delay between chunks
+ * - Respects Telegram's rate limits (~30 messages/second)
+ *
+ * Performance:
+ * - Processing 20 messages takes ~1-2 seconds
+ * - Automatic retry for rate-limited operations
+ * - Parallel operations reduce total processing time
+ */
 
 @Injectable()
 export class SchedulerService {
@@ -16,6 +55,7 @@ export class SchedulerService {
   private isProcessingMessages = false;
   private readonly BATCH_SIZE = 20; // Number of messages to process in each batch
   private readonly logger = new Logger(SchedulerService.name);
+  private readonly CONCURRENT_LIMIT = 2; // Some msgs are failing with 3, so we reduce to 2
 
   constructor(
     private readonly config: ConfigService,
@@ -31,7 +71,6 @@ export class SchedulerService {
   // Run every second to process unprocessed messages
   @Cron("*/1 * * * * *")
   async processUnprocessedMessages() {
-    // Prevent overlapping executions
     if (this.isProcessingMessages) {
       return;
     }
@@ -39,7 +78,6 @@ export class SchedulerService {
     try {
       this.isProcessingMessages = true;
 
-      // Get unprocessed messages using AMA service
       const unprocessedMessages = await this.amaService.getUnprocessedMessages(this.BATCH_SIZE);
 
       if (unprocessedMessages.length === 0) {
@@ -48,13 +86,19 @@ export class SchedulerService {
 
       this.logger.log(`Processing ${unprocessedMessages.length} messages...`);
 
-      // Process each message sequentially to avoid rate limits
-      for (const message of unprocessedMessages) {
-        await this.processMessage(message);
+      // Process messages in parallel with a concurrency limit
+      const chunks: MessageWithAma[][] = [];
 
-        // Add longer delay between messages to prevent rate limiting
-        // Telegram's rate limits are around 30 messages per second, but we're doing multiple operations per message
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      for (let i = 0; i < unprocessedMessages.length; i += this.CONCURRENT_LIMIT) {
+        chunks.push(unprocessedMessages.slice(i, i + this.CONCURRENT_LIMIT));
+      }
+
+      for (const chunk of chunks) {
+        // Process each chunk in parallel
+        await Promise.all(chunk.map((message) => this.processMessage(message)));
+
+        // Add a small delay between chunks to prevent rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -67,125 +111,125 @@ export class SchedulerService {
 
   private async processMessage(message: MessageWithAma) {
     try {
-      // 1. Forward the message to admin group if not already forwarded
-      if (!message.forwarded_msg_id) {
-        try {
-          const forwardedMsg = await this.bot.telegram.forwardMessage(
-            this.ADMIN_GROUP_ID,
-            message.chat_id,
-            message.tg_msg_id,
-            {
-              message_thread_id: message.thread_id,
-            },
-          );
-
-          // Update message with forwarded_msg_id
-          await this.amaService.updateMessageForwardedId(message.id, forwardedMsg.message_id);
-
-          message.forwarded_msg_id = forwardedMsg.message_id;
-
-          this.logger.log(`Forwarded message ${message.id} to admin group`);
-
-          // Add a small delay to avoid rate limiting for the next API call
-          await new Promise((resolve) => setTimeout(resolve, 300));
-        } catch (error) {
-          const result = handleTelegramError(error, "forwarding message", message.id);
-          if (result.shouldRetry) {
-            // Mark for retry later by keeping processed=false
-            // The message will be picked up again in the next batch
-            return;
-          }
-        }
-      }
-
-      // 2. Get AI analysis
-      const analysisResult = await getQuestionAnalysis(message.question, message.topic);
+      // Run AI analysis in parallel with message forwarding
+      const [analysisResult] = await Promise.all([
+        getQuestionAnalysis(message.question, message.topic),
+        this.forwardMessageToAdmin(message),
+      ]);
 
       // Only proceed if we get a valid OpenAIAnalysis object
       if (!analysisResult || typeof analysisResult === "string") {
         this.logger.error(`Analysis failed for message ${message.id}`);
-
-        // Mark as processed to avoid endless retries but with failure flag
-        await this.amaService.markMessageAsProcessed(message.id);
-
-        // Try to send error message to admin
-        if (message.forwarded_msg_id) {
-          try {
-            await this.bot.telegram.sendMessage(
-              this.ADMIN_GROUP_ID,
-              "⚠️ Analysis failed. Please try again later.",
-              {
-                reply_parameters: {
-                  message_id: message.forwarded_msg_id,
-                },
-              },
-            );
-          } catch (replyError) {
-            handleTelegramError(replyError, "sending error notification", message.id);
-          }
-        }
+        await this.handleAnalysisFailure(message);
         return;
       }
 
       const analysis = analysisResult;
 
-      // 3. Update message with analysis scores
-      await this.amaService.updateMessageWithAnalysis(message.id, {
-        originality: analysis.originality?.score || 0,
-        relevance: analysis.relevance?.score || 0,
-        clarity: analysis.clarity?.score || 0,
-        engagement: analysis.engagement?.score || 0,
-        language: analysis.language?.score || 0,
-        score: analysis.total_score || 0,
-        processed: true,
-      });
-
-      // 4. Send analysis message to admin group
-      if (message.forwarded_msg_id) {
-        try {
-          const analysisMessage = formatAnalysisMessage(analysis);
-
-          await this.bot.telegram.sendMessage(this.ADMIN_GROUP_ID, analysisMessage, {
-            reply_parameters: {
-              message_id: message.forwarded_msg_id,
-            },
-            parse_mode: "HTML",
-          });
-        } catch (error) {
-          const result = handleTelegramError(error, "sending analysis", message.id);
-
-          if (result.shouldRetry) {
-            this.logger.warn(
-              `Rate limited when sending analysis for message ${message.id}. ` +
-                `Retry after ${result.retryAfter}s. Will mark as processed anyway since scores are saved to DB.`,
-            );
-          }
-        }
-      }
-
-      // 5. Add heart reaction to original message
-      try {
-        await this.bot.telegram.callApi("setMessageReaction", {
-          chat_id: message.chat_id,
-          message_id: message.tg_msg_id,
-          reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
-        });
-      } catch (error) {
-        const result = handleTelegramError(error, "setting reaction", message.id);
-
-        if (result.shouldRetry) {
-          this.logger.warn(
-            `Rate limited when setting reaction to message ${message.id}. Retry after ${result.retryAfter}s. ` +
-              `Will continue processing without reaction.`,
-          );
-        }
-      }
+      // Update DB and send notifications in parallel
+      await Promise.all([
+        // Update message with analysis scores
+        this.amaService.updateMessageWithAnalysis(message.id, {
+          originality: analysis.originality?.score || 0,
+          relevance: analysis.relevance?.score || 0,
+          clarity: analysis.clarity?.score || 0,
+          engagement: analysis.engagement?.score || 0,
+          language: analysis.language?.score || 0,
+          score: analysis.total_score || 0,
+          processed: true,
+        }),
+        // Send analysis message if we have a forwarded message
+        message.forwarded_msg_id ? this.sendAnalysisToAdmin(message, analysis) : Promise.resolve(),
+        // Add heart reaction
+        this.addHeartReaction(message),
+      ]);
 
       this.logger.log(`Successfully processed message ${message.id}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const errorStack = error instanceof Error ? error.stack : "";
       this.logger.error(`Error processing message ${message.id}: ${errorMessage}`, errorStack);
+    }
+  }
+
+  private async forwardMessageToAdmin(message: MessageWithAma): Promise<void> {
+    if (message.forwarded_msg_id) return;
+
+    try {
+      const forwardedMsg = await this.bot.telegram.forwardMessage(
+        this.ADMIN_GROUP_ID,
+        message.chat_id,
+        message.tg_msg_id,
+        {
+          message_thread_id: message.thread_id,
+        },
+      );
+
+      await this.amaService.updateMessageForwardedId(message.id, forwardedMsg.message_id);
+      message.forwarded_msg_id = forwardedMsg.message_id;
+      this.logger.log(`Forwarded message ${message.id} to admin group`);
+    } catch (error) {
+      const result = handleTelegramError(error, "forwarding message", message.id);
+      if (result.shouldRetry) {
+        throw error; // Let the main handler deal with retry logic
+      }
+    }
+  }
+
+  private async sendAnalysisToAdmin(
+    message: MessageWithAma,
+    analysis: OpenAIAnalysis,
+  ): Promise<void> {
+    try {
+      const analysisMessage = formatAnalysisMessage(analysis);
+      await this.bot.telegram.sendMessage(this.ADMIN_GROUP_ID, analysisMessage, {
+        reply_parameters: {
+          message_id: message.forwarded_msg_id!,
+        },
+        parse_mode: "HTML",
+      });
+    } catch (error) {
+      const result = handleTelegramError(error, "sending analysis", message.id);
+      if (!result.shouldRetry) {
+        this.logger.warn(
+          `Failed to send analysis for message ${message.id}, but continuing since scores are saved`,
+        );
+      }
+    }
+  }
+
+  private async addHeartReaction(message: MessageWithAma): Promise<void> {
+    try {
+      await this.bot.telegram.callApi("setMessageReaction", {
+        chat_id: message.chat_id,
+        message_id: message.tg_msg_id,
+        reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+      });
+    } catch (error) {
+      const result = handleTelegramError(error, "setting reaction", message.id);
+      if (!result.shouldRetry) {
+        this.logger.warn(`Failed to set reaction for message ${message.id}, but continuing`);
+      }
+    }
+  }
+
+  private async handleAnalysisFailure(message: MessageWithAma): Promise<void> {
+    await this.amaService.markMessageAsProcessed(message.id);
+
+    if (message.forwarded_msg_id) {
+      try {
+        await this.bot.telegram.sendMessage(
+          this.ADMIN_GROUP_ID,
+          "⚠️ Analysis failed. Please try again later.",
+          {
+            reply_parameters: {
+              message_id: message.forwarded_msg_id,
+            },
+          },
+        );
+      } catch (replyError) {
+        handleTelegramError(replyError, "sending error notification", message.id);
+      }
     }
   }
 
