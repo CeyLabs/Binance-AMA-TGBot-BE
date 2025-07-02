@@ -190,9 +190,9 @@ export function buildWinnersMessage(
   const winnersText = winners
     .map((user, i) => {
       const emoji = placeEmojis[i] || `${i + 1}.`;
-      return includeScores
-        ? `${emoji} <b>${user.username}</b> - Score: ${user.score}`
-        : `${emoji} <b>${user.username}</b>`;
+      const userLink = `<a href="tg://user?id=${user.user_id}">${user.name || user.username || user.user_id}</a>`;
+      const scoreText = includeScores ? ` - Score: ${user.score}` : "";
+      return `${emoji} ${userLink} ${scoreText}`;
     })
     .join("\n");
 
