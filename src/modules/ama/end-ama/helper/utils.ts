@@ -180,13 +180,19 @@ export async function getAMAFilteredScores(
   return getFilteredSortedScores(scores, discardedUserIds);
 }
 
-export function buildWinnersMessage(ama: AMA, winners: ScoreWithUser[]): string {
+export function buildWinnersMessage(
+  ama: AMA,
+  winners: ScoreWithUser[],
+  includeScores: boolean = false,
+): string {
   const sessionDate = ama.created_at ? dayjs(ama.created_at).format("MMMM D") : "Unknown Date";
 
   const winnersText = winners
     .map((user, i) => {
       const emoji = placeEmojis[i] || `${i + 1}.`;
-      return `${emoji} <b>${user.username}</b>`;
+      return includeScores
+        ? `${emoji} <b>${user.username}</b> - Score: ${user.score}`
+        : `${emoji} <b>${user.username}</b>`;
     })
     .join("\n");
 

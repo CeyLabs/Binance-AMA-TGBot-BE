@@ -340,17 +340,19 @@ export async function confirmWinnersCallback(
     return void ctx.reply("Error saving winners to database. Please try again.");
   }
 
-  const message = buildWinnersMessage(ama, topWinners);
+  const message = buildWinnersMessage(ama, topWinners, true); // Show scores in admin message
 
   await ctx.sendPhoto(congratsImg, {
     caption: message,
     parse_mode: "HTML",
     reply_markup: {
-      // prettier-ignore
       inline_keyboard: [
         [
           { text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}` },
-          { text: "Broadcast Now", callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}` },
+          {
+            text: "Broadcast Now",
+            callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}`,
+          },
         ],
       ],
     },
@@ -367,7 +369,6 @@ export async function handleWiinersBroadcast(
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
-  // botUsername: string,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -394,21 +395,12 @@ export async function handleWiinersBroadcast(
   }
 
   const topWinners = filteredScores.slice(0, 5); // Display top 5 only
-  const message = buildWinnersMessage(ama, topWinners);
+  const message = buildWinnersMessage(ama, topWinners, false); // Don't show scores in public message
   const publicGroupId = groupIds.public[ama.language];
 
   const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {
     caption: message,
     parse_mode: "HTML",
-    // reply_markup: {
-    //   // prettier-ignore
-    //   inline_keyboard: [
-    //     [
-    //       { text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}` },
-    //       { text: "Broadcast Now", callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}` },
-    //     ],
-    //   ],
-    // },
   });
 
   // Pin the congratulation message in the public group
