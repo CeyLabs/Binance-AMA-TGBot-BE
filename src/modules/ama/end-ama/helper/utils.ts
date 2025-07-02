@@ -121,7 +121,7 @@ export async function buildWinnerSelectionKeyboard(
 
     // prettier-ignore
     keyboard.push([
-      {text: displayText, callback_data: "noop"},
+      {text: displayText, url: `tg://user?id=${user.user_id}`},
       {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`},
     ]);
   }
