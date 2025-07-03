@@ -138,3 +138,9 @@ export interface WinnerWithUser extends WinnerData {
   name: string | null;
   username: string | null;
 }
+
+export interface UserDetails {
+  user_id: string;
+  username: string | null;
+  name: string | null;
+}

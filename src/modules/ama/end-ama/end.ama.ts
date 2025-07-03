@@ -305,6 +305,7 @@ export async function confirmWinnersCallback(
     rank: number,
   ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+  deleteWinnersByAMA: (amaId: UUID) => Promise<boolean>,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -332,6 +333,13 @@ export async function confirmWinnersCallback(
   // Add winners to database
   try {
     for (let i = 0; i < topWinners.length; i++) {
+      // Delete existing winners for this AMA
+      const deleted = await deleteWinnersByAMA(ama.id);
+      if (!deleted) {
+        console.warn(`No winners were deleted for AMA #${ama.id}.`);
+      }
+
+      // Check if the winner already exists
       const winner = topWinners[i];
       await addWinner(ama.id, winner.user_id, winner.id, i + 1);
     }

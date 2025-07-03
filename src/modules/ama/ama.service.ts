@@ -22,6 +22,7 @@ import {
   ScoreWithUser,
   WinnerData,
   SupportedLanguage,
+  UserDetails,
 } from "./types";
 import {
   handleBroadcastNow,
@@ -46,6 +47,11 @@ import {
   selectWinnersCallback,
   cancelWinnersCallback,
 } from "./end-ama/end.ama";
+import {
+  handleSelectWinners,
+  selectWinnersByCallback,
+  forceSelectWinnersCallback,
+} from "./end-ama/select-winners";
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
@@ -317,6 +323,15 @@ export class AMAService {
       .orderBy("rank", "asc");
   }
 
+  // Get user details by ID
+  async getUserById(userId: string): Promise<UserDetails | undefined> {
+    return this.knexService
+      .knex<UserDetails>("user")
+      .select("user_id", "username", "name")
+      .where({ user_id: userId })
+      .first();
+  }
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -380,6 +395,16 @@ export class AMAService {
     });
   }
 
+  // Delete all the winners for a specific AMA
+  async deleteWinnersByAMA(amaId: UUID): Promise<boolean> {
+    const result = await this.knexService
+      .knex("winner")
+      .where({ ama_id: amaId })
+      .del()
+      .returning("*");
+    return result.length > 0; // Return true if winners were deleted
+  }
+
   // <<------------------------------------ Analysis ------------------------------------>>
 
   async getAnalysis(question: string, topic?: string): Promise<OpenAIAnalysis | string> {
@@ -435,11 +460,23 @@ export class AMAService {
 
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
-  async endAMA(ctx: BotContext): Promise<void> {
+  async handleEndAMACommand(ctx: Context): Promise<void> {
     await handleEndAMA(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  @Command(AMA_COMMANDS.SELECT_WINNERS)
+  async handleSelectWinnersCommand(ctx: Context): Promise<void> {
+    await handleSelectWinners(
+      ctx,
+      this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
       this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
@@ -625,6 +662,7 @@ export class AMAService {
         rank: number,
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+      this.deleteWinnersByAMA.bind(this) as (amaId: UUID) => Promise<boolean>,
     );
   }
 
@@ -648,7 +686,7 @@ export class AMAService {
 
   //discard-user_(username)_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`, "i"))
-  async discardUser(ctx: BotContext): Promise<void> {
+  async handleDiscardUserCallback(ctx: BotContext): Promise<void> {
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -663,7 +701,31 @@ export class AMAService {
     await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
-      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  // Handle select-winners-cmd callback
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS_CMD}_${UUID_PATTERN}`, "i"))
+  async handleSelectWinnersCmdCallback(ctx: Context): Promise<void> {
+    await selectWinnersByCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  // Handle force-select-winners callback
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.FORCE_SELECT_WINNERS}_${UUID_PATTERN}`, "i"))
+  async handleForceSelectWinnersCallback(ctx: Context): Promise<void> {
+    await forceSelectWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }

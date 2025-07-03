@@ -4,6 +4,7 @@ export const AMA_COMMANDS = {
   NEW: "newama",
   START: "startama",
   END: "endama",
+  SELECT_WINNERS: "selectwinners",
 };
 
 export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
@@ -54,6 +55,8 @@ export const CALLBACK_ACTIONS = {
 
   // Callback actions for winner selection
   SELECT_WINNERS: "select-winners",
+  SELECT_WINNERS_CMD: "select-winners-cmd",
+  FORCE_SELECT_WINNERS: "force-select-winners",
   DISCARD_WINNER: "discard-winner",
   RESET_WINNERS: "reset-winners",
   CONFIRM_WINNERS: "confirm-winners",
