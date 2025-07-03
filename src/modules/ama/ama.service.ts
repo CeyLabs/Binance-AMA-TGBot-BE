@@ -252,9 +252,9 @@ export class AMAService {
       ]);
   }
 
-  // Check if user is a winner of any AMA within past 3 months
-  async isUserWinner(userId: string): Promise<{ bool: boolean }> {
-    const threeMonthsAgo = dayjs().subtract(3, "month").toDate();
+  // Get number of times user won in the past 3 months
+  async winCount(userId: string): Promise<{ wins: number }> {
+    const threeMonthsAgo = dayjs().subtract(1, "month").toDate();
 
     const result = await this.knexService
       .knex<WinnerData>("winner")
@@ -264,7 +264,7 @@ export class AMAService {
       .first();
 
     const count = result ? parseInt(result.count, 10) : 0;
-    return { bool: count > 0 };
+    return { wins: count };
   }
 
   async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
@@ -426,7 +426,7 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -583,7 +583,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -639,7 +639,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -650,7 +650,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 

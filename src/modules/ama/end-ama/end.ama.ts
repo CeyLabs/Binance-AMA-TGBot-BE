@@ -22,7 +22,7 @@ export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -41,7 +41,7 @@ export async function handleEndAMA(
   const availableAMAs = existingAMAs.filter((ama) => ama.status === "active");
 
   if (availableAMAs.length === 1) {
-    return selectWinners(ctx, availableAMAs[0], getScoresForAMA, isUserWinner);
+    return selectWinners(ctx, availableAMAs[0], getScoresForAMA, winCount);
   } else if (availableAMAs.length > 1) {
     return void ctx.reply(`Select the community group to End AMA`, {
       reply_markup: {
@@ -62,7 +62,7 @@ export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -74,7 +74,7 @@ export async function endAMAbyCallback(
   if (!ama) return void ctx.answerCbQuery("AMA session not found.");
   if (ama.status !== "active") return void ctx.reply("AMA session is not active.");
 
-  await selectWinners(ctx, ama, getScoresForAMA, isUserWinner);
+  await selectWinners(ctx, ama, getScoresForAMA, winCount);
 }
 
 // Generic function to start an AMA session
@@ -82,7 +82,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<void> {
   await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
 
@@ -117,7 +117,7 @@ async function selectWinners(
     return;
   }
 
-  const keyboard = await buildWinnerSelectionKeyboard(sortedScores, ama.id, false, isUserWinner);
+  const keyboard = await buildWinnerSelectionKeyboard(sortedScores, ama.id, false, winCount);
 
   await ctx.reply(`🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`, {
     parse_mode: "HTML",
@@ -194,7 +194,7 @@ export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -246,7 +246,7 @@ export async function handleDiscardUser(
   const discardedUserIds = getDiscardedUserIds(ctx, id);
   const filteredScores = await getAMAFilteredScores(getScoresForAMA, id, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, true, isUserWinner);
+  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, true, winCount);
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,
@@ -260,7 +260,7 @@ export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;
@@ -285,7 +285,7 @@ export async function resetWinnersCallback(
   const discardedUserIds = getDiscardedUserIds(ctx, amaId);
   const filteredScores = getFilteredSortedScores(scores, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, false, isUserWinner);
+  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, false, winCount);
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,

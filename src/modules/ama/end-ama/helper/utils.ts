@@ -96,7 +96,7 @@ export async function buildWinnerSelectionKeyboard(
   scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<InlineKeyboardButton[][]> {
   const keyboard: InlineKeyboardButton[][] = [];
 
@@ -108,11 +108,12 @@ export async function buildWinnerSelectionKeyboard(
     let displayText = `${place} ${user.username}${scoreDisplay}`;
 
     // Check if user is a past winner (if function is provided)
-    if (isUserWinner) {
+    if (winCount) {
       try {
-        const { bool: isPastWinner } = await isUserWinner(user.user_id);
-        if (isPastWinner) {
-          displayText = "🏆 " + displayText;
+        const { wins } = await winCount(user.user_id);
+        console.log(`User ${user.user_id} has won ${wins} times in the past.`);
+        if (wins > 0) {
+          displayText = `(🏆x${wins}) ${displayText}`;
         }
       } catch (error) {
         console.error("Error checking past winner status:", error);
