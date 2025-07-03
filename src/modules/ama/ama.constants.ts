@@ -19,6 +19,7 @@ export const EDIT_KEYS = {
   FORM_LINK: "formLink",
   TOPIC: "topic",
   GUEST: "guest",
+  BANNER: "banner",
 };
 
 export const CALLBACK_ACTIONS = {
@@ -28,6 +29,7 @@ export const CALLBACK_ACTIONS = {
   EDIT_SESSION: `edit-${EDIT_KEYS.SESSION_NO}`,
   EDIT_REWARD: `edit-${EDIT_KEYS.REWARD}`,
   EDIT_WINNERS: `edit-${EDIT_KEYS.WINNER_COUNT}`,
+  EDIT_BANNER: `edit-${EDIT_KEYS.BANNER}`,
   EDIT_FORM: `edit-${EDIT_KEYS.FORM_LINK}`,
   ADD_TOPIC: `edit-${EDIT_KEYS.TOPIC}`,
   ADD_GUEST: `edit-${EDIT_KEYS.GUEST}`,

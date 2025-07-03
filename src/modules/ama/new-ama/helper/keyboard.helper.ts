@@ -23,6 +23,10 @@ export const NewAMAKeyboard = (id: UUID): InlineKeyboardMarkup => {
       Markup.button.callback("Add Special Guest", `${CALLBACK_ACTIONS.ADD_GUEST}_${id}`),
     ],
     [
+      Markup.button.callback("Edit Banner", `${CALLBACK_ACTIONS.EDIT_BANNER}_${id}`),
+      // Markup.button.callback("Confirm Changes", `${CALLBACK_ACTIONS.EDIT_CONFIRM}_${id}`),
+    ],
+    [
       Markup.button.callback("Cancel", `${CALLBACK_ACTIONS.CANCEL}_${id}`),
       Markup.button.callback("✅ Confirm", `${CALLBACK_ACTIONS.CONFIRM}_${id}`),
     ],

@@ -21,6 +21,7 @@ export interface AMA {
   topic: string;
   hashtag: string;
   thread_id?: number;
+  banner_file_id?: string;
   created_at?: Date;
   updated_at?: Date;
 }

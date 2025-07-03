@@ -35,12 +35,13 @@ export async function handleBroadcastNow(
     reward: ama.reward,
     winner_count: ama.winner_count,
     form_link: ama.form_link,
+    banner_file_id: ama.banner_file_id,
   });
 
   const publicGroupId = publicGroupIds[ama.language];
 
-  // Send the announcement to the public group
-  const sent = await ctx.telegram.sendPhoto(publicGroupId, imageUrl, {
+  // Send the announcement to the public group using custom banner if available
+  const sent = await ctx.telegram.sendPhoto(publicGroupId, ama.banner_file_id || imageUrl, {
     caption: message,
     parse_mode: "HTML",
   });

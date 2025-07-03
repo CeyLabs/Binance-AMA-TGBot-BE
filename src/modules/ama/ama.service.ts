@@ -12,6 +12,7 @@ import {
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
+import { handleBannerUpload } from "./new-ama/edit-ama";
 import {
   AMA,
   BotContext,
@@ -225,6 +226,17 @@ export class AMAService {
       });
 
     return true;
+  }
+
+  // Update banner for an AMA
+  async updateBanner(amaId: UUID, file_id: string): Promise<AMA | null> {
+    await this.knexService.knex<AMA>("ama").where("id", amaId).update({
+      banner_file_id: file_id,
+      updated_at: new Date(),
+    });
+
+    // Return the updated AMA
+    return this.getAMAById(amaId);
   }
 
   // Get scores for a specific AMA
@@ -707,5 +719,14 @@ export class AMAService {
     } else {
       await ctx.reply("This command is not available in this chat.");
     }
+  }
+
+  @On("photo")
+  async handleBannerUpload(ctx: BotContext) {
+    await handleBannerUpload(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.updateBanner.bind(this) as (amaId: UUID, file_id: string) => Promise<AMA | null>,
+    );
   }
 }
