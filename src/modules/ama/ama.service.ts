@@ -97,10 +97,8 @@ export class AMAService {
         user_id: scoreData.user_id,
         question: scoreData.question,
         originality: scoreData.originality,
-        relevance: scoreData.relevance,
         clarity: scoreData.clarity,
         engagement: scoreData.engagement,
-        language: scoreData.language,
         score: scoreData.score,
       })
       .returning("*");
@@ -320,10 +318,8 @@ export class AMAService {
     messageId: UUID,
     analysisData: {
       originality: number;
-      relevance: number;
       clarity: number;
       engagement: number;
-      language: number;
       score: number;
       processed: boolean;
     },
@@ -357,10 +353,8 @@ export class AMAService {
       chat_id: chatId,
       tg_msg_id: messageId,
       originality: 0,
-      relevance: 0,
       clarity: 0,
       engagement: 0,
-      language: 0,
       score: 0,
       processed: false, // Mark as unprocessed so the cron job will pick it up
     });

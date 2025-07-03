@@ -154,10 +154,8 @@ export class SchedulerService {
         // Update message with analysis scores
         this.amaService.updateMessageWithAnalysis(message.id, {
           originality: analysis.originality?.score || 0,
-          relevance: analysis.relevance?.score || 0,
           clarity: analysis.clarity?.score || 0,
           engagement: analysis.engagement?.score || 0,
-          language: analysis.language?.score || 0,
           score: analysis.total_score || 0,
           processed: true,
         }),

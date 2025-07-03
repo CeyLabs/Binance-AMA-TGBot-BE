@@ -13,12 +13,10 @@ export async function up(knex: Knex): Promise<void> {
       .inTable("user")
       .onDelete("RESTRICT");
     table.text("question").notNullable();
-    table.integer("originality").notNullable();
-    table.integer("relevance").notNullable();
-    table.integer("clarity").notNullable();
-    table.integer("engagement").notNullable();
-    table.integer("language").notNullable();
-    table.integer("score").notNullable();
+    table.integer("originality").notNullable(); // Score out of 10
+    table.integer("clarity").notNullable(); // Score out of 10
+    table.integer("engagement").notNullable(); // Score out of 10
+    table.integer("score").notNullable(); // Combined score (sum of all criteria)
     table.boolean("processed").notNullable().defaultTo(false);
     table.bigInteger("tg_msg_id").notNullable();
     table.bigInteger("forwarded_msg_id").nullable();

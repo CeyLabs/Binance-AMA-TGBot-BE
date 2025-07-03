@@ -13,14 +13,10 @@ export function formatAnalysisMessage(analysis: OpenAIAnalysis): string {
     `<b>📊 AI Analysis</b>\n\n` +
     `<b>✨ Originality:</b> ${analysis.originality?.score}/10\n` +
     `<i>${analysis.originality?.comment}</i>\n\n` +
-    `<b>🎯 Relevance:</b> ${analysis.relevance?.score}/10\n` +
-    `<i>${analysis.relevance?.comment}</i>\n\n` +
     `<b>🔍 Clarity:</b> ${analysis.clarity?.score}/10\n` +
     `<i>${analysis.clarity?.comment}</i>\n\n` +
     `<b>📢 Engagement:</b> ${analysis.engagement?.score}/10\n` +
     `<i>${analysis.engagement?.comment}</i>\n\n` +
-    `<b>✍️ Language:</b> ${analysis.language?.score}/10\n` +
-    `<i>${analysis.language?.comment}</i>\n\n` +
     `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`
   );
 }

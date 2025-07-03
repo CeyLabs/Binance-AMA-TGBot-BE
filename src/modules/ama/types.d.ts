@@ -53,10 +53,8 @@ interface Score {
 
 export interface OpenAIAnalysis {
   originality: Score;
-  relevance: Score;
   clarity: Score;
   engagement: Score;
-  language: Score;
   total_score: number;
 }
 
@@ -74,10 +72,8 @@ export interface ScoreData {
   user_id: string;
   question: string;
   originality: number;
-  relevance: number;
   clarity: number;
   engagement: number;
-  language: number;
   score: number;
   processed: boolean;
   tg_msg_id: number;
@@ -91,10 +87,8 @@ export interface CreateScoreData {
   user_id: string;
   question: string;
   originality: number;
-  relevance: number;
   clarity: number;
   engagement: number;
-  language: number;
   score: number;
 }
 
