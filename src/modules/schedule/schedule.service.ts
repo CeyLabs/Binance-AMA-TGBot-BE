@@ -13,31 +13,31 @@ import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
 
 /**
  * SchedulerService - Handles AMA message processing and scheduled broadcasts
- * 
+ *
  * Key Components:
  * --------------
- * Message Processing 
+ * Message Processing
  *    - Fetches up to 20 unprocessed messages per batch
  *    - Processes in chunks of 2 concurrent messages
  *    - Each message involves:
  *      ➜ AI analysis of question content
  *      ➜ Forwarding to admin group
  *      ➜ Adding reactions and analysis results
- * 
+ *
  * Rate Limiting:
  * -------------
  * - Concurrent processing: 2 messages at a time
  * - Chunk delay: max(500ms, messages * 100ms)
  * - Exponential backoff on rate limits
  * - Retries: Up to 5 attempts per chunk
- * 
+ *
  * Error Handling:
  * --------------
  * - Independent error handling per operation
  * - Graceful degradation (continues despite non-critical failures)
  * - Rate limit detection and automatic retries
  * - Detailed error logging and admin notifications
- * 
+ *
  * Performance:
  * -----------
  * - Processing capacity: ~40 messages/minute
@@ -134,11 +134,68 @@ export class SchedulerService {
 
   private async processMessage(message: MessageWithAma) {
     try {
-      // Run AI analysis in parallel with message forwarding
-      const [analysisResult] = await Promise.all([
-        getQuestionAnalysis(message.question, message.topic),
-        this.forwardMessageToAdmin(message),
-      ]);
+      // First forward message to admin
+      await this.forwardMessageToAdmin(message);
+
+      // Check for duplicates
+      const isDuplicate = await this.amaService.checkDuplicateQuestion(
+        message.ama_id,
+        message.question,
+      );
+
+      this.logger.log(
+        `Message ${message.id} duplicate check: ${isDuplicate ? "DUPLICATE" : "UNIQUE"}`,
+      );
+
+      if (isDuplicate) {
+        this.logger.log(`Handling duplicate message ${message.id}`);
+
+        try {
+          // For duplicates: set scores to 0 and mark as processed
+          await this.amaService.updateMessageWithAnalysis(message.id, {
+            originality: 0,
+            clarity: 0,
+            engagement: 0,
+            score: 0,
+            processed: true,
+          });
+          this.logger.log(`Set zero scores for duplicate message ${message.id}`);
+
+          // Add poop reaction
+          await this.bot.telegram.callApi("setMessageReaction", {
+            chat_id: message.chat_id,
+            message_id: message.tg_msg_id,
+            reaction: [{ type: "emoji", emoji: "💩" as TelegramEmoji }],
+          });
+          this.logger.log(`Added 💩 reaction to duplicate message ${message.id}`);
+
+          // Notify admin if we have the forwarded message ID
+          if (message.forwarded_msg_id) {
+            await this.bot.telegram.sendMessage(
+              this.ADMIN_GROUP_ID,
+              "⚠️ Duplicate question detected! Scores set to 0.",
+              {
+                reply_parameters: {
+                  message_id: message.forwarded_msg_id,
+                },
+              },
+            );
+            this.logger.log(`Notified admin about duplicate message ${message.id}`);
+          }
+
+          this.logger.log(`Successfully processed duplicate message ${message.id}`);
+          return; // Important: stop processing here for duplicates
+        } catch (error) {
+          this.logger.error(`Error processing duplicate message ${message.id}: ${error}`);
+          // Still return to prevent further processing
+          return;
+        }
+      }
+
+      this.logger.log(`Processing unique message ${message.id} with AI analysis`);
+
+      // For unique messages: Run AI analysis and handle normally
+      const analysisResult = await getQuestionAnalysis(message.question, message.topic);
 
       // Only proceed if we get a valid OpenAIAnalysis object
       if (!analysisResult || typeof analysisResult === "string") {
@@ -165,7 +222,7 @@ export class SchedulerService {
         this.addHeartReaction(message),
       ]);
 
-      this.logger.log(`Successfully processed message ${message.id}`);
+      this.logger.log(`Successfully processed unique message ${message.id}`);
     } catch (error) {
       this.logger.error(`Error processing message ${message.id}: ${error}`);
     }

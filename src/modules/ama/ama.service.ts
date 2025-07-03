@@ -58,6 +58,26 @@ export class AMAService {
     private readonly knexService: KnexService,
   ) {}
 
+  // Check if a question is a duplicate within the same AMA session
+  async checkDuplicateQuestion(amaId: UUID, question: string): Promise<boolean> {
+    if (!question || question.trim() === "") return false;
+
+    // Normalize the input question
+    const normalizedQuestion = question.toLowerCase().trim();
+
+    // Find any existing messages with the same normalized question text
+    const result = await this.knexService
+      .knex("message")
+      .where({ ama_id: amaId, processed: true }) // Only check with processed messages
+      .whereRaw("LOWER(TRIM(question)) = ?", [normalizedQuestion])
+      .count("* as count")
+      .first();
+
+    // Convert count to number and check if > 0
+    const count = result ? parseInt(result.count as string, 10) : 0;
+    return count > 0;
+  }
+
   // <<------------------------------------ Database Operations ------------------------------------>>
 
   // Insert the AMA details into the database
