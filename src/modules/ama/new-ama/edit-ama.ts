@@ -6,7 +6,35 @@ import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
 import { UUID } from "crypto";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
-import { convertDateToUTC, convertTimeToUTC } from "../../../utils/date-utils";
+import * as dayjs from "dayjs";
+import * as utc from "dayjs/plugin/utc";
+import * as timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+export function convertDateTimeToUTC(userDate: string, userTime: string): Date {
+  // Parse DD/MM/YYYY
+  const dateParts = userDate.split("/");
+  if (dateParts.length !== 3) {
+    throw new Error(`Invalid date format: ${userDate}`);
+  }
+
+  const [day, month, year] = dateParts;
+  const formattedDate = `${year}-${month}-${day}`; // YYYY-MM-DD
+
+  // Ensure time is HH:mm:ss
+  const timeWithSeconds = /^\d{2}:\d{2}$/.test(userTime) ? `${userTime}:00` : userTime;
+
+  const combined = `${formattedDate}T${timeWithSeconds}`;
+
+  const ksaTime = dayjs.tz(combined, "Asia/Riyadh");
+
+  if (!ksaTime.isValid()) {
+    throw new Error(`Invalid datetime: ${combined}`);
+  }
+
+  return ksaTime.utc().toDate(); // final UTC Date object
+}
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
@@ -105,28 +133,29 @@ export async function handleConfirmEdit(
   }
 
   // Convert date and time fields to UTC if they are being updated
+  // Combine date and time into UTC datetime if either is updated
   if (fieldMeta.column === "date" || fieldMeta.column === "time") {
     const ama = await getAMAById(AMA_ID);
-    if (ama) {
-      console.log(`[EDIT_AMA] Original AMA data from DB - date: ${ama.date}, time: ${ama.time}`);
-      console.log(`[EDIT_AMA] New value being set: ${fieldMeta.column} = ${newValue}`);
-
-      if (fieldMeta.column === "date") {
-        const convertedDate = convertDateToUTC(newValue, ama.time);
-        console.log(
-          `[EDIT_AMA] Converting KSA date ${newValue} with time ${ama.time} to UTC: ${convertedDate}`,
-        );
-        updateData["date"] = convertedDate;
-      } else {
-        const convertedTime = convertTimeToUTC(newValue, ama.date);
-        console.log(
-          `[EDIT_AMA] Converting KSA time ${newValue} with date ${ama.date} to UTC: ${convertedTime}`,
-        );
-        updateData["time"] = convertedTime;
-      }
-
-      console.log(`[EDIT_AMA] Final update data:`, updateData);
+    if (!ama) {
+      await ctx.reply("❌ AMA not found.");
+      return;
     }
+
+    const newDate =
+      fieldMeta.column === "date"
+        ? String(newValue)
+        : dayjs(ama.datetime).tz("Asia/Riyadh").format("DD/MM/YYYY");
+
+    const newTime =
+      fieldMeta.column === "time"
+        ? String(newValue)
+        : dayjs(ama.datetime).tz("Asia/Riyadh").format("HH:mm:ss");
+
+    const datetimeUTC = convertDateTimeToUTC(newDate, newTime);
+
+    // updateData["date"] = dayjs(newDate, "DD/MM/YYYY").format("YYYY-MM-DD");
+    // updateData["time"] = /^\d{2}:\d{2}$/.test(newTime) ? `${newTime}:00` : newTime;
+    updateData["datetime"] = datetimeUTC;
   }
 
   const success = await updateAMA(AMA_ID, updateData);
@@ -142,20 +171,6 @@ export async function handleConfirmEdit(
 
   const updated = await getAMAById(AMA_ID);
   if (updated) {
-    console.log(
-      `[EDIT_AMA] Updated AMA retrieved from DB:`,
-      JSON.stringify(
-        {
-          session_no: updated.session_no,
-          language: updated.language,
-          date: updated.date,
-          time: updated.time,
-          status: updated.status,
-        },
-        null,
-        2,
-      ),
-    );
     const message = buildAMAMessage(updated);
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
