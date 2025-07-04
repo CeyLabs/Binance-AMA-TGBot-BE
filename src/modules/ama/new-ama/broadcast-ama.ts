@@ -29,8 +29,7 @@ export async function handleBroadcastNow(
   const message = buildAMAMessage({
     session_no: ama.session_no,
     language: ama.language,
-    date: ama.date,
-    time: ama.time,
+    datetime: ama.datetime,
     total_pool: ama.total_pool,
     reward: ama.reward,
     winner_count: ama.winner_count,

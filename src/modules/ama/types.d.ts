@@ -12,7 +12,7 @@ export interface AMA {
   language: SupportedLanguage;
   date: string;
   time: string;
-  datetime?: Date; // UTC date-time
+  datetime: Date; // UTC date-time
   total_pool: string;
   reward: string;
   winner_count: number;

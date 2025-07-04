@@ -9,7 +9,12 @@ import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
-import { convertToUTC } from "../../../utils/date-utils";
+import * as dayjs from "dayjs";
+import * as utc from "dayjs/plugin/utc";
+import * as timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -74,14 +79,13 @@ export async function handleNewAMA(
       return;
     }
 
-    // Convert KSA default values to UTC so message builder can convert them back to KSA
-    const { dateUTC, timeUTC } = convertToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time);
+    const ksaDateTime = `${AMA_DEFAULT_DATA.date}T${AMA_DEFAULT_DATA.time}`;
+    const datetimeUTC = dayjs.tz(ksaDateTime, "Asia/Riyadh").utc().toDate();
 
     const message = buildAMAMessage({
       session_no: sessionNo,
       language: language as SupportedLanguage,
-      date: dateUTC,
-      time: timeUTC,
+      datetime: datetimeUTC,
       total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,
       winner_count: AMA_DEFAULT_DATA.winner_count,

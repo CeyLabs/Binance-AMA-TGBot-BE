@@ -291,8 +291,7 @@ export async function handleBannerUpload(
       const message = buildAMAMessage({
         session_no: updatedAma.session_no,
         language: updatedAma.language,
-        date: updatedAma.date,
-        time: updatedAma.time,
+        datetime: updatedAma.datetime as Date,
         total_pool: updatedAma.total_pool,
         reward: updatedAma.reward,
         winner_count: updatedAma.winner_count,

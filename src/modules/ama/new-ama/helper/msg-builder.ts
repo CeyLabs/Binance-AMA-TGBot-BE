@@ -1,13 +1,10 @@
-import { formatTimeTo12Hour } from "../../helper/utils";
 import { AMA_HASHTAGS } from "../../ama.constants";
 import { SupportedLanguage } from "../../types";
-import { convertUTCToKSA } from "../../../../utils/date-utils";
 
 interface AMAData {
   session_no: number;
   language: SupportedLanguage;
-  date: Date | string;
-  time: string;
+  datetime: Date;
   total_pool: string;
   reward: string;
   winner_count: number;
@@ -19,18 +16,20 @@ interface AMAData {
  * Builds an HTML-formatted AMA message
  */
 export function buildAMAMessage(data: AMAData): string {
-  const utcDate = typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0];
-
-  // Always convert UTC from DB to KSA for display
-  const { ksaDate, ksaTime } = convertUTCToKSA(utcDate, data.time);
-
-  const formattedDate = new Date(ksaDate).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
+  // UTC to KSA conversion
+  const formattedDate = data.datetime?.toLocaleString("en-US", {
+    timeZone: "Asia/Riyadh",
     year: "numeric",
+    month: "long",
+    day: "2-digit",
   });
 
-  const formattedTime = formatTimeTo12Hour(ksaTime);
+  const formattedTime = data.datetime?.toLocaleString("en-US", {
+    timeZone: "Asia/Riyadh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   if (data.language === "ar") {
     return `<b>📣 انضموا إلينا في جلسة AMA من سلسلة جلسات Binance الأسبوعية مع فريق #BinanceMENA</b> واغتنموا فرصة لربح جزء من مجموع الجوائز البالغ <b>${data.total_pool}</b> 🎁
