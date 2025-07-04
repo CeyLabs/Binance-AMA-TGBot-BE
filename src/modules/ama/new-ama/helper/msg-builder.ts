@@ -1,6 +1,7 @@
 import { formatTimeTo12Hour } from "../../helper/utils";
 import { AMA_HASHTAGS } from "../../ama.constants";
 import { SupportedLanguage } from "../../types";
+import { convertUTCToKSA } from "../../../../utils/date-utils";
 
 interface AMAData {
   session_no: number;
@@ -18,20 +19,19 @@ interface AMAData {
  * Builds an HTML-formatted AMA message
  */
 export function buildAMAMessage(data: AMAData): string {
-  const formattedDate =
-    typeof data.date === "string"
-      ? new Date(data.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : data.date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+  // Convert UTC time to KSA time for display
+  const { ksaDate, ksaTime } = convertUTCToKSA(
+    typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0],
+    data.time,
+  );
 
-  const formattedTime = formatTimeTo12Hour(data.time);
+  const formattedDate = new Date(ksaDate).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const formattedTime = formatTimeTo12Hour(ksaTime);
 
   if (data.language === "ar") {
     return `<b>📣 انضموا إلينا في جلسة AMA من سلسلة جلسات Binance الأسبوعية مع فريق #BinanceMENA</b> واغتنموا فرصة لربح جزء من مجموع الجوائز البالغ <b>${data.total_pool}</b> 🎁

@@ -46,3 +46,19 @@ export function convertToUTC(date: string, time: string): { dateUTC: string; tim
     timeUTC: convertTimeToUTC(time),
   };
 }
+
+/**
+ * Converts UTC date and time back to KSA timezone
+ * @param date - The date string in UTC
+ * @param time - The time string in UTC
+ * @returns The datetime in KSA timezone
+ */
+export function convertUTCToKSA(date: string, time: string): { ksaDate: string; ksaTime: string } {
+  const datetime = `${date}T${time}`;
+  const ksaDateTime = dayjs.utc(datetime).tz("Asia/Riyadh");
+
+  return {
+    ksaDate: ksaDateTime.format("YYYY-MM-DD"),
+    ksaTime: ksaDateTime.format("HH:mm:ss"),
+  };
+}
