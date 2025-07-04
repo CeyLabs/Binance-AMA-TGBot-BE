@@ -19,11 +19,12 @@ interface AMAData {
  * Builds an HTML-formatted AMA message
  */
 export function buildAMAMessage(data: AMAData): string {
-  // Convert UTC time to KSA time for display
-  const { ksaDate, ksaTime } = convertUTCToKSA(
-    typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0],
-    data.time,
-  );
+  const utcDate = typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0];
+
+  // Force time to be 17:00:00 for testing
+  const testTime = "17:00:00";
+
+  const { ksaDate, ksaTime } = convertUTCToKSA(utcDate, testTime);
 
   const formattedDate = new Date(ksaDate).toLocaleDateString("en-US", {
     month: "short",

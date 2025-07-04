@@ -90,10 +90,8 @@ export class AMAService {
   // Insert the AMA details into the database
   // prettier-ignore
   async createAMA( sessionNo: number, language:SupportedLanguage, topic?: string): Promise<UUID> {
+    // Convert KSA time to UTC for storage
     const { dateUTC, timeUTC } = convertToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time);
-
-    console.log(`1Converted date: ${AMA_DEFAULT_DATA.date} to UTC: ${dateUTC}`);
-    console.log(`1Converted time: ${AMA_DEFAULT_DATA.time} to UTC: ${timeUTC}`);
 
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,

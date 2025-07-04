@@ -105,10 +105,15 @@ export async function handleConfirmEdit(
   }
 
   // Convert date and time fields to UTC if they are being updated
-  if (fieldMeta.column === "date") {
-    updateData["date"] = convertDateToUTC(newValue);
-  } else if (fieldMeta.column === "time") {
-    updateData["time"] = convertTimeToUTC(newValue);
+  if (fieldMeta.column === "date" || fieldMeta.column === "time") {
+    const ama = await getAMAById(AMA_ID);
+    if (ama) {
+      if (fieldMeta.column === "date") {
+        updateData["date"] = convertDateToUTC(newValue, ama.time);
+      } else {
+        updateData["time"] = convertTimeToUTC(newValue, ama.date);
+      }
+    }
   }
 
   const success = await updateAMA(AMA_ID, updateData);
