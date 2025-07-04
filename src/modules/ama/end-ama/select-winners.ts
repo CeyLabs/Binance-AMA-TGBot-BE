@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
 import { UUID } from "crypto";
-import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, ScoreWithUser, UserDetails, WinnerData } from "../types";
 import { getLanguageText } from "../helper/utils";
 import {
@@ -29,12 +29,12 @@ export async function handleSelectWinners(
     return void ctx.reply("Invalid session number. Please provide a valid number.");
   }
 
-  console.log(`Selecting winners for AMA session #${AMA_HASHTAG}${sessionNo}...`); // Debug log
+  console.log(`Selecting winners for AMA session #$${sessionNo}...`); // Debug log
 
   // Find AMAs matching the session number
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
-    return void ctx.reply(`No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`);
+    return void ctx.reply(`No AMA session found for session #${sessionNo}.`);
   }
 
   // If multiple AMAs found, let user select which one
@@ -117,7 +117,7 @@ async function processWinnersSelection(
     );
 
     // Format existing winners into a message
-    let winnerMessage = `🏆 <b>Winners already selected for AMA #${AMA_HASHTAG}${ama.session_no}:</b>\n\n`;
+    let winnerMessage = `🏆 <b>Winners already selected for AMA #${ama.session_no}:</b>\n\n`;
     winnerDetails.forEach((winner, index) => {
       const userDisplayName = winner.username
         ? `@${winner.username}`

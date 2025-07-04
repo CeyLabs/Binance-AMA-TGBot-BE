@@ -9,7 +9,10 @@ export const AMA_COMMANDS = {
 
 export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
 
-export const AMA_HASHTAG = "BinanceWeeklySessions";
+export const AMA_HASHTAGS = {
+  en: "BinanceWeeklySessions",
+  ar: "المحادثة_الصوتية_الاسبوعية",
+};
 
 export const EDIT_KEYS = {
   DATE: "date",

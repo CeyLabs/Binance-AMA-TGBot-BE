@@ -1,12 +1,8 @@
 import { Context } from "telegraf";
-import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
 
 import { AMA, GroupInfo } from "../types";
-import {
-  getLanguageText,
-  UUID_PATTERN,
-  validateIdPattern,
-} from "../helper/utils";
+import { getLanguageText, UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { UUID } from "crypto";
 
 export async function handleStartAMA(
@@ -18,21 +14,15 @@ export async function handleStartAMA(
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
 
-  const match = text
-    .replace(new RegExp(`^/${AMA_COMMANDS.START}\\s+`), "")
-    .match(/^(\d+)/);
+  const match = text.replace(new RegExp(`^/${AMA_COMMANDS.START}\\s+`), "").match(/^(\d+)/);
   const sessionNo = match ? parseInt(match[1], 10) : NaN;
   if (!sessionNo || sessionNo <= 0) {
-    return void ctx.reply(
-      "Invalid session number. Please provide a valid number.",
-    );
+    return void ctx.reply("Invalid session number. Please provide a valid number.");
   }
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
-    return void ctx.reply(
-      `No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`,
-    );
+    return void ctx.reply(`No AMA session found for session #${sessionNo}.`);
   }
 
   const availableAMAs = existingAMAs.filter(
@@ -64,9 +54,7 @@ export async function startAMAbyCallback(
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
 ): Promise<void> {
   const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
+    ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
   if (!callbackData) return void ctx.answerCbQuery("Invalid callback data.");
 
   const result = await validateIdPattern(
@@ -104,14 +92,12 @@ async function startAMA(
     status: "active",
   });
 
-  await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has started!`);
-  await ctx.reply(
-    "Binance AMA Bot is listening to the messages in Binance MENA group.",
-  );
+  await ctx.reply(`#${ama.session_no} has started!`);
+  await ctx.reply("Binance AMA Bot is listening to the messages in Binance MENA group.");
 
   // Notify the public group about the AMA start
   const publicGroupId = groupIds.public[ama.language];
-  const message = `#${AMA_HASHTAG}${ama.session_no} ${getLanguageText(ama.language)} AMA Session has started! Post your questions now.`;
+  const message = `#${ama.session_no} ${getLanguageText(ama.language)} AMA Session has started! Post your questions now.`;
   await ctx.telegram.sendMessage(publicGroupId, message, {
     parse_mode: "HTML",
   });

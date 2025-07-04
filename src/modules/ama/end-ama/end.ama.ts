@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
-import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData } from "../types";
 import { getLanguageText, UUID_FRAGMENT, UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import {
@@ -35,7 +35,7 @@ export async function handleEndAMA(
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
-    return void ctx.reply(`No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`);
+    return void ctx.reply(`No AMA session found for session #${sessionNo}.`);
   }
 
   const availableAMAs = existingAMAs.filter((ama) => ama.status === "active");
@@ -84,7 +84,7 @@ async function selectWinners(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<void> {
-  await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has ended!`);
+  await ctx.reply(`#${ama.session_no} has ended!`);
 
   // Get all scores for CSV generation
   const allScores = await getScoresForAMA(ama.id);
