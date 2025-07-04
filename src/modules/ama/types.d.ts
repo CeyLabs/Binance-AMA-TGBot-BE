@@ -10,8 +10,6 @@ export interface AMA {
   id: UUID;
   session_no: number;
   language: SupportedLanguage;
-  date: string;
-  time: string;
   datetime: Date; // UTC date-time
   total_pool: string;
   reward: string;

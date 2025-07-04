@@ -93,10 +93,7 @@ export async function handleScheduleBroadcast(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
     return;
@@ -161,10 +158,7 @@ export async function handleToggleSchedule(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.answerCbQuery("❌ Invalid AMA date/time.");
     return;
@@ -218,10 +212,7 @@ export async function handleConfirmSchedule(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
     return;
