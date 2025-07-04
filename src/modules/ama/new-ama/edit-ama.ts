@@ -6,6 +6,7 @@ import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
 import { UUID } from "crypto";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
+import { convertDateToUTC, convertTimeToUTC } from "../../../utils/date-utils";
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
@@ -101,6 +102,13 @@ export async function handleConfirmEdit(
         updateData["hashtag"] = `#${AMA_HASHTAGS[ama.language]}${sessionNo}`;
       }
     }
+  }
+
+  // Convert date and time fields to UTC if they are being updated
+  if (fieldMeta.column === "date") {
+    updateData["date"] = convertDateToUTC(newValue);
+  } else if (fieldMeta.column === "time") {
+    updateData["time"] = convertTimeToUTC(newValue);
   }
 
   const success = await updateAMA(AMA_ID, updateData);
