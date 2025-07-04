@@ -13,27 +13,28 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export function convertDateTimeToUTC(userDate: string, userTime: string): Date {
-  // Parse DD/MM/YYYY
-  const dateParts = userDate.split("/");
-  if (dateParts.length !== 3) {
+  let formattedDate: string;
+
+  if (userDate.includes("/")) {
+    // Format: DD/MM/YYYY
+    const [day, month, year] = userDate.split("/");
+    formattedDate = `${year}-${month}-${day}`; // YYYY-MM-DD
+  } else if (userDate.includes("-")) {
+    // Format: YYYY-MM-DD
+    formattedDate = userDate;
+  } else {
     throw new Error(`Invalid date format: ${userDate}`);
   }
 
-  const [day, month, year] = dateParts;
-  const formattedDate = `${year}-${month}-${day}`; // YYYY-MM-DD
-
-  // Ensure time is HH:mm:ss
   const timeWithSeconds = /^\d{2}:\d{2}$/.test(userTime) ? `${userTime}:00` : userTime;
-
   const combined = `${formattedDate}T${timeWithSeconds}`;
 
   const ksaTime = dayjs.tz(combined, "Asia/Riyadh");
-
   if (!ksaTime.isValid()) {
     throw new Error(`Invalid datetime: ${combined}`);
   }
 
-  return ksaTime.utc().toDate(); // final UTC Date object
+  return ksaTime.utc().toDate();
 }
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
@@ -113,12 +114,26 @@ export async function handleConfirmEdit(
     return;
   }
 
+  const updateData: Partial<AMA> = {};
+
   const fieldMeta = EDITABLE_FIELDS[field];
 
-  // Prepare update payload
-  const updateData: Partial<AMA> = {
-    [fieldMeta.column]: newValue,
-  };
+  const validAmaColumns: (keyof AMA)[] = [
+    "session_no",
+    "total_pool",
+    "reward",
+    "winner_count",
+    "form_link",
+    "special_guest",
+    "topic",
+    "banner_file_id",
+  ];
+
+  const column = fieldMeta.column;
+
+  if (newValue !== undefined && validAmaColumns.includes(column as keyof AMA)) {
+    updateData[column as keyof AMA] = newValue as never;
+  }
 
   // If session_no is being updated, also update the hashtag
   if (fieldMeta.column === "session_no") {

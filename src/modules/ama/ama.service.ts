@@ -95,9 +95,6 @@ export class AMAService {
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
       language: language,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
-      // Convert KSA date and time to UTC
       datetime: convertDateTimeToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time),
       total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,

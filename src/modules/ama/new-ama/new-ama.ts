@@ -98,6 +98,11 @@ export async function handleNewAMA(
       reply_markup: NewAMAKeyboard(AMA_ID),
     });
 
+    // If the message was sent successfully, delete the announce message
+    if (amaMsg) {
+      await ctx.deleteMessage(annunceMsg.message_id);
+    }
+
     // Push the message IDs to delete later
     ctx.session.messagesToDelete ??= [];
     ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
