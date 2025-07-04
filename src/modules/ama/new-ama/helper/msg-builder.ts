@@ -21,10 +21,8 @@ interface AMAData {
 export function buildAMAMessage(data: AMAData): string {
   const utcDate = typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0];
 
-  // Force time to be 17:00:00 for testing
-  const testTime = "17:00:00";
-
-  const { ksaDate, ksaTime } = convertUTCToKSA(utcDate, testTime);
+  // Always convert UTC from DB to KSA for display
+  const { ksaDate, ksaTime } = convertUTCToKSA(utcDate, data.time);
 
   const formattedDate = new Date(ksaDate).toLocaleDateString("en-US", {
     month: "short",

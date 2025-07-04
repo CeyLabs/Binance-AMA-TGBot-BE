@@ -9,21 +9,15 @@ import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
+import { convertToUTC } from "../../../utils/date-utils";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
  */
 export async function handleNewAMA(
   ctx: BotContext,
-  createAMA: (
-    sessionNo: number,
-    language: SupportedLanguage,
-    topic?: string,
-  ) => Promise<UUID>,
-  isAMAExists: (
-    sessionNo: number,
-    language: SupportedLanguage,
-  ) => Promise<boolean>,
+  createAMA: (sessionNo: number, language: SupportedLanguage, topic?: string) => Promise<UUID>,
+  isAMAExists: (sessionNo: number, language: SupportedLanguage) => Promise<boolean>,
 ): Promise<void> {
   try {
     const text = ctx.text;
@@ -38,9 +32,7 @@ export async function handleNewAMA(
     const match = argsText.match(/^(\w+)\s+(\d+)/);
 
     if (!match) {
-      await ctx.reply(
-        "Invalid command format. Use: /newama <language> <number>",
-      );
+      await ctx.reply("Invalid command format. Use: /newama <language> <number>");
       return;
     }
 
@@ -48,9 +40,7 @@ export async function handleNewAMA(
 
     //validate language by check if its "en" or "ar"
     if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguage)) {
-      await ctx.reply(
-        "Invalid language. Please use 'en' for English or 'ar' for Arabic.",
-      );
+      await ctx.reply("Invalid language. Please use 'en' for English or 'ar' for Arabic.");
       return;
     }
 
@@ -62,10 +52,7 @@ export async function handleNewAMA(
     }
 
     // Check if the session number already exists
-    const sessionExists = await isAMAExists(
-      sessionNo,
-      language as SupportedLanguage,
-    );
+    const sessionExists = await isAMAExists(sessionNo, language as SupportedLanguage);
     if (sessionExists) {
       await ctx.reply(
         `AMA session number ${sessionNo} already exists. Please choose a different number.`,
@@ -73,20 +60,9 @@ export async function handleNewAMA(
       return;
     }
 
-    const message = buildAMAMessage({
-      session_no: sessionNo,
-      language: language as SupportedLanguage,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
-      total_pool: AMA_DEFAULT_DATA.total_pool,
-      reward: AMA_DEFAULT_DATA.reward,
-      winner_count: AMA_DEFAULT_DATA.winner_count,
-      form_link: AMA_DEFAULT_DATA.form_link,
-    });
+    const annunceMsg = await ctx.reply("Creating AMA...");
 
-    const annunceMsg = await ctx.reply("Announcement Created!");
-
-    // Create the AMA and get the ID
+    // Create the AMA first
     const AMA_ID = await createAMA(
       sessionNo,
       language as SupportedLanguage,
@@ -97,6 +73,20 @@ export async function handleNewAMA(
       await ctx.reply("Failed to create AMA. Please try again.");
       return;
     }
+
+    // Convert KSA default values to UTC so message builder can convert them back to KSA
+    const { dateUTC, timeUTC } = convertToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time);
+
+    const message = buildAMAMessage({
+      session_no: sessionNo,
+      language: language as SupportedLanguage,
+      date: dateUTC,
+      time: timeUTC,
+      total_pool: AMA_DEFAULT_DATA.total_pool,
+      reward: AMA_DEFAULT_DATA.reward,
+      winner_count: AMA_DEFAULT_DATA.winner_count,
+      form_link: AMA_DEFAULT_DATA.form_link,
+    });
 
     const amaMsg = await ctx.replyWithPhoto(imageUrl, {
       caption: message,
@@ -109,9 +99,7 @@ export async function handleNewAMA(
     ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
   } catch (error) {
     console.error("Error in handleNewAMA:", error);
-    await ctx.reply(
-      "An error occurred while processing your request. Please try again.",
-    );
+    await ctx.reply("An error occurred while processing your request. Please try again.");
   }
 }
 
@@ -133,8 +121,6 @@ export async function handleNewAMACancel(
     });
     await ctx.reply("AMA session has been cancelled successfully.");
   } else {
-    await ctx.answerCbQuery(
-      "Failed to cancel the AMA session. Please try again.",
-    );
+    await ctx.answerCbQuery("Failed to cancel the AMA session. Please try again.");
   }
 }

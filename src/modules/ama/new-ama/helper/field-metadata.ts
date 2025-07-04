@@ -53,7 +53,8 @@ export const EDITABLE_FIELDS = {
         return { value: null, error: "❌ Invalid time values." };
       }
 
-      return { value: `${h.toString().padStart(2, "0")}:${minute}` };
+      // Add seconds to the time format to match HH:MM:SS format
+      return { value: `${h.toString().padStart(2, "0")}:${minute}:00` };
     },
   },
 

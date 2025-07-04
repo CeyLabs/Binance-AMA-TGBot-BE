@@ -108,11 +108,24 @@ export async function handleConfirmEdit(
   if (fieldMeta.column === "date" || fieldMeta.column === "time") {
     const ama = await getAMAById(AMA_ID);
     if (ama) {
+      console.log(`[EDIT_AMA] Original AMA data from DB - date: ${ama.date}, time: ${ama.time}`);
+      console.log(`[EDIT_AMA] New value being set: ${fieldMeta.column} = ${newValue}`);
+
       if (fieldMeta.column === "date") {
-        updateData["date"] = convertDateToUTC(newValue, ama.time);
+        const convertedDate = convertDateToUTC(newValue, ama.time);
+        console.log(
+          `[EDIT_AMA] Converting KSA date ${newValue} with time ${ama.time} to UTC: ${convertedDate}`,
+        );
+        updateData["date"] = convertedDate;
       } else {
-        updateData["time"] = convertTimeToUTC(newValue, ama.date);
+        const convertedTime = convertTimeToUTC(newValue, ama.date);
+        console.log(
+          `[EDIT_AMA] Converting KSA time ${newValue} with date ${ama.date} to UTC: ${convertedTime}`,
+        );
+        updateData["time"] = convertedTime;
       }
+
+      console.log(`[EDIT_AMA] Final update data:`, updateData);
     }
   }
 
@@ -129,6 +142,20 @@ export async function handleConfirmEdit(
 
   const updated = await getAMAById(AMA_ID);
   if (updated) {
+    console.log(
+      `[EDIT_AMA] Updated AMA retrieved from DB:`,
+      JSON.stringify(
+        {
+          session_no: updated.session_no,
+          language: updated.language,
+          date: updated.date,
+          time: updated.time,
+          status: updated.status,
+        },
+        null,
+        2,
+      ),
+    );
     const message = buildAMAMessage(updated);
     await ctx.replyWithPhoto(imageUrl, {
       caption: message,
