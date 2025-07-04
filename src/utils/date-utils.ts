@@ -13,7 +13,7 @@ const KSA_TIMEZONE = "Asia/Riyadh";
  * @param time - The time string in KSA timezone (e.g., "20:00:00")
  * @returns The datetime in UTC
  */
-function convertDateTimeToUTC(date: string | Date, time: string): dayjs.Dayjs {
+export function convertDateTimeToUTC(date: string | Date, time: string): dayjs.Dayjs {
   // Format date to YYYY-MM-DD if it's a Date object
   const formattedDate =
     date instanceof Date

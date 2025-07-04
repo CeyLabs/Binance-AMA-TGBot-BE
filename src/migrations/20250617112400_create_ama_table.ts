@@ -14,6 +14,7 @@ export async function up(knex: Knex): Promise<void> {
         enumName: "enum_language",
       })
       .notNullable();
+    table.timestamp("datetime").notNullable();
     table.date("date").notNullable();
     table.time("time").notNullable();
     table.string("total_pool").notNullable();
