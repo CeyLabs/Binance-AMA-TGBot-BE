@@ -55,6 +55,7 @@ import {
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
+import { convertToUTC } from "../../utils/date-utils";
 
 @Update()
 @Injectable()
@@ -89,18 +90,24 @@ export class AMAService {
   // Insert the AMA details into the database
   // prettier-ignore
   async createAMA( sessionNo: number, language:SupportedLanguage, topic?: string): Promise<UUID> {
+    const { dateUTC, timeUTC } = convertToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time);
+
+    console.log(`1Converted date: ${AMA_DEFAULT_DATA.date} to UTC: ${dateUTC}`);
+    console.log(`1Converted time: ${AMA_DEFAULT_DATA.time} to UTC: ${timeUTC}`);
+
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
       language: language,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
+      date: dateUTC,
+      time: timeUTC,
       total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,
       winner_count: AMA_DEFAULT_DATA.winner_count,
       form_link: AMA_DEFAULT_DATA.form_link,
-      topic: topic || "Weekly AMA",
+      topic: topic || "Weekly AM",
       hashtag: `#${AMA_HASHTAGS[language]}${sessionNo}`,
     }).returning("id");
+
     if (data.length === 0) {
       throw new Error("Failed to create AMA session");
     }
