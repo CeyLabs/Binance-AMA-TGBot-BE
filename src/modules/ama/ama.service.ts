@@ -113,6 +113,7 @@ export class AMAService {
         user_id,
         name: name || null,
         username: username || null,
+        role: "regular",
       })
       .onConflict("user_id")
       .merge({
@@ -120,6 +121,34 @@ export class AMAService {
         username: username || null,
         updated_at: new Date(),
       });
+  }
+
+  async updateUserRole(
+    userId: string,
+    role: "super_admin" | "admin" | "regular",
+  ): Promise<void> {
+    await this.knexService
+      .knex("user")
+      .insert({ user_id: userId, role })
+      .onConflict("user_id")
+      .merge({ role, updated_at: new Date() });
+  }
+
+  async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.knexService
+      .knex<{ role: string }>("user")
+      .where({ user_id: userId })
+      .first();
+    return user ? user.role : null;
+  }
+
+  async isSuperAdmin(userId: string): Promise<boolean> {
+    return (await this.getUserRole(userId)) === "super_admin";
+  }
+
+  async isAdmin(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role === "admin" || role === "super_admin";
   }
 
   async addWinner(
@@ -370,6 +399,12 @@ export class AMAService {
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: BotContext): Promise<void> {
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this) as (
@@ -387,6 +422,12 @@ export class AMAService {
   // Start the AMA (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -405,12 +446,56 @@ export class AMAService {
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
   async endAMA(ctx: BotContext): Promise<void> {
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     await handleEndAMA(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
     );
+  }
+
+  @Command("grantadmin")
+  async grantAdmin(ctx: BotContext): Promise<void> {
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isSuperAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
+    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
+    const targetId = (text).split(" ")[1];
+    if (!targetId) {
+      await ctx.reply("Usage: /grantadmin <tg_userid>");
+      return;
+    }
+
+    await this.updateUserRole(targetId, "admin");
+    await ctx.reply(`User ${targetId} granted admin role.`);
+  }
+
+  @Command("revokeadmin")
+  async revokeAdmin(ctx: BotContext): Promise<void> {
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isSuperAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
+    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
+    const targetId = (text).split(" ")[1];
+    if (!targetId) {
+      await ctx.reply("Usage: /revokeadmin <tg_userid>");
+      return;
+    }
+
+    await this.updateUserRole(targetId, "regular");
+    await ctx.reply(`User ${targetId} revoked.`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>
