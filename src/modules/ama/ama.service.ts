@@ -56,7 +56,7 @@ import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
 // import { toZonedTime } from "date-fns-tz";
-import { convertDateTimeToUTC } from "src/utils/date-utils";
+import { convertDateTimeToUTC } from "src/modules/ama/helper/date-utils";
 
 
 @Update()
