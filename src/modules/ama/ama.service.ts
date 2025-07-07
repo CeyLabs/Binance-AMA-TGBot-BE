@@ -56,7 +56,8 @@ import {
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
-import { convertDateTimeToUTC } from "src/modules/ama/helper/date-utils";
+import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
+import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
 
 @Update()
 @Injectable()
@@ -743,6 +744,11 @@ export class AMAService {
     );
   }
 
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
+  async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
+    broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
+  }
+
   //cancel-winners_(amaId)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i"))
   async cancelWinners(ctx: BotContext): Promise<void> {
@@ -788,22 +794,26 @@ export class AMAService {
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
 
+    // prettier-ignore
     if (chatID === groupIds.admin) {
-      await handleEdit(ctx);
+      // Handle scheduling winners broadcast if the context is in the correct state and input matches datetime
+      if (
+        ctx.session.scheduledWinnersBroadcast?.amaId && ctx.message && "text" in ctx.message &&
+        typeof ctx.message.text === "string" && DATETIME_REGEX.test(ctx.message.text)
+      ) {
+        await scheduleWiinersBroadcast(
+          ctx,
+          this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
+        );
+      } else {
+        await handleEdit(ctx);
+      }
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
-        ctx,
-        groupIds,
+        ctx, groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
-        this.storeAMAQuestion.bind(this) as (
-          amaId: UUID,
-          userId: string,
-          question: string,
-          chatId: number,
-          messageId: number,
-          name?: string,
-          username?: string,
-        ) => Promise<void>,
+        this.storeAMAQuestion.bind(this) as (amaId: UUID, userId: string, question: string, 
+          chatId: number, messageId: number, name?: string, username?: string ) => Promise<void>,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

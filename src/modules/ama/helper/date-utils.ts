@@ -5,7 +5,10 @@ import * as timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const KSA_TIMEZONE = "Asia/Riyadh";
+export const KSA_TIMEZONE = "Asia/Riyadh";
+
+export const DATETIME_REGEX = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/;
+const TIME_REGEX = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/;
 
 /**
  * Converts a KSA datetime to UTC.
@@ -23,8 +26,7 @@ export function convertDateTimeToUTC(date: string | Date, time: string): dayjs.D
         : dayjs(date).format("YYYY-MM-DD");
 
   // Ensure time is in proper format (HH:mm:ss)
-  const timeRegex = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/;
-  const timeMatch = time.match(timeRegex);
+  const timeMatch = time.match(TIME_REGEX);
 
   let formattedTime = time;
   if (timeMatch) {

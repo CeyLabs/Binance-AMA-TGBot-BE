@@ -358,6 +358,12 @@ export async function confirmWinnersCallback(
         [
           { text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}` },
           {
+            text: "Schedule Broadcast",
+            callback_data: `${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${ama.id}`,
+          },
+        ],
+        [
+          {
             text: "Broadcast Now",
             callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}`,
           },

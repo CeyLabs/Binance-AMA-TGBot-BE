@@ -65,6 +65,7 @@ export const CALLBACK_ACTIONS = {
   CONFIRM_WINNERS: "confirm-winners",
   CANCEL_WINNERS: "cancel-winners",
   BROADCAST_WINNERS: "broadcast-winners",
+  SCHEDULE_WINNERS_BROADCAST: "schedule-winners-broadcast",
 
   // Callback actions for claiming rewards
   CLAIM_REWARD: "claim-reward",

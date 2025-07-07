@@ -39,6 +39,10 @@ export interface SessionData {
     };
   };
   discardedUsersByAMA?: Record<UUID, string[]>;
+  scheduledWinnersBroadcast?: {
+    amaId: UUID;
+    scheduledTime: Date | undefined;
+  };
 }
 
 export interface BotContext extends Context {
