@@ -301,7 +301,7 @@ export async function confirmWinnersCallback(
   addWinner: (
     ama_id: UUID,
     user_id: string,
-    score_id: UUID,
+    message_id: UUID,
     rank: number,
   ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,

@@ -150,7 +150,7 @@ export class AMAService {
   async addWinner(
     ama_id: UUID,
     user_id: string,
-    score_id: UUID,
+    message_id: UUID,
     rank: number,
   ): Promise<WinnerData | null> {
     const data = await this.knexService
@@ -158,7 +158,7 @@ export class AMAService {
       .insert({
         ama_id,
         user_id,
-        score_id,
+        message_id,
         rank,
       })
       .returning("*");
@@ -658,7 +658,7 @@ export class AMAService {
       this.addWinner.bind(this) as (
         ama_id: UUID,
         user_id: string,
-        score_id: UUID,
+        message_id: UUID,
         rank: number,
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,

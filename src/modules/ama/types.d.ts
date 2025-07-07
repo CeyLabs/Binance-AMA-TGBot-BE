@@ -112,7 +112,7 @@ export interface WinnerData {
   id: UUID;
   ama_id: UUID;
   user_id: string;
-  score_id: UUID;
+  message_id: UUID;
   rank: number;
   created_at?: string;
   updated_at?: string;
