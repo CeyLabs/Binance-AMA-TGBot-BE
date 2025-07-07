@@ -32,14 +32,10 @@ config();
     ConfigModule.forRoot({
       isGlobal: true,
       validate: (config) => {
-        if (!process.env.ADMIN_GROUP_ID)
-          throw new Error("ADMIN_GROUP_ID is not set");
-        if (!process.env.EN_PUBLIC_GROUP_ID)
-          throw new Error("EN_PUBLIC_GROUP_ID is not set");
-        if (!process.env.AR_PUBLIC_GROUP_ID)
-          throw new Error("AR_PUBLIC_GROUP_ID is not set");
-        if (!process.env.BOT_USERNAME)
-          throw new Error("BOT_USERNAME is not set");
+        if (!process.env.ADMIN_GROUP_ID) throw new Error("ADMIN_GROUP_ID is not set");
+        if (!process.env.EN_PUBLIC_GROUP_ID) throw new Error("EN_PUBLIC_GROUP_ID is not set");
+        if (!process.env.AR_PUBLIC_GROUP_ID) throw new Error("AR_PUBLIC_GROUP_ID is not set");
+        if (!process.env.BOT_USERNAME) throw new Error("BOT_USERNAME is not set");
         return config as {
           ADMIN_GROUP_ID: string;
           EN_PUBLIC_GROUP_ID: string;
@@ -54,9 +50,7 @@ config();
       useFactory: (configService: ConfigService) => {
         const token = configService.get<string>("TELEGRAM_BOT_TOKEN");
         if (!token) {
-          throw new Error(
-            "TELEGRAM_BOT_TOKEN is not defined in the environment variables",
-          );
+          throw new Error("TELEGRAM_BOT_TOKEN is not defined in the environment variables");
         }
         return {
           token,

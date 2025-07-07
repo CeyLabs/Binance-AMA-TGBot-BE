@@ -16,6 +16,7 @@ import {
   AMA,
   BotContext,
   CreateScoreData,
+  MessageWithAma,
   OpenAIAnalysis,
   ScoreWithUser,
   WinnerData,
@@ -89,7 +90,7 @@ export class AMAService {
     await this.upsertUser(scoreData.user_id, name, username);
 
     const data = await this.knexService
-      .knex("score")
+      .knex("message")
       .insert({
         ama_id: scoreData.ama_id,
         user_id: scoreData.user_id,
@@ -229,13 +230,13 @@ export class AMAService {
   // Get scores for a specific AMA
   async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
     return this.knexService
-      .knex("score")
-      .join("user", "score.user_id", "user.user_id")
-      .select("score.*", "user.name", "user.username")
-      .where("score.ama_id", id)
+      .knex("message")
+      .join("user", "message.user_id", "user.user_id")
+      .select("message.*", "user.name", "user.username")
+      .where("message.ama_id", id)
       .orderBy([
-        { column: "score.score", order: "desc" },
-        { column: "score.created_at", order: "asc" },
+        { column: "message.score", order: "desc" },
+        { column: "message.created_at", order: "asc" },
       ]);
   }
 
@@ -284,6 +285,73 @@ export class AMAService {
       .knex<WinnerData>("winner")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
+  }
+
+  // Methods for message processing
+  async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
+    return this.knexService
+      .knex("message")
+      .join("ama", "message.ama_id", "ama.id")
+      .select("message.*", "ama.thread_id", "ama.topic")
+      .where("message.processed", false)
+      .orderBy("message.created_at", "asc")
+      .limit(batchSize);
+  }
+
+  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      forwarded_msg_id: forwardedMsgId,
+    });
+  }
+
+  async updateMessageWithAnalysis(
+    messageId: UUID,
+    analysisData: {
+      originality: number;
+      relevance: number;
+      clarity: number;
+      engagement: number;
+      language: number;
+      score: number;
+      processed: boolean;
+    },
+  ): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update(analysisData);
+  }
+
+  async markMessageAsProcessed(messageId: UUID): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      processed: true,
+    });
+  }
+
+  async storeAMAQuestion(
+    amaId: UUID,
+    userId: string,
+    question: string,
+    chatId: number,
+    messageId: number,
+    name?: string,
+    username?: string,
+  ): Promise<void> {
+    // First, ensure user exists in the user table
+    await this.upsertUser(userId, name, username);
+
+    // Store the message in the database
+    await this.knexService.knex("message").insert({
+      ama_id: amaId,
+      user_id: userId,
+      question: question,
+      chat_id: chatId,
+      tg_msg_id: messageId,
+      originality: 0,
+      relevance: 0,
+      clarity: 0,
+      engagement: 0,
+      language: 0,
+      score: 0,
+      processed: false, // Mark as unprocessed so the cron job will pick it up
+    });
   }
 
   // <<------------------------------------ Analysis ------------------------------------>>
@@ -627,15 +695,15 @@ export class AMAService {
         ctx,
         groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
-        this.getAnalysis.bind(this) as (
+        this.storeAMAQuestion.bind(this) as (
+          amaId: UUID,
+          userId: string,
           question: string,
-          topic?: string,
-        ) => Promise<OpenAIAnalysis | null>,
-        this.addScore.bind(this) as (
-          scoreData: CreateScoreData,
+          chatId: number,
+          messageId: number,
           name?: string,
           username?: string,
-        ) => Promise<boolean>,
+        ) => Promise<void>,
       );
     } else {
       await ctx.reply("This command is not available in this chat.");

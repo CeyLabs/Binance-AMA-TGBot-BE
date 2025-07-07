@@ -1,16 +1,11 @@
 import type { Knex } from "knex";
 
-const tableName = "score";
+const tableName = "message";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(tableName, (table) => {
     table.uuid("id").primary().defaultTo(knex.raw("uuid_generate_v4()"));
-    table
-      .uuid("ama_id")
-      .notNullable()
-      .references("id")
-      .inTable("ama")
-      .onDelete("RESTRICT");
+    table.uuid("ama_id").notNullable().references("id").inTable("ama").onDelete("RESTRICT");
     table
       .string("user_id")
       .notNullable()
@@ -24,6 +19,10 @@ export async function up(knex: Knex): Promise<void> {
     table.integer("engagement").notNullable();
     table.integer("language").notNullable();
     table.integer("score").notNullable();
+    table.boolean("processed").notNullable().defaultTo(false);
+    table.bigInteger("tg_msg_id").notNullable();
+    table.bigInteger("forwarded_msg_id").nullable();
+    table.bigInteger("chat_id").nullable();
     table.timestamps(true, true);
   });
 }
