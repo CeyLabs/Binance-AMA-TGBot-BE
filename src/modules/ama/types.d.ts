@@ -135,7 +135,6 @@ export interface MessageWithAma extends ScoreData {
   thread_id?: number;
   topic?: string;
   chat_id: number;
-  forwarded_msg_id?: number;
 }
 
 // For queries that need user information with winner data

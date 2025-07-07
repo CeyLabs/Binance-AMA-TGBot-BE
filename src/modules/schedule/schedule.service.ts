@@ -135,10 +135,10 @@ export class SchedulerService {
   private async processMessage(message: MessageWithAma) {
     try {
       // Run AI analysis in parallel with message forwarding
-      const [analysisResult] = await Promise.all([
-        getQuestionAnalysis(message.question, message.topic),
-        this.forwardMessageToAdmin(message),
-      ]);
+      const analysisResult = await getQuestionAnalysis(
+        message.question,
+        message.topic,
+      );
 
       // Only proceed if we get a valid OpenAIAnalysis object
       if (!analysisResult || typeof analysisResult === "string") {
@@ -149,21 +149,21 @@ export class SchedulerService {
 
       const analysis = analysisResult;
 
-      // Update DB and send notifications in parallel
+      // Save analysis results
+      await this.amaService.updateMessageWithAnalysis(message.id, {
+        originality: analysis.originality?.score || 0,
+        relevance: analysis.relevance?.score || 0,
+        clarity: analysis.clarity?.score || 0,
+        engagement: analysis.engagement?.score || 0,
+        language: analysis.language?.score || 0,
+        score: analysis.total_score || 0,
+        processed: true,
+      });
+
+      const forwardedMsgId = await this.forwardMessageToAdmin(message);
+
       await Promise.all([
-        // Update message with analysis scores
-        this.amaService.updateMessageWithAnalysis(message.id, {
-          originality: analysis.originality?.score || 0,
-          relevance: analysis.relevance?.score || 0,
-          clarity: analysis.clarity?.score || 0,
-          engagement: analysis.engagement?.score || 0,
-          language: analysis.language?.score || 0,
-          score: analysis.total_score || 0,
-          processed: true,
-        }),
-        // Send analysis message if we have a forwarded message
-        message.forwarded_msg_id ? this.sendAnalysisToAdmin(message, analysis) : Promise.resolve(),
-        // Add heart reaction
+        this.sendAnalysisToAdmin(forwardedMsgId, analysis),
         this.addHeartReaction(message),
       ]);
 
@@ -173,9 +173,7 @@ export class SchedulerService {
     }
   }
 
-  private async forwardMessageToAdmin(message: MessageWithAma): Promise<void> {
-    if (message.forwarded_msg_id) return;
-
+  private async forwardMessageToAdmin(message: MessageWithAma): Promise<number> {
     try {
       const forwardedMsg = await this.bot.telegram.forwardMessage(
         this.ADMIN_GROUP_ID,
@@ -186,34 +184,34 @@ export class SchedulerService {
         },
       );
 
-      await this.amaService.updateMessageForwardedId(message.id, forwardedMsg.message_id);
-      message.forwarded_msg_id = forwardedMsg.message_id;
       this.logger.log(`Forwarded message ${message.id} to admin group`);
+      return forwardedMsg.message_id;
     } catch (error) {
       const result = handleTelegramError(error, "forwarding message", message.id);
       if (result.shouldRetry) {
         throw error; // Let the main handler deal with retry logic
       }
+      throw error;
     }
   }
 
   private async sendAnalysisToAdmin(
-    message: MessageWithAma,
+    forwardedMsgId: number,
     analysis: OpenAIAnalysis,
   ): Promise<void> {
     try {
       const analysisMessage = formatAnalysisMessage(analysis);
       await this.bot.telegram.sendMessage(this.ADMIN_GROUP_ID, analysisMessage, {
         reply_parameters: {
-          message_id: message.forwarded_msg_id!,
+          message_id: forwardedMsgId,
         },
         parse_mode: "HTML",
       });
     } catch (error) {
-      const result = handleTelegramError(error, "sending analysis", message.id);
+      const result = handleTelegramError(error, "sending analysis", String(forwardedMsgId));
       if (!result.shouldRetry) {
         this.logger.warn(
-          `Failed to send analysis for message ${message.id}, but continuing since scores are saved`,
+          `Failed to send analysis for message with forwarded ID ${forwardedMsgId}, but continuing since scores are saved`,
         );
       }
     }
@@ -237,20 +235,19 @@ export class SchedulerService {
   private async handleAnalysisFailure(message: MessageWithAma): Promise<void> {
     await this.amaService.markMessageAsProcessed(message.id);
 
-    if (message.forwarded_msg_id) {
-      try {
-        await this.bot.telegram.sendMessage(
-          this.ADMIN_GROUP_ID,
-          "⚠️ Analysis failed. Please try again later.",
-          {
-            reply_parameters: {
-              message_id: message.forwarded_msg_id,
-            },
+    try {
+      const forwardedId = await this.forwardMessageToAdmin(message);
+      await this.bot.telegram.sendMessage(
+        this.ADMIN_GROUP_ID,
+        "⚠️ Analysis failed. Please try again later.",
+        {
+          reply_parameters: {
+            message_id: forwardedId,
           },
-        );
-      } catch (replyError) {
-        handleTelegramError(replyError, "sending error notification", message.id);
-      }
+        },
+      );
+    } catch (replyError) {
+      handleTelegramError(replyError, "sending error notification", message.id);
     }
   }
 
