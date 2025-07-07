@@ -360,7 +360,7 @@ export class SchedulerService {
         let image = "";
 
         if (type === "init") {
-          image = ama.banner_file_id || imageUrl;
+          image = ama.banner_file_id ?? imageUrl;
           message = buildAMAMessage(ama);
           this.logger.log(`Broadcasting initial AMA #${ama.session_no} with ID ${amaId}`);
         } else if (type === "winner") {
@@ -372,6 +372,11 @@ export class SchedulerService {
         const groupId = ama.language === "ar" ? publicGroupIds.ar : publicGroupIds.en;
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        if (!image) {
+          this.logger.error(`No image found for AMA #${ama.session_no} with ID ${amaId}`);
+          continue;
+        }
 
         const sent = await this.bot.telegram.sendPhoto(groupId, image, {
           caption: message,

@@ -305,7 +305,7 @@ export class AMAService {
     const scheduleEntries = await this.knexService
       .knex("schedule")
       .where("scheduled_time", "<=", this.knexService.knex.fn.now())
-      .select("id", "ama_id");
+      .select("id", "ama_id", "type");
     return scheduleEntries.map((row: { id: UUID; ama_id: UUID; type: ScheduleType }) => ({
       scheduleId: row.id,
       amaId: row.ama_id,
@@ -661,9 +661,9 @@ export class AMAService {
     );
   }
 
+  // confirm-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
-    console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -692,7 +692,7 @@ export class AMAService {
     await handleWiinersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
-      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
     );
   }
