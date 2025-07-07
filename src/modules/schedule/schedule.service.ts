@@ -30,14 +30,14 @@ import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
  * - Chunk delay: max(500ms, messages * 100ms)
  * - Exponential backoff on rate limits
  * - Retries: Up to 5 attempts per chunk
- *
+ * 
  * Error Handling:
  * --------------
  * - Independent error handling per operation
  * - Graceful degradation (continues despite non-critical failures)
  * - Rate limit detection and automatic retries
  * - Detailed error logging and admin notifications
- *
+ * 
  * Performance:
  * -----------
  * - Processing capacity: ~40 messages/minute

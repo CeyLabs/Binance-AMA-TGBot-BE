@@ -331,7 +331,7 @@ export class AMAService {
       .where({ user_id: userId })
       .first();
   }
-
+  
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
