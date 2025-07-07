@@ -343,11 +343,6 @@ export class AMAService {
       .limit(batchSize);
   }
 
-  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
-    await this.knexService.knex("message").where("id", messageId).update({
-      forwarded_msg_id: forwardedMsgId,
-    });
-  }
 
   async updateMessageWithAnalysis(
     messageId: UUID,

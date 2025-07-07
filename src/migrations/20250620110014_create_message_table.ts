@@ -19,7 +19,6 @@ export async function up(knex: Knex): Promise<void> {
     table.integer("score").notNullable(); // Combined score (sum of all criteria)
     table.boolean("processed").notNullable().defaultTo(false);
     table.bigInteger("tg_msg_id").notNullable();
-    table.bigInteger("forwarded_msg_id").nullable();
     table.bigInteger("chat_id").nullable();
     table.timestamps(true, true);
   });
