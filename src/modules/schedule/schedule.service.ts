@@ -135,7 +135,7 @@ export class SchedulerService {
   private async processMessage(message: MessageWithAma) {
     try {
       // First forward message to admin
-      const fwdMsgId = await this.forwardMessageToAdmin(message);
+      const forwardedMsgId = await this.forwardMessageToAdmin(message);
 
       // Check for duplicates
       const isDuplicate = await this.amaService.checkDuplicateQuestion(
@@ -175,7 +175,7 @@ export class SchedulerService {
               "⚠️ Duplicate question detected! Scores set to 0.",
               {
                 reply_parameters: {
-                  message_id: fwdMsgId,
+                  message_id: forwardedMsgId,
                 },
               },
             );
@@ -215,8 +215,6 @@ export class SchedulerService {
         score: analysis.total_score || 0,
         processed: true,
       });
-
-      const forwardedMsgId = await this.forwardMessageToAdmin(message);
 
       await Promise.all([
         // Update message with analysis scores
