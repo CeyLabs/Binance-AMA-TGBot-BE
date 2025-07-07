@@ -165,9 +165,9 @@ export class SchedulerService {
           await this.bot.telegram.callApi("setMessageReaction", {
             chat_id: message.chat_id,
             message_id: message.tg_msg_id,
-            reaction: [{ type: "emoji", emoji: "💩" as TelegramEmoji }],
+            reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
           });
-          this.logger.log(`Added 💩 reaction to duplicate message ${message.id}`);
+          this.logger.log(`Added 🙏 reaction to duplicate message ${message.id}`);
 
           // Notify admin if we have the forwarded message ID
           if (message.forwarded_msg_id) {
@@ -279,7 +279,7 @@ export class SchedulerService {
       await this.bot.telegram.callApi("setMessageReaction", {
         chat_id: message.chat_id,
         message_id: message.tg_msg_id,
-        reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+        reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
       });
     } catch (error) {
       const result = handleTelegramError(error, "setting reaction", message.id);
