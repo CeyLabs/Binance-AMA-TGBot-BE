@@ -30,14 +30,14 @@ import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
  * - Chunk delay: max(500ms, messages * 100ms)
  * - Exponential backoff on rate limits
  * - Retries: Up to 5 attempts per chunk
- * 
+ *
  * Error Handling:
  * --------------
  * - Independent error handling per operation
  * - Graceful degradation (continues despite non-critical failures)
  * - Rate limit detection and automatic retries
  * - Detailed error logging and admin notifications
- * 
+ *
  * Performance:
  * -----------
  * - Processing capacity: ~40 messages/minute
@@ -170,21 +170,28 @@ export class SchedulerService {
           this.logger.log(`Added 🙏 reaction to duplicate message ${message.id}`);
 
           // Notify admin if we have the forwarded message ID
-            await this.bot.telegram.sendMessage(
-              this.ADMIN_GROUP_ID,
-              "⚠️ Duplicate question detected! Scores set to 0.",
-              {
-                reply_parameters: {
-                  message_id: forwardedMsgId,
-                },
+          await this.bot.telegram.sendMessage(
+            this.ADMIN_GROUP_ID,
+            "⚠️ Duplicate question detected! Scores set to 0.",
+            {
+              reply_parameters: {
+                message_id: forwardedMsgId,
               },
-            );
-
+            },
+          );
 
           this.logger.log(`Successfully processed duplicate message ${message.id}`);
           return; // Important: stop processing here for duplicates
         } catch (error) {
           this.logger.error(`Error processing duplicate message ${message.id}: ${error}`);
+          // If failed delete the forwarded message
+          await this.bot.telegram
+            .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+            .catch((deleteError) => {
+              this.logger.error(
+                `Failed to delete forwarded message ${forwardedMsgId} for duplicate ${message.id}: ${deleteError}`,
+              );
+            });
           // Still return to prevent further processing
           return;
         }
@@ -193,10 +200,7 @@ export class SchedulerService {
       this.logger.log(`Processing unique message ${message.id} with AI analysis`);
 
       // Run AI analysis in parallel with message forwarding
-      const analysisResult = await getQuestionAnalysis(
-        message.question,
-        message.topic,
-      );
+      const analysisResult = await getQuestionAnalysis(message.question, message.topic);
 
       // Only proceed if we get a valid OpenAIAnalysis object
       if (!analysisResult || typeof analysisResult === "string") {
@@ -216,22 +220,34 @@ export class SchedulerService {
         processed: true,
       });
 
-      await Promise.all([
-        // Update message with analysis scores
-        this.amaService.updateMessageWithAnalysis(message.id, {
-          originality: analysis.originality?.score || 0,
-          clarity: analysis.clarity?.score || 0,
-          engagement: analysis.engagement?.score || 0,
-          score: analysis.total_score || 0,
-          processed: true,
-        }),
+      // Try to send analysis and add reaction, if analysis sending fails, delete forwarded message
+      try {
+        await Promise.all([
+          // Update message with analysis scores
+          this.amaService.updateMessageWithAnalysis(message.id, {
+            originality: analysis.originality?.score || 0,
+            clarity: analysis.clarity?.score || 0,
+            engagement: analysis.engagement?.score || 0,
+            score: analysis.total_score || 0,
+            processed: true,
+          }),
 
-        this.sendAnalysisToAdmin(forwardedMsgId, analysis),
+          this.sendAnalysisToAdmin(forwardedMsgId, analysis),
 
-        this.addHeartReaction(message),
-      ]);
-
-      this.logger.log(`Successfully processed unique message ${message.id}`);
+          this.addHeartReaction(message),
+        ]);
+        this.logger.log(`Successfully processed unique message ${message.id}`);
+      } catch (error) {
+        this.logger.error(`Error sending analysis for message ${message.id}: ${error}`);
+        // Delete the forwarded message if sending analysis failed
+        await this.bot.telegram
+          .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+          .catch((deleteError) => {
+            this.logger.error(
+              `Failed to delete forwarded message ${forwardedMsgId} after analysis send failure for message ${message.id}: ${deleteError}`,
+            );
+          });
+      }
     } catch (error) {
       this.logger.error(`Error processing message ${message.id}: ${error}`);
     }
