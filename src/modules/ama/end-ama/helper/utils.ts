@@ -183,7 +183,7 @@ export async function getAMAFilteredScores(
 
 export function buildWinnersMessage(
   ama: AMA,
-  winners: ScoreWithUser[],
+  winners: ScoreWithUser[] ,
   includeScores: boolean = false,
 ): string {
   const sessionDate = ama.created_at ? dayjs(ama.created_at).format("MMMM D") : "Unknown Date";

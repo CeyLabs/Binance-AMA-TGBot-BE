@@ -1,7 +1,7 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, PublicGroupInfo } from "../types";
+import { AMA, BotContext, PublicGroupInfo, ScheduleType } from "../types";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
 import * as dayjs from "dayjs";
@@ -204,7 +204,7 @@ export async function handleConfirmSchedule(
   ctx: BotContext,
   amaId: UUID,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  scheduleAMA: (id: UUID, time: Date) => Promise<void>,
+  scheduleAMA: (id: UUID, time: Date, type: ScheduleType) => Promise<void>,
 ): Promise<void> {
   const ama = await getAMAById(amaId);
   if (!ama) {
@@ -249,7 +249,7 @@ export async function handleConfirmSchedule(
 
   try {
     for (const time of scheduledTimes) {
-      await scheduleAMA(amaId, time);
+      await scheduleAMA(amaId, time, "init");
       console.log(`✅ Scheduled AMA ${amaId} at ${time.toISOString()}`);
     }
     await ctx.reply(`✅ Scheduled ${scheduledTimes.length} broadcast(s).`);

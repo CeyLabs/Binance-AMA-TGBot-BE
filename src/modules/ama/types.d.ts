@@ -117,10 +117,13 @@ export interface WinnerData {
   updated_at?: string;
 }
 
+export type ScheduleType = "init" | "winner" | "remind";
+
 export interface Schedule {
   id: UUID;
   ama_id: UUID;
   scheduled_time: Date;
+  type: ScheduleType;
   created_at: Date;
   updated_at: Date;
 }

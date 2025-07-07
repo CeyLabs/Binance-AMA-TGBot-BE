@@ -23,6 +23,7 @@ import {
   WinnerData,
   SupportedLanguage,
   UserDetails,
+  ScheduleType,
 } from "./types";
 import {
   handleBroadcastNow,
@@ -55,9 +56,7 @@ import {
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
-// import { toZonedTime } from "date-fns-tz";
 import { convertDateTimeToUTC } from "src/modules/ama/helper/date-utils";
-
 
 @Update()
 @Injectable()
@@ -293,22 +292,24 @@ export class AMAService {
     return { wins: count };
   }
 
-  async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
+  async scheduleAMA(ama_id: UUID, scheduled_time: Date, type: ScheduleType): Promise<void> {
     await this.knexService.knex("schedule").insert({
       ama_id,
       scheduled_time,
+      type,
     });
   }
 
   // Get all AMAs that are scheduled within the last 10 minutes
-  async getDueScheduledTimes(now: Date) {
+  async getDueScheduledTimes() {
     const scheduleEntries = await this.knexService
       .knex("schedule")
-      .where("scheduled_time", "<=", now)
+      .where("scheduled_time", "<=", this.knexService.knex.fn.now())
       .select("id", "ama_id");
-    return scheduleEntries.map((row: { id: UUID; ama_id: UUID }) => ({
+    return scheduleEntries.map((row: { id: UUID; ama_id: UUID; type: ScheduleType }) => ({
       scheduleId: row.id,
       amaId: row.ama_id,
+      type: row.type,
     }));
   }
 
@@ -321,6 +322,16 @@ export class AMAService {
   async getWinnersByAMA(amaId: UUID): Promise<WinnerData[]> {
     return this.knexService
       .knex<WinnerData>("winner")
+      .where({ ama_id: amaId })
+      .orderBy("rank", "asc");
+  }
+
+  // Get winners by AMA ID with user details
+  async getWinnersWithUserDetails(amaId: UUID): Promise<ScoreWithUser[]> {
+    return this.knexService
+      .knex("winner")
+      .join("user", "winner.user_id", "user.user_id")
+      .select("winner.*", "user.name", "user.username")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
