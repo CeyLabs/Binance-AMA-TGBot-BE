@@ -7,36 +7,36 @@ export class DbLoggerService extends ConsoleLogger {
     super();
   }
 
-  private async save(level: string, message: string): Promise<void> {
+  private async save(level: string, message: string, actor?: string): Promise<void> {
     try {
-      await this.knexService.knex("log").insert({ level, text: message });
+      await this.knexService.knex("log").insert({ level, text: message, actor });
     } catch (err) {
       super.error(`Failed to write log to DB: ${(err as Error).message}`);
     }
   }
 
-  override log(message: string) {
+  override log(message: string, actor?: string) {
     super.log(message);
-    void this.save("info", message);
+    void this.save("info", message, actor);
   }
 
-  override error(message: string, stack?: string) {
+  override error(message: string, stack?: string, actor?: string) {
     super.error(message, stack);
-    void this.save("error", stack ? `${message}\n${stack}` : message);
+    void this.save("error", stack ? `${message}\n${stack}` : message, actor);
   }
 
-  override warn(message: string) {
+  override warn(message: string, actor?: string) {
     super.warn(message);
-    void this.save("warn", message);
+    void this.save("warn", message, actor);
   }
 
-  override debug(message: string) {
+  override debug(message: string, actor?: string) {
     super.debug(message);
-    void this.save("info", message);
+    void this.save("info", message, actor);
   }
 
-  override verbose(message: string) {
+  override verbose(message: string, actor?: string) {
     super.verbose(message);
-    void this.save("info", message);
+    void this.save("info", message, actor);
   }
 }

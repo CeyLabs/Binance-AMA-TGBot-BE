@@ -12,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       })
       .notNullable();
     table.text("text").notNullable();
+    table.string("actor").nullable();
     table.timestamps(true, true);
   });
 }

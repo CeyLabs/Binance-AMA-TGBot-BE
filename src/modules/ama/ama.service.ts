@@ -11,6 +11,7 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
+import { DbLoggerService } from "../logger/db-logger.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
@@ -55,6 +56,7 @@ export class AMAService {
   constructor(
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
+    private readonly logger: DbLoggerService,
   ) {}
 
   // <<------------------------------------ Database Operations ------------------------------------>>
@@ -381,6 +383,7 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -650,7 +653,11 @@ export class AMAService {
   // cancel-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelAMA(ctx: BotContext): Promise<void> {
-    await handleNewAMACancel(ctx, this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>);
+    await handleNewAMACancel(
+      ctx,
+      this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>,
+      this.logger,
+    );
   }
 
   // cancel-ama_(id)
