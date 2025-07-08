@@ -16,6 +16,7 @@ This bot is specifically designed to manage and automate AMA (Ask Me Anything) s
 - **User Management**
   - Participant registration for AMAs
   - User verification and tracking
+  - Admin roles with `super_admin`, `admin`, and `regular`
 
 ## 🛠 Tech Stack
 
@@ -64,3 +65,7 @@ npm run fixtures
 ```bash
 npm run serve:local
 ```
+
+## Admin Management
+
+Use `/grantadmin <tg_userid>` to promote a user to admin and `/revokeadmin <tg_userid>` to remove admin privileges. These commands can only be executed by `super_admin` users.
