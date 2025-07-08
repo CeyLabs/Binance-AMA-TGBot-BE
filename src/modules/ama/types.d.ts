@@ -21,6 +21,7 @@ export interface AMA {
   topic: string;
   hashtag: string;
   thread_id?: number;
+  banner_file_id?: string;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -52,10 +53,8 @@ interface Score {
 
 export interface OpenAIAnalysis {
   originality: Score;
-  relevance: Score;
   clarity: Score;
   engagement: Score;
-  language: Score;
   total_score: number;
 }
 
@@ -73,10 +72,8 @@ export interface ScoreData {
   user_id: string;
   question: string;
   originality: number;
-  relevance: number;
   clarity: number;
   engagement: number;
-  language: number;
   score: number;
   processed: boolean;
   tg_msg_id: number;
@@ -90,10 +87,8 @@ export interface CreateScoreData {
   user_id: string;
   question: string;
   originality: number;
-  relevance: number;
   clarity: number;
   engagement: number;
-  language: number;
   score: number;
 }
 
@@ -117,7 +112,7 @@ export interface WinnerData {
   id: UUID;
   ama_id: UUID;
   user_id: string;
-  score_id: UUID;
+  message_id: UUID;
   rank: number;
   created_at?: string;
   updated_at?: string;
@@ -141,4 +136,10 @@ export interface MessageWithAma extends ScoreData {
 export interface WinnerWithUser extends WinnerData {
   name: string | null;
   username: string | null;
+}
+
+export interface UserDetails {
+  user_id: string;
+  username: string | null;
+  name: string | null;
 }

@@ -11,6 +11,7 @@ interface AMAData {
   reward: string;
   winner_count: number;
   form_link: string;
+  banner_file_id?: string;
 }
 
 /**

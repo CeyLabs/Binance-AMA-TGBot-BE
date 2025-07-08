@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_HASHTAG, CALLBACK_ACTIONS, EDIT_KEYS } from "../ama.constants";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
@@ -36,7 +36,7 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
         ctx.chat?.id,
         ctx.session.editingAnnouncementMsgId,
         undefined,
-        { inline_keyboard: [] }
+        { inline_keyboard: [] },
       );
     } catch (err) {
       console.error("Failed to edit message reply markup:", err);
@@ -60,7 +60,7 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
           Markup.button.callback("❌ Cancel",`${CALLBACK_ACTIONS.EDIT_CANCEL}_${editMode.amaId}`),
         ],
       ]).reply_markup,
-    }
+    },
   );
 
   ctx.session.messagesToDelete.push(updatedMsg.message_id);
@@ -69,11 +69,11 @@ export async function handleEdit(ctx: BotContext): Promise<void> {
 export async function handleConfirmEdit(
   ctx: BotContext,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
-  getAMAById: (id: UUID) => Promise<AMA | null>
+  getAMAById: (id: UUID) => Promise<AMA | null>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
   const { id: AMA_ID } = result;
@@ -135,7 +135,7 @@ export async function handleConfirmEdit(
 export async function handleCancelEdit(ctx: BotContext): Promise<void> {
   const result = await validateIdPattern(
     ctx,
-    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i")
+    new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i"),
   );
   if (!result) return;
   const { id: AMA_ID } = result;
@@ -169,10 +169,92 @@ export async function handleCancelEdit(ctx: BotContext): Promise<void> {
         ctx.chat?.id,
         ctx.session.editingAnnouncementMsgId,
         undefined,
-        NewAMAKeyboard(AMA_ID)
+        NewAMAKeyboard(AMA_ID),
       );
     } catch (err) {
       console.error("Failed to edit message reply markup:", err);
     }
+  }
+}
+
+export async function handleBannerUpload(
+  ctx: BotContext,
+  getAMAById: (id: UUID) => Promise<AMA | null>,
+  updateBanner: (amaId: UUID, file_id: string) => Promise<AMA | null>,
+): Promise<void> {
+  try {
+    const session = ctx.session;
+    if (!session?.editMode?.field || session.editMode.field !== EDIT_KEYS.BANNER) {
+      return;
+    }
+
+    const message = ctx.message;
+    if (!message || !("photo" in message)) {
+      return;
+    }
+
+    const photo = message.photo;
+    const file_id = photo[photo.length - 1].file_id; // Get highest resolution photo
+
+    const ama = await getAMAById(session.editMode.amaId);
+
+    if (!ama) {
+      await ctx.reply("❌ AMA not found.");
+      return;
+    }
+
+    // Edit the editingAnnouncementMsgId if it exists to remove the inline keyboard
+    if (session.editingAnnouncementMsgId) {
+      try {
+        await ctx.telegram.editMessageReplyMarkup(
+          ctx.chat?.id,
+          session.editingAnnouncementMsgId,
+          undefined,
+          { inline_keyboard: [] },
+        );
+      } catch (err) {
+        console.error("Failed to edit message reply markup:", err);
+      }
+    }
+
+    // Update banner and get updated AMA details
+    const updatedAma = await updateBanner(ama.id, file_id);
+
+    if (updatedAma) {
+      // Show success message
+      const successMsg = await ctx.reply("✅ Banner has been updated successfully!");
+
+      // Initialize messagesToDelete array if needed and add success message
+      session.messagesToDelete ??= [];
+      session.messagesToDelete.push(successMsg.message_id);
+
+      // Build and send the updated announcement
+      const message = buildAMAMessage({
+        session_no: updatedAma.session_no,
+        language: updatedAma.language,
+        date: updatedAma.date,
+        time: updatedAma.time,
+        total_pool: updatedAma.total_pool,
+        reward: updatedAma.reward,
+        winner_count: updatedAma.winner_count,
+        form_link: updatedAma.form_link,
+        banner_file_id: file_id,
+      });
+
+      // Send updated announcement with the new banner
+      const sent = await ctx.replyWithPhoto(file_id, {
+        caption: message,
+        parse_mode: "HTML",
+        reply_markup: NewAMAKeyboard(ama.id),
+      });
+
+      // Store the new announcement message ID
+      session.editingAnnouncementMsgId = sent.message_id;
+    }
+
+    delete session.editMode;
+  } catch (error) {
+    console.error("Error handling banner upload:", error);
+    await ctx.reply("❌ Failed to update banner. Please try again.");
   }
 }

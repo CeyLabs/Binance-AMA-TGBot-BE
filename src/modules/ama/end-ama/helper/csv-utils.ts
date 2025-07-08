@@ -11,10 +11,8 @@ export interface CSVScoreData {
   username: string;
   question: string;
   originality: number;
-  relevance: number;
   clarity: number;
   engagement: number;
-  language: number;
   total_score: number;
   submitted_at: string;
 }
@@ -48,10 +46,8 @@ export async function generateAMAScoresCSV(
     username: score.username || "",
     question: score.question.replace(/\n/g, " ").replace(/"/g, '""'), // Escape newlines and quotes
     originality: score.originality,
-    relevance: score.relevance,
     clarity: score.clarity,
     engagement: score.engagement,
-    language: score.language,
     total_score: score.score,
     submitted_at: score.created_at || "",
   }));
@@ -66,10 +62,8 @@ export async function generateAMAScoresCSV(
       { id: "username", title: "Username" },
       { id: "question", title: "Question" },
       { id: "originality", title: "Originality Score" },
-      { id: "relevance", title: "Relevance Score" },
       { id: "clarity", title: "Clarity Score" },
       { id: "engagement", title: "Engagement Score" },
-      { id: "language", title: "Language Score" },
       { id: "total_score", title: "Total Score" },
       { id: "submitted_at", title: "Submitted At" },
     ],
