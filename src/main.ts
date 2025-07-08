@@ -9,6 +9,9 @@ import { getBotToken } from "nestjs-telegraf";
 import { Telegraf } from "telegraf";
 import { json } from "express";
 import { Request, Response, NextFunction } from "express";
+import { ConsoleLogger } from "@nestjs/common";
+import { KnexService } from "./modules/knex/knex.service";
+import { DbLoggerService } from "./logger/db-logger.service";
 
 // Add request logger middleware
 const requestLogger = (req: Request, res: Response, next: NextFunction) => {
@@ -28,7 +31,12 @@ const requestLogger = (req: Request, res: Response, next: NextFunction) => {
  * @throws {Error} If there's an error during application bootstrap
  */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  // Initialize database logger
+  const knexService = app.get(KnexService);
+  const dbLogger = new DbLoggerService(knexService);
+  app.useLogger(dbLogger);
 
   // Get the bot instance
   const bot = app.get<Telegraf>(getBotToken());
@@ -45,10 +53,14 @@ async function bootstrap(): Promise<void> {
   // Start the NestJS application
   const PORT = process.env.PORT || 3000;
   await app.listen(PORT, () => {
-    console.log(`Application is running on port ${PORT}`);
+    dbLogger.log(`Application is running on port ${PORT}`);
   });
 }
 
 bootstrap().catch((error) => {
-  console.error("Error during application bootstrap:", error);
+  const logger = new ConsoleLogger();
+  logger.error(
+    "Error during application bootstrap:",
+    (error as Error).stack,
+  );
 });

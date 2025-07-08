@@ -11,6 +11,7 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
+import { DbLoggerService } from "../../logger/db-logger.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import { handleBannerUpload } from "./new-ama/edit-ama";
 import {
@@ -42,7 +43,7 @@ import {
   confirmWinnersCallback,
   endAMAbyCallback,
   handleEndAMA,
-  handleWiinersBroadcast,
+  handleWinnersBroadcast,
   resetWinnersCallback,
   selectWinnersCallback,
   cancelWinnersCallback,
@@ -62,6 +63,7 @@ export class AMAService {
   constructor(
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
+    private readonly logger: DbLoggerService,
   ) {}
 
   // Check if a question is a duplicate within the same AMA session
@@ -432,6 +434,7 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -450,6 +453,7 @@ export class AMAService {
       groupIds,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -658,6 +662,7 @@ export class AMAService {
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
       this.deleteWinnersByAMA.bind(this) as (amaId: UUID) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -671,7 +676,7 @@ export class AMAService {
       },
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
-    await handleWiinersBroadcast(
+    await handleWinnersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
@@ -737,7 +742,11 @@ export class AMAService {
   // cancel-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelAMA(ctx: BotContext): Promise<void> {
-    await handleNewAMACancel(ctx, this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>);
+    await handleNewAMACancel(
+      ctx,
+      this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>,
+      this.logger,
+    );
   }
 
   // cancel-ama_(id)

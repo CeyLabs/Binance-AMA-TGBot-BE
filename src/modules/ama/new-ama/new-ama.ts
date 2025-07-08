@@ -9,6 +9,7 @@ import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
+import { DbLoggerService } from "../../../logger/db-logger.service";
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -24,6 +25,7 @@ export async function handleNewAMA(
     sessionNo: number,
     language: SupportedLanguage,
   ) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   try {
     const text = ctx.text;
@@ -85,6 +87,10 @@ export async function handleNewAMA(
     });
 
     const annunceMsg = await ctx.reply("Announcement Created!");
+    logger?.log(
+      `Creating AMA session ${sessionNo} (${language})`,
+      ctx.from?.id.toString(),
+    );
 
     // Create the AMA and get the ID
     const AMA_ID = await createAMA(
@@ -98,6 +104,8 @@ export async function handleNewAMA(
       return;
     }
 
+    logger?.log(`AMA created with id ${AMA_ID}`, ctx.from?.id.toString());
+
     const amaMsg = await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
@@ -108,7 +116,7 @@ export async function handleNewAMA(
     ctx.session.messagesToDelete ??= [];
     ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
   } catch (error) {
-    console.error("Error in handleNewAMA:", error);
+    logger?.error("Error in handleNewAMA", (error as Error).stack, ctx.from?.id.toString());
     await ctx.reply(
       "An error occurred while processing your request. Please try again.",
     );
@@ -118,6 +126,7 @@ export async function handleNewAMA(
 export async function handleNewAMACancel(
   ctx: BotContext,
   deleteAMA: (id: UUID) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -132,6 +141,7 @@ export async function handleNewAMACancel(
       inline_keyboard: [],
     });
     await ctx.reply("AMA session has been cancelled successfully.");
+    logger?.log(`AMA ${AMA_ID} cancelled`, ctx.from?.id.toString());
   } else {
     await ctx.answerCbQuery(
       "Failed to cancel the AMA session. Please try again.",

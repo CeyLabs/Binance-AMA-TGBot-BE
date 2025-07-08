@@ -17,6 +17,7 @@ import {
   generateWinnerAnnouncementText,
   generateAndSendCSV,
 } from "./helper/utils";
+import { DbLoggerService } from "src/logger/db-logger.service";
 
 export async function handleEndAMA(
   ctx: Context,
@@ -306,6 +307,7 @@ export async function confirmWinnersCallback(
   ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
   deleteWinnersByAMA: (amaId: UUID) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -330,6 +332,8 @@ export async function confirmWinnersCallback(
     status: "ended",
   });
 
+  logger?.log(`AMA #${ama.session_no} ended and winners confirmed.`, ctx.from?.id?.toString());
+
   // Add winners to database
   try {
     for (let i = 0; i < topWinners.length; i++) {
@@ -345,6 +349,11 @@ export async function confirmWinnersCallback(
     }
   } catch (error) {
     console.error("Error adding winners to database:", error);
+    logger?.error(
+      `Error adding winners to AMA #${ama.session_no}: ${(error as Error).message}`,
+      ctx.from?.id?.toString(),
+    );
+    // If there's an error, we can still notify the user
     return void ctx.reply("Error saving winners to database. Please try again.");
   }
 
@@ -372,7 +381,7 @@ export async function confirmWinnersCallback(
   }
 }
 
-export async function handleWiinersBroadcast(
+export async function handleWinnersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
