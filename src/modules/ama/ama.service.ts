@@ -146,7 +146,7 @@ export class AMAService {
   async getUserRole(userId: string): Promise<string | null> {
     const user = await this.knexService
       .knex<{ role: string }>("user")
-      .where({ user_id: userId })
+      .where("user_id", userId)
       .first();
     return user ? user.role : null;
   }
