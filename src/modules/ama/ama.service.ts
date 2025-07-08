@@ -402,6 +402,7 @@ export class AMAService {
       groupIds,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -597,6 +598,7 @@ export class AMAService {
         rank: number,
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+      this.logger,
     );
   }
 
