@@ -41,7 +41,7 @@ import {
   confirmWinnersCallback,
   endAMAbyCallback,
   handleEndAMA,
-  handleWiinersBroadcast,
+  handleWinnersBroadcast,
   resetWinnersCallback,
   selectWinnersCallback,
   cancelWinnersCallback,
@@ -612,7 +612,7 @@ export class AMAService {
       },
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
-    await handleWiinersBroadcast(
+    await handleWinnersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,

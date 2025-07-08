@@ -371,7 +371,7 @@ export async function confirmWinnersCallback(
   }
 }
 
-export async function handleWiinersBroadcast(
+export async function handleWinnersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
