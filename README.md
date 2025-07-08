@@ -69,3 +69,5 @@ npm run serve:local
 ## Admin Management
 
 Use `/grantadmin <tg_userid>` to promote a user to admin and `/revokeadmin <tg_userid>` to remove admin privileges. These commands can only be executed by `super_admin` users.
+User name and username fields are automatically kept in sync with Telegram when
+any command or AMA question is received.

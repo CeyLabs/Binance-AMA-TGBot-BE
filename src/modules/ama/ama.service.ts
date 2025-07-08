@@ -123,6 +123,15 @@ export class AMAService {
       });
   }
 
+  async upsertUserFromContext(ctx: Context): Promise<void> {
+    if (!ctx.from) return;
+    await this.upsertUser(
+      ctx.from.id.toString(),
+      ctx.from.first_name,
+      ctx.from.username ?? undefined,
+    );
+  }
+
   async updateUserRole(
     userId: string,
     role: "super_admin" | "admin" | "regular",
@@ -389,6 +398,7 @@ export class AMAService {
   // Handle /start command with deep links for claiming rewards
   @Start()
   async start(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     await handleStart(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -399,6 +409,7 @@ export class AMAService {
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdmin(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
@@ -422,6 +433,7 @@ export class AMAService {
   // Start the AMA (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdmin(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
@@ -446,6 +458,7 @@ export class AMAService {
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
   async endAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdmin(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
@@ -462,6 +475,7 @@ export class AMAService {
 
   @Command("grantadmin")
   async grantAdmin(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isSuperAdmin(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
@@ -481,6 +495,7 @@ export class AMAService {
 
   @Command("revokeadmin")
   async revokeAdmin(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isSuperAdmin(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
