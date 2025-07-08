@@ -1,5 +1,5 @@
 import { formatTimeTo12Hour } from "../../helper/utils";
-import { AMA_HASHTAG } from "../../ama.constants";
+import { AMA_HASHTAGS } from "../../ama.constants";
 import { SupportedLanguage } from "../../types";
 
 interface AMAData {
@@ -45,7 +45,7 @@ export function buildAMAMessage(data: AMAData): string {
 <b>⚡ لتكون مؤهلاً للفوز، يجب عليك:</b>
 1️⃣ تعبئة هذا <a href="${data.form_link}">النموذج</a> لتكون مؤهلاً للجائزة.
 2️⃣ المشاركة في المكالمة الصوتية 🗣️
-3️⃣ طرح سؤال أثناء المكالمة باستخدام الوسم <b>#${AMA_HASHTAG}${data.session_no}</b>
+3️⃣ طرح سؤال أثناء المكالمة باستخدام الوسم <b>#${AMA_HASHTAGS["ar"]}${data.session_no}</b>
 4️⃣ أن يكون لديك اسم مستخدم على تيليغرام
 5️⃣ ألا تكون من الفائزين في آخر 30 يومًا.
 
@@ -68,7 +68,7 @@ export function buildAMAMessage(data: AMAData): string {
 <b>⚡ To be eligible to win, you must:</b>
 1️⃣ Complete this <a href="${data.form_link}">form</a> to become qualified for the reward.
 2️⃣ Participate in the voice call 🗣️
-3️⃣ Ask a question during the call using the hashtag <b>#${AMA_HASHTAG}${data.session_no}</b>
+3️⃣ Ask a question during the call using the hashtag <b>#${AMA_HASHTAGS["en"]}${data.session_no}</b>
 4️⃣ Have a username
 5️⃣ Not be a winner of the competition in the last 30 days.
 

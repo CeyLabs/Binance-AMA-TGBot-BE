@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { AMA_HASHTAG, CALLBACK_ACTIONS, EDIT_KEYS } from "../ama.constants";
+import { AMA_HASHTAGS, CALLBACK_ACTIONS, EDIT_KEYS } from "../ama.constants";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
@@ -95,7 +95,11 @@ export async function handleConfirmEdit(
   if (fieldMeta.column === "session_no") {
     const sessionNo = Number(newValue);
     if (!isNaN(sessionNo)) {
-      updateData["hashtag"] = `#${AMA_HASHTAG}${sessionNo}`;
+      // Get the current AMA to check its language
+      const ama = await getAMAById(AMA_ID);
+      if (ama) {
+        updateData["hashtag"] = `#${AMA_HASHTAGS[ama.language]}${sessionNo}`;
+      }
     }
   }
 

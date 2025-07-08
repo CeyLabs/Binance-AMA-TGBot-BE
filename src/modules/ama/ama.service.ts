@@ -6,7 +6,7 @@ import { handleNewAMA, handleNewAMACancel } from "./new-ama/new-ama";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
-  AMA_HASHTAG,
+  AMA_HASHTAGS,
   CALLBACK_ACTIONS,
   EDIT_KEYS,
 } from "./ama.constants";
@@ -101,7 +101,7 @@ export class AMAService {
       winner_count: AMA_DEFAULT_DATA.winner_count,
       form_link: AMA_DEFAULT_DATA.form_link,
       topic: topic || "Weekly AMA",
-      hashtag: `#${AMA_HASHTAG}${sessionNo}`,
+      hashtag: `#${AMA_HASHTAGS[language]}${sessionNo}`,
     }).returning("id");
     if (data.length === 0) {
       throw new Error("Failed to create AMA session");
@@ -333,7 +333,7 @@ export class AMAService {
       .where({ user_id: userId })
       .first();
   }
-  
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -344,7 +344,6 @@ export class AMAService {
       .orderBy("message.created_at", "asc")
       .limit(batchSize);
   }
-
 
   async updateMessageWithAnalysis(
     messageId: UUID,

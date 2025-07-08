@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { AMA_HASHTAG } from "../ama.constants";
+import { AMA_HASHTAGS } from "../ama.constants";
 import { AMA, GroupInfo } from "../types";
 
 export async function handleAMAQuestion(
@@ -20,8 +20,23 @@ export async function handleAMAQuestion(
 
   if (!message || !("text" in message) || message.from.is_bot) return;
 
-  if (message.text && message.text.toLowerCase().includes(`#${AMA_HASHTAG.toLowerCase()}`)) {
-    const amaHashtagMatch = message.text.match(new RegExp(`#${AMA_HASHTAG}(\\d+)`, "i"));
+  // Check for both English and Arabic hashtags
+  const englishHashtag = `#${AMA_HASHTAGS["en"]}`.toLowerCase();
+  const arabicHashtag = `#${AMA_HASHTAGS["ar"]}`.toLowerCase();
+  const messageText = message.text.toLowerCase();
+
+  if (
+    message.text &&
+    (messageText.includes(englishHashtag) || messageText.includes(arabicHashtag))
+  ) {
+    // Check which hashtag was used and create regex accordingly
+    let amaHashtagMatch: RegExpMatchArray | null = null;
+    if (messageText.includes(englishHashtag)) {
+      amaHashtagMatch = message.text.match(new RegExp(`#${AMA_HASHTAGS["en"]}(\\d+)`, "i"));
+    } else {
+      amaHashtagMatch = message.text.match(new RegExp(`#${AMA_HASHTAGS["ar"]}(\\d+)`, "i"));
+    }
+
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
     // Check if user has first_name

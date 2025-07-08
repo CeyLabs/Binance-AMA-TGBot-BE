@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { AMA_COMMANDS, AMA_HASHTAG, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
 
 import { AMA, GroupInfo } from "../types";
 import { getLanguageText, UUID_PATTERN, validateIdPattern } from "../helper/utils";
@@ -24,7 +24,7 @@ export async function handleStartAMA(
 
   const existingAMAs = await getAMAsBySessionNo(sessionNo);
   if (existingAMAs.length === 0) {
-    return void ctx.reply(`No AMA session found for session #${AMA_HASHTAG}${sessionNo}.`);
+    return void ctx.reply(`No AMA session found for session #${sessionNo}.`);
   }
 
   const availableAMAs = existingAMAs.filter(
@@ -96,13 +96,13 @@ async function startAMA(
     status: "active",
   });
 
-  await ctx.reply(`#${AMA_HASHTAG}${ama.session_no} has started!`);
+  await ctx.reply(`#${ama.session_no} has started!`);
   logger?.log(`AMA #${ama.session_no} started in ${ama.language} group.`, ctx.from?.id.toString());
   await ctx.reply("Binance AMA Bot is listening to the messages in Binance MENA group.");
 
   // Notify the public group about the AMA start
   const publicGroupId = groupIds.public[ama.language];
-  const message = `#${AMA_HASHTAG}${ama.session_no} ${getLanguageText(ama.language)} AMA Session has started! Post your questions now.`;
+  const message = `#${ama.session_no} ${getLanguageText(ama.language)} AMA Session has started! Post your questions now.`;
   await ctx.telegram.sendMessage(publicGroupId, message, {
     parse_mode: "HTML",
   });
