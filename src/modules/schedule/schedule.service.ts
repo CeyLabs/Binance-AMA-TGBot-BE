@@ -135,7 +135,7 @@ export class SchedulerService {
   private async processMessage(message: MessageWithAma) {
     try {
       // First forward message to admin
-      await this.forwardMessageToAdmin(message);
+      const forwardedMsgId = await this.forwardMessageToAdmin(message);
 
       // Check for duplicates
       const isDuplicate = await this.amaService.checkDuplicateQuestion(
@@ -165,28 +165,33 @@ export class SchedulerService {
           await this.bot.telegram.callApi("setMessageReaction", {
             chat_id: message.chat_id,
             message_id: message.tg_msg_id,
-            reaction: [{ type: "emoji", emoji: "💩" as TelegramEmoji }],
+            reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
           });
-          this.logger.log(`Added 💩 reaction to duplicate message ${message.id}`);
+          this.logger.log(`Added 🙏 reaction to duplicate message ${message.id}`);
 
           // Notify admin if we have the forwarded message ID
-          if (message.forwarded_msg_id) {
-            await this.bot.telegram.sendMessage(
-              this.ADMIN_GROUP_ID,
-              "⚠️ Duplicate question detected! Scores set to 0.",
-              {
-                reply_parameters: {
-                  message_id: message.forwarded_msg_id,
-                },
+          await this.bot.telegram.sendMessage(
+            this.ADMIN_GROUP_ID,
+            "⚠️ Duplicate question detected! Scores set to 0.",
+            {
+              reply_parameters: {
+                message_id: forwardedMsgId,
               },
-            );
-            this.logger.log(`Notified admin about duplicate message ${message.id}`);
-          }
+            },
+          );
 
           this.logger.log(`Successfully processed duplicate message ${message.id}`);
           return; // Important: stop processing here for duplicates
         } catch (error) {
           this.logger.error(`Error processing duplicate message ${message.id}: ${error}`);
+          // If failed delete the forwarded message
+          await this.bot.telegram
+            .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+            .catch((deleteError) => {
+              this.logger.error(
+                `Failed to delete forwarded message ${forwardedMsgId} for duplicate ${message.id}: ${deleteError}`,
+              );
+            });
           // Still return to prevent further processing
           return;
         }
@@ -194,7 +199,7 @@ export class SchedulerService {
 
       this.logger.log(`Processing unique message ${message.id} with AI analysis`);
 
-      // For unique messages: Run AI analysis and handle normally
+      // Run AI analysis in parallel with message forwarding
       const analysisResult = await getQuestionAnalysis(message.question, message.topic);
 
       // Only proceed if we get a valid OpenAIAnalysis object
@@ -206,31 +211,49 @@ export class SchedulerService {
 
       const analysis = analysisResult;
 
-      // Update DB and send notifications in parallel
-      await Promise.all([
-        // Update message with analysis scores
-        this.amaService.updateMessageWithAnalysis(message.id, {
-          originality: analysis.originality?.score || 0,
-          clarity: analysis.clarity?.score || 0,
-          engagement: analysis.engagement?.score || 0,
-          score: analysis.total_score || 0,
-          processed: true,
-        }),
-        // Send analysis message if we have a forwarded message
-        message.forwarded_msg_id ? this.sendAnalysisToAdmin(message, analysis) : Promise.resolve(),
-        // Add heart reaction
-        this.addHeartReaction(message),
-      ]);
+      // Save analysis results
+      await this.amaService.updateMessageWithAnalysis(message.id, {
+        originality: analysis.originality?.score || 0,
+        clarity: analysis.clarity?.score || 0,
+        engagement: analysis.engagement?.score || 0,
+        score: analysis.total_score || 0,
+        processed: true,
+      });
 
-      this.logger.log(`Successfully processed unique message ${message.id}`);
+      // Try to send analysis and add reaction, if analysis sending fails, delete forwarded message
+      try {
+        await Promise.all([
+          // Update message with analysis scores
+          this.amaService.updateMessageWithAnalysis(message.id, {
+            originality: analysis.originality?.score || 0,
+            clarity: analysis.clarity?.score || 0,
+            engagement: analysis.engagement?.score || 0,
+            score: analysis.total_score || 0,
+            processed: true,
+          }),
+
+          this.sendAnalysisToAdmin(forwardedMsgId, analysis),
+
+          this.addHeartReaction(message),
+        ]);
+        this.logger.log(`Successfully processed unique message ${message.id}`);
+      } catch (error) {
+        this.logger.error(`Error sending analysis for message ${message.id}: ${error}`);
+        // Delete the forwarded message if sending analysis failed
+        await this.bot.telegram
+          .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+          .catch((deleteError) => {
+            this.logger.error(
+              `Failed to delete forwarded message ${forwardedMsgId} after analysis send failure for message ${message.id}: ${deleteError}`,
+            );
+          });
+      }
     } catch (error) {
       this.logger.error(`Error processing message ${message.id}: ${error}`);
     }
   }
 
-  private async forwardMessageToAdmin(message: MessageWithAma): Promise<void> {
-    if (message.forwarded_msg_id) return;
-
+  private async forwardMessageToAdmin(message: MessageWithAma): Promise<number> {
     try {
       const forwardedMsg = await this.bot.telegram.forwardMessage(
         this.ADMIN_GROUP_ID,
@@ -241,34 +264,34 @@ export class SchedulerService {
         },
       );
 
-      await this.amaService.updateMessageForwardedId(message.id, forwardedMsg.message_id);
-      message.forwarded_msg_id = forwardedMsg.message_id;
       this.logger.log(`Forwarded message ${message.id} to admin group`);
+      return forwardedMsg.message_id;
     } catch (error) {
       const result = handleTelegramError(error, "forwarding message", message.id);
       if (result.shouldRetry) {
         throw error; // Let the main handler deal with retry logic
       }
+      throw error;
     }
   }
 
   private async sendAnalysisToAdmin(
-    message: MessageWithAma,
+    forwardedMsgId: number,
     analysis: OpenAIAnalysis,
   ): Promise<void> {
     try {
       const analysisMessage = formatAnalysisMessage(analysis);
       await this.bot.telegram.sendMessage(this.ADMIN_GROUP_ID, analysisMessage, {
         reply_parameters: {
-          message_id: message.forwarded_msg_id!,
+          message_id: forwardedMsgId,
         },
         parse_mode: "HTML",
       });
     } catch (error) {
-      const result = handleTelegramError(error, "sending analysis", message.id);
+      const result = handleTelegramError(error, "sending analysis", String(forwardedMsgId));
       if (!result.shouldRetry) {
         this.logger.warn(
-          `Failed to send analysis for message ${message.id}, but continuing since scores are saved`,
+          `Failed to send analysis for message with forwarded ID ${forwardedMsgId}, but continuing since scores are saved`,
         );
       }
     }
@@ -279,7 +302,7 @@ export class SchedulerService {
       await this.bot.telegram.callApi("setMessageReaction", {
         chat_id: message.chat_id,
         message_id: message.tg_msg_id,
-        reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+        reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
       });
     } catch (error) {
       const result = handleTelegramError(error, "setting reaction", message.id);
@@ -292,20 +315,19 @@ export class SchedulerService {
   private async handleAnalysisFailure(message: MessageWithAma): Promise<void> {
     await this.amaService.markMessageAsProcessed(message.id);
 
-    if (message.forwarded_msg_id) {
-      try {
-        await this.bot.telegram.sendMessage(
-          this.ADMIN_GROUP_ID,
-          "⚠️ Analysis failed. Please try again later.",
-          {
-            reply_parameters: {
-              message_id: message.forwarded_msg_id,
-            },
+    try {
+      const forwardedId = await this.forwardMessageToAdmin(message);
+      await this.bot.telegram.sendMessage(
+        this.ADMIN_GROUP_ID,
+        "⚠️ Analysis failed. Please try again later.",
+        {
+          reply_parameters: {
+            message_id: forwardedId,
           },
-        );
-      } catch (replyError) {
-        handleTelegramError(replyError, "sending error notification", message.id);
-      }
+        },
+      );
+    } catch (replyError) {
+      handleTelegramError(replyError, "sending error notification", message.id);
     }
   }
 
