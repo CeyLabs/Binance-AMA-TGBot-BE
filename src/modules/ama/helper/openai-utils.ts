@@ -9,7 +9,7 @@ const openAIClient = new OpenAI({
  * Get an AI-powered analysis of an AMA question
  * @param question The question to analyze
  * @param topic Optional topic context for the AMA
- * @returns Analysis with scores for originality, relevance, clarity, engagement potential, and language quality
+ * @returns Analysis with scores for originality, clarity, and engagement potential
  */
 export async function getQuestionAnalysis(
   question: string,
@@ -22,20 +22,18 @@ export async function getQuestionAnalysis(
         {
           role: "system",
           content:
-            "You are an expert content quality reviewer for a global crypto community. Your task is to evaluate user-submitted questions from AMA sessions. Use your expertise to assess the quality of each question based on five criteria: originality, relevance, clarity, engagement potential, and language quality. Provide scores out of 10 for each, a brief comment for each score, and a total score out of 50. Respond only in the JSON format provided.",
+            "You are an expert content quality reviewer for a global crypto community. Your task is to evaluate user-submitted questions from AMA sessions. Use your expertise to assess the quality of each question based on three criteria: originality, clarity, and engagement potential. Provide scores out of 10 for each, a brief comment for each score, and a total score out of 30. Respond only in the JSON format provided.",
         },
         {
           role: "user",
-          content: `Score the following user-submitted question based on 5 key factors:
+          content: `Score the following user-submitted question based on 3 key factors:
 
-1. Originality – How unique or thoughtful the question is.
-2. Relevance to Topic – How closely it relates to the AMA topic.
-3. Clarity – How clearly the question is phrased.
-4. Engagement Potential – How likely it is to prompt an insightful or interesting answer.
-5. Language Quality – Grammar, spelling, and overall sentence construction.
+1. Originality (0-10) – How unique or thoughtful the question is.
+2. Clarity (0-10) – How clearly the question is phrased.
+3. Engagement (0-10) – How likely it is to prompt an insightful or interesting answer.
 
 Each factor must be scored out of 10. Provide a short explanation for each score (1–2 sentences).
-Then calculate a total score out of 50.
+Then calculate a total score out of 30.
 
 ---
 
@@ -50,26 +48,18 @@ Respond in the following JSON format:
 
 {
   "originality": {
-    "score": [0–10],
-    "comment": "[Reasoning]"
-  },
-  "relevance": {
-    "score": [0–10],
+    "score": [0-10],
     "comment": "[Reasoning]"
   },
   "clarity": {
-    "score": [0–10],
+    "score": [0-10],
     "comment": "[Reasoning]"
   },
   "engagement": {
-    "score": [0–10],
+    "score": [0-10],
     "comment": "[Reasoning]"
   },
-  "language": {
-    "score": [0–10],
-    "comment": "[Reasoning]"
-  },
-  "total_score": [0–50]
+  "total_score": [0-30]
 }`,
         },
       ],

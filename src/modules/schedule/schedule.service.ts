@@ -13,31 +13,31 @@ import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
 
 /**
  * SchedulerService - Handles AMA message processing and scheduled broadcasts
- * 
+ *
  * Key Components:
  * --------------
- * Message Processing 
+ * Message Processing
  *    - Fetches up to 20 unprocessed messages per batch
  *    - Processes in chunks of 2 concurrent messages
  *    - Each message involves:
  *      ➜ AI analysis of question content
  *      ➜ Forwarding to admin group
  *      ➜ Adding reactions and analysis results
- * 
+ *
  * Rate Limiting:
  * -------------
  * - Concurrent processing: 2 messages at a time
  * - Chunk delay: max(500ms, messages * 100ms)
  * - Exponential backoff on rate limits
  * - Retries: Up to 5 attempts per chunk
- * 
+ *
  * Error Handling:
  * --------------
  * - Independent error handling per operation
  * - Graceful degradation (continues despite non-critical failures)
  * - Rate limit detection and automatic retries
  * - Detailed error logging and admin notifications
- * 
+ *
  * Performance:
  * -----------
  * - Processing capacity: ~40 messages/minute
@@ -134,11 +134,73 @@ export class SchedulerService {
 
   private async processMessage(message: MessageWithAma) {
     try {
-      // Run AI analysis in parallel with message forwarding
-      const analysisResult = await getQuestionAnalysis(
+      // First forward message to admin
+      const forwardedMsgId = await this.forwardMessageToAdmin(message);
+
+      // Check for duplicates
+      const isDuplicate = await this.amaService.checkDuplicateQuestion(
+        message.ama_id,
         message.question,
-        message.topic,
       );
+
+      this.logger.log(
+        `Message ${message.id} duplicate check: ${isDuplicate ? "DUPLICATE" : "UNIQUE"}`,
+      );
+
+      if (isDuplicate) {
+        this.logger.log(`Handling duplicate message ${message.id}`);
+
+        try {
+          // For duplicates: set scores to 0 and mark as processed
+          await this.amaService.updateMessageWithAnalysis(message.id, {
+            originality: 0,
+            clarity: 0,
+            engagement: 0,
+            score: 0,
+            processed: true,
+          });
+          this.logger.log(`Set zero scores for duplicate message ${message.id}`);
+
+          // Add poop reaction
+          await this.bot.telegram.callApi("setMessageReaction", {
+            chat_id: message.chat_id,
+            message_id: message.tg_msg_id,
+            reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
+          });
+          this.logger.log(`Added 🙏 reaction to duplicate message ${message.id}`);
+
+          // Notify admin if we have the forwarded message ID
+          await this.bot.telegram.sendMessage(
+            this.ADMIN_GROUP_ID,
+            "⚠️ Duplicate question detected! Scores set to 0.",
+            {
+              reply_parameters: {
+                message_id: forwardedMsgId,
+              },
+            },
+          );
+
+          this.logger.log(`Successfully processed duplicate message ${message.id}`);
+          return; // Important: stop processing here for duplicates
+        } catch (error) {
+          this.logger.error(`Error processing duplicate message ${message.id}: ${error}`);
+          // If failed delete the forwarded message
+          await this.bot.telegram
+            .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+            .catch((deleteError) => {
+              this.logger.error(
+                `Failed to delete forwarded message ${forwardedMsgId} for duplicate ${message.id}: ${deleteError}`,
+              );
+            });
+          // Still return to prevent further processing
+          return;
+        }
+      }
+
+      this.logger.log(`Processing unique message ${message.id} with AI analysis`);
+
+      // Run AI analysis in parallel with message forwarding
+      const analysisResult = await getQuestionAnalysis(message.question, message.topic);
 
       // Only proceed if we get a valid OpenAIAnalysis object
       if (!analysisResult || typeof analysisResult === "string") {
@@ -152,22 +214,40 @@ export class SchedulerService {
       // Save analysis results
       await this.amaService.updateMessageWithAnalysis(message.id, {
         originality: analysis.originality?.score || 0,
-        relevance: analysis.relevance?.score || 0,
         clarity: analysis.clarity?.score || 0,
         engagement: analysis.engagement?.score || 0,
-        language: analysis.language?.score || 0,
         score: analysis.total_score || 0,
         processed: true,
       });
 
-      const forwardedMsgId = await this.forwardMessageToAdmin(message);
+      // Try to send analysis and add reaction, if analysis sending fails, delete forwarded message
+      try {
+        await Promise.all([
+          // Update message with analysis scores
+          this.amaService.updateMessageWithAnalysis(message.id, {
+            originality: analysis.originality?.score || 0,
+            clarity: analysis.clarity?.score || 0,
+            engagement: analysis.engagement?.score || 0,
+            score: analysis.total_score || 0,
+            processed: true,
+          }),
 
-      await Promise.all([
-        this.sendAnalysisToAdmin(forwardedMsgId, analysis),
-        this.addHeartReaction(message),
-      ]);
+          this.sendAnalysisToAdmin(forwardedMsgId, analysis),
 
-      this.logger.log(`Successfully processed message ${message.id}`);
+          this.addHeartReaction(message),
+        ]);
+        this.logger.log(`Successfully processed unique message ${message.id}`);
+      } catch (error) {
+        this.logger.error(`Error sending analysis for message ${message.id}: ${error}`);
+        // Delete the forwarded message if sending analysis failed
+        await this.bot.telegram
+          .deleteMessage(this.ADMIN_GROUP_ID, forwardedMsgId)
+          .catch((deleteError) => {
+            this.logger.error(
+              `Failed to delete forwarded message ${forwardedMsgId} after analysis send failure for message ${message.id}: ${deleteError}`,
+            );
+          });
+      }
     } catch (error) {
       this.logger.error(`Error processing message ${message.id}: ${error}`);
     }
@@ -222,7 +302,7 @@ export class SchedulerService {
       await this.bot.telegram.callApi("setMessageReaction", {
         chat_id: message.chat_id,
         message_id: message.tg_msg_id,
-        reaction: [{ type: "emoji", emoji: "❤️" as TelegramEmoji }],
+        reaction: [{ type: "emoji", emoji: "🙏" as TelegramEmoji }],
       });
     } catch (error) {
       const result = handleTelegramError(error, "setting reaction", message.id);

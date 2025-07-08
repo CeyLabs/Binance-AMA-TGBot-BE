@@ -4,6 +4,7 @@ export const AMA_COMMANDS = {
   NEW: "newama",
   START: "startama",
   END: "endama",
+  SELECT_WINNERS: "selectwinners",
 };
 
 export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
@@ -19,6 +20,7 @@ export const EDIT_KEYS = {
   FORM_LINK: "formLink",
   TOPIC: "topic",
   GUEST: "guest",
+  BANNER: "banner",
 };
 
 export const CALLBACK_ACTIONS = {
@@ -28,6 +30,7 @@ export const CALLBACK_ACTIONS = {
   EDIT_SESSION: `edit-${EDIT_KEYS.SESSION_NO}`,
   EDIT_REWARD: `edit-${EDIT_KEYS.REWARD}`,
   EDIT_WINNERS: `edit-${EDIT_KEYS.WINNER_COUNT}`,
+  EDIT_BANNER: `edit-${EDIT_KEYS.BANNER}`,
   EDIT_FORM: `edit-${EDIT_KEYS.FORM_LINK}`,
   ADD_TOPIC: `edit-${EDIT_KEYS.TOPIC}`,
   ADD_GUEST: `edit-${EDIT_KEYS.GUEST}`,
@@ -52,6 +55,8 @@ export const CALLBACK_ACTIONS = {
 
   // Callback actions for winner selection
   SELECT_WINNERS: "select-winners",
+  SELECT_WINNERS_CMD: "select-winners-cmd",
+  FORCE_SELECT_WINNERS: "force-select-winners",
   DISCARD_WINNER: "discard-winner",
   RESET_WINNERS: "reset-winners",
   CONFIRM_WINNERS: "confirm-winners",
