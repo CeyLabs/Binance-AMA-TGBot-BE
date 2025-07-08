@@ -11,7 +11,7 @@ import {
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
-import { DbLoggerService } from "../logger/db-logger.service";
+import { DbLoggerService } from "../../logger/db-logger.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
 import {
   AMA,
