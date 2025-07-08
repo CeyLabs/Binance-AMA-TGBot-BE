@@ -483,9 +483,24 @@ export class AMAService {
     }
 
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    const targetId = (text).split(" ")[1];
+    let targetId = text.split(" ")[1];
+
+    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+      const reply = ctx.message.reply_to_message;
+      if (reply?.from?.id) {
+        targetId = reply.from.id.toString();
+        await this.upsertUser(
+          targetId,
+          reply.from.first_name,
+          reply.from.username ?? undefined,
+        );
+      }
+    }
+
     if (!targetId) {
-      await ctx.reply("Usage: /grantadmin <tg_userid>");
+      await ctx.reply(
+        "Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin",
+      );
       return;
     }
 
@@ -503,9 +518,24 @@ export class AMAService {
     }
 
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    const targetId = (text).split(" ")[1];
+    let targetId = text.split(" ")[1];
+
+    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+      const reply = ctx.message.reply_to_message;
+      if (reply?.from?.id) {
+        targetId = reply.from.id.toString();
+        await this.upsertUser(
+          targetId,
+          reply.from.first_name,
+          reply.from.username ?? undefined,
+        );
+      }
+    }
+
     if (!targetId) {
-      await ctx.reply("Usage: /revokeadmin <tg_userid>");
+      await ctx.reply(
+        "Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin",
+      );
       return;
     }
 
