@@ -41,7 +41,7 @@ import {
   confirmWinnersCallback,
   endAMAbyCallback,
   handleEndAMA,
-  handleWiinersBroadcast,
+  handleWinnersBroadcast,
   resetWinnersCallback,
   selectWinnersCallback,
   cancelWinnersCallback,
@@ -402,6 +402,7 @@ export class AMAService {
       groupIds,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -597,6 +598,7 @@ export class AMAService {
         rank: number,
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+      this.logger,
     );
   }
 
@@ -610,7 +612,7 @@ export class AMAService {
       },
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
-    await handleWiinersBroadcast(
+    await handleWinnersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,

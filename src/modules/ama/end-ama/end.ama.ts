@@ -17,6 +17,7 @@ import {
   generateWinnerAnnouncementText,
   generateAndSendCSV,
 } from "./helper/utils";
+import { DbLoggerService } from "src/logger/db-logger.service";
 
 export async function handleEndAMA(
   ctx: Context,
@@ -64,7 +65,10 @@ export async function endAMAbyCallback(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
 ): Promise<void> {
-  const result = await validateIdPattern(ctx, new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"));
+  const result = await validateIdPattern(
+    ctx,
+    new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"),
+  );
   if (!result) return;
 
   const ama = await getAMAById(result.id);
@@ -129,7 +133,8 @@ export async function selectWinnersCallback(
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
 ): Promise<void> {
-  const callbackData = ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
+  const callbackData =
+    ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
 
   if (!callbackData) {
     return void ctx.answerCbQuery("Missing callback data.");
@@ -217,7 +222,8 @@ export async function handleDiscardUser(
   }
 
   const alreadyDiscarded =
-    Array.isArray(ctx.session.discardedUsersByAMA[amaId]) && ctx.session.discardedUsersByAMA[amaId].includes(userId);
+    Array.isArray(ctx.session.discardedUsersByAMA[amaId]) &&
+    ctx.session.discardedUsersByAMA[amaId].includes(userId);
 
   if (alreadyDiscarded) {
     await ctx.answerCbQuery("User already discarded 🚫");
@@ -293,8 +299,14 @@ export async function confirmWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  addWinner: (ama_id: UUID, user_id: string, score_id: UUID, rank: number) => Promise<WinnerData | null>,
+  addWinner: (
+    ama_id: UUID,
+    user_id: string,
+    score_id: UUID,
+    rank: number,
+  ) => Promise<WinnerData | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.CONFIRM_WINNERS);
   if (!result) return;
@@ -319,6 +331,8 @@ export async function confirmWinnersCallback(
     status: "ended",
   });
 
+  logger?.log(`AMA #${ama.session_no} ended and winners confirmed.`, ctx.from?.id?.toString());
+
   // Add winners to database
   try {
     for (let i = 0; i < topWinners.length; i++) {
@@ -327,6 +341,11 @@ export async function confirmWinnersCallback(
     }
   } catch (error) {
     console.error("Error adding winners to database:", error);
+    logger?.error(
+      `Error adding winners to AMA #${ama.session_no}: ${(error as Error).message}`,
+      ctx.from?.id?.toString(),
+    );
+    // If there's an error, we can still notify the user
     return void ctx.reply("Error saving winners to database. Please try again.");
   }
 
@@ -352,7 +371,7 @@ export async function confirmWinnersCallback(
   }
 }
 
-export async function handleWiinersBroadcast(
+export async function handleWinnersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
@@ -373,7 +392,9 @@ export async function handleWiinersBroadcast(
   }
 
   // Filter out discarded users
-  const discardedUserIds = new Set(((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number));
+  const discardedUserIds = new Set(
+    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number),
+  );
 
   const filteredScores = await getAMAFilteredScores(getScoresForAMA, ama.id, discardedUserIds);
 
