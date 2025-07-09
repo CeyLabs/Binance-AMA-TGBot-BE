@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     table.uuid("ama_id").notNullable().references("id").inTable("ama").onDelete("CASCADE");
     table.timestamp("scheduled_time").notNullable();
     table
-      .enum("type", ["init", "winner", "remind"], {
+      .enum("type", ["init", "winner"], {
         useNative: true,
         enumName: "enum_type",
       })

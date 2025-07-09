@@ -121,7 +121,7 @@ export interface WinnerData {
   updated_at?: string;
 }
 
-export type ScheduleType = "init" | "winner" | "remind";
+export type ScheduleType = "init" | "winner";
 
 export interface Schedule {
   id: UUID;
