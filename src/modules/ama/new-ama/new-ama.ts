@@ -12,12 +12,11 @@ import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import * as dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import * as timezone from "dayjs/plugin/timezone";
+import { DbLoggerService } from "../../../logger/db-logger.service";
+import { TIMEZONES } from "../helper/date-utils";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-import { DbLoggerService } from "../../../logger/db-logger.service";
-import { KSA_TIMEZONE } from "../helper/date-utils";
 
 
 /**
@@ -96,7 +95,7 @@ export async function handleNewAMA(
     }
 
     const ksaDateTime = `${AMA_DEFAULT_DATA.date}T${AMA_DEFAULT_DATA.time}`;
-    const datetimeUTC = dayjs.tz(ksaDateTime, KSA_TIMEZONE).utc().toDate();
+    const datetimeUTC = dayjs.tz(ksaDateTime, TIMEZONES.KSA).utc().toDate();
 
     const message = buildAMAMessage({
       session_no: sessionNo,

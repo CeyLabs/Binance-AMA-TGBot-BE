@@ -6,7 +6,7 @@ import { fetchAndValidateAMA, validateCallbackData } from "./helper/utils";
 import * as dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import * as timezone from "dayjs/plugin/timezone";
-import { KSA_TIMEZONE } from "../helper/date-utils";
+import { TIMEZONES } from "../helper/date-utils";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -43,7 +43,7 @@ export async function broadcastWinnersCallback(
   // Send a message to the user to provide the date and time for broadcasting winners
   await ctx.reply(
     `<b>🗓️ Please provide the date and time to broadcast the winners for AMA session #${ama.session_no}.</b>\n` +
-      `<i>Timezone:</i> <b>KSA (${KSA_TIMEZONE})</b>\n` +
+      `<i>Timezone:</i> <b>KSA (${TIMEZONES.KSA})</b>\n` +
       `<i>Format:</i> <code>YYYY/MM/DD HH:mm (24h)</code>\n` +
       `\n\n` +
       `<b>Example:</b> <code>2026/06/15 18:30</code>`,
@@ -65,7 +65,7 @@ export async function scheduleWiinersBroadcast(
   const input = ctx.message.text.trim();
 
   // Validate the input format
-  const scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", KSA_TIMEZONE);
+  const scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", TIMEZONES.KSA);
   if (!scheduled.isValid()) {
     return void ctx.reply("Invalid date and time provided. Please check the format.");
   }

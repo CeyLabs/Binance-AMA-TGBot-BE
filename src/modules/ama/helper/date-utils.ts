@@ -5,7 +5,9 @@ import * as timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export const KSA_TIMEZONE = "Asia/Riyadh";
+export const TIMEZONES = {
+  KSA: `Asia/Riyadh`,
+};
 
 export const DATETIME_REGEX = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/;
 const TIME_REGEX = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/;
@@ -46,5 +48,5 @@ export function convertDateTimeToUTC(date: string | Date, time: string): dayjs.D
     );
   }
 
-  return dayjs.tz(ksaDatetime, KSA_TIMEZONE).utc();
+  return dayjs.tz(ksaDatetime, TIMEZONES.KSA).utc();
 }
