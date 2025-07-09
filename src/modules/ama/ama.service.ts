@@ -6,12 +6,14 @@ import { handleNewAMA, handleNewAMACancel } from "./new-ama/new-ama";
 import {
   AMA_COMMANDS,
   AMA_DEFAULT_DATA,
-  AMA_HASHTAG,
+  AMA_HASHTAGS,
   CALLBACK_ACTIONS,
   EDIT_KEYS,
 } from "./ama.constants";
 import { KnexService } from "../knex/knex.service";
+import { DbLoggerService } from "../../logger/db-logger.service";
 import { handleConfirmAMA } from "./new-ama/helper/handle-confirm-ama";
+import { handleBannerUpload } from "./new-ama/edit-ama";
 import {
   AMA,
   BotContext,
@@ -21,6 +23,8 @@ import {
   ScoreWithUser,
   WinnerData,
   SupportedLanguage,
+  UserDetails,
+  ScheduleType,
 } from "./types";
 import {
   handleBroadcastNow,
@@ -40,14 +44,21 @@ import {
   confirmWinnersCallback,
   endAMAbyCallback,
   handleEndAMA,
-  handleWiinersBroadcast,
+  handleWinnersBroadcast,
   resetWinnersCallback,
   selectWinnersCallback,
   cancelWinnersCallback,
 } from "./end-ama/end.ama";
+import {
+  handleSelectWinners,
+  selectWinnersByCallback,
+  forceSelectWinnersCallback,
+} from "./end-ama/select-winners";
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
+import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
+import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
 
 @Update()
 @Injectable()
@@ -55,7 +66,28 @@ export class AMAService {
   constructor(
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
+    private readonly logger: DbLoggerService,
   ) {}
+
+  // Check if a question is a duplicate within the same AMA session
+  async checkDuplicateQuestion(amaId: UUID, question: string): Promise<boolean> {
+    if (!question || question.trim() === "") return false;
+
+    // Normalize the input question
+    const normalizedQuestion = question.toLowerCase().trim();
+
+    // Find any existing messages with the same normalized question text
+    const result = await this.knexService
+      .knex("message")
+      .where({ ama_id: amaId, processed: true }) // Only check with processed messages
+      .whereRaw("LOWER(TRIM(question)) = ?", [normalizedQuestion])
+      .count("* as count")
+      .first();
+
+    // Convert count to number and check if > 0
+    const count = result ? parseInt(result.count as string, 10) : 0;
+    return count > 0;
+  }
 
   // <<------------------------------------ Database Operations ------------------------------------>>
 
@@ -65,14 +97,13 @@ export class AMAService {
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
       language: language,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
+      datetime: convertDateTimeToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time),
       total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,
       winner_count: AMA_DEFAULT_DATA.winner_count,
       form_link: AMA_DEFAULT_DATA.form_link,
       topic: topic || "Weekly AMA",
-      hashtag: `#${AMA_HASHTAG}${sessionNo}`,
+      hashtag: `#${AMA_HASHTAGS[language]}${sessionNo}`,
     }).returning("id");
     if (data.length === 0) {
       throw new Error("Failed to create AMA session");
@@ -96,10 +127,8 @@ export class AMAService {
         user_id: scoreData.user_id,
         question: scoreData.question,
         originality: scoreData.originality,
-        relevance: scoreData.relevance,
         clarity: scoreData.clarity,
         engagement: scoreData.engagement,
-        language: scoreData.language,
         score: scoreData.score,
       })
       .returning("*");
@@ -132,10 +161,7 @@ export class AMAService {
     );
   }
 
-  async updateUserRole(
-    userId: string,
-    role: "super_admin" | "admin" | "regular",
-  ): Promise<void> {
+  async updateUserRole(userId: string, role: "super_admin" | "admin" | "regular"): Promise<void> {
     await this.knexService
       .knex("user")
       .insert({ user_id: userId, role })
@@ -163,7 +189,7 @@ export class AMAService {
   async addWinner(
     ama_id: UUID,
     user_id: string,
-    score_id: UUID,
+    message_id: UUID,
     rank: number,
   ): Promise<WinnerData | null> {
     const data = await this.knexService
@@ -171,7 +197,7 @@ export class AMAService {
       .insert({
         ama_id,
         user_id,
-        score_id,
+        message_id,
         rank,
       })
       .returning("*");
@@ -265,6 +291,17 @@ export class AMAService {
     return true;
   }
 
+  // Update banner for an AMA
+  async updateBanner(amaId: UUID, file_id: string): Promise<AMA | null> {
+    await this.knexService.knex<AMA>("ama").where("id", amaId).update({
+      banner_file_id: file_id,
+      updated_at: new Date(),
+    });
+
+    // Return the updated AMA
+    return this.getAMAById(amaId);
+  }
+
   // Get scores for a specific AMA
   async getScoresForAMA(id: UUID): Promise<ScoreWithUser[]> {
     return this.knexService
@@ -278,9 +315,9 @@ export class AMAService {
       ]);
   }
 
-  // Check if user is a winner of any AMA within past 3 months
-  async isUserWinner(userId: string): Promise<{ bool: boolean }> {
-    const threeMonthsAgo = dayjs().subtract(3, "month").toDate();
+  // Get number of times user won in the past 3 months
+  async winCount(userId: string): Promise<{ wins: number }> {
+    const threeMonthsAgo = dayjs().subtract(1, "month").toDate();
 
     const result = await this.knexService
       .knex<WinnerData>("winner")
@@ -290,25 +327,27 @@ export class AMAService {
       .first();
 
     const count = result ? parseInt(result.count, 10) : 0;
-    return { bool: count > 0 };
+    return { wins: count };
   }
 
-  async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
+  async scheduleAMA(ama_id: UUID, scheduled_time: Date, type: ScheduleType): Promise<void> {
     await this.knexService.knex("schedule").insert({
       ama_id,
       scheduled_time,
+      type,
     });
   }
 
   // Get all AMAs that are scheduled within the last 10 minutes
-  async getDueScheduledTimes(now: Date) {
+  async getDueScheduledTimes() {
     const scheduleEntries = await this.knexService
       .knex("schedule")
-      .where("scheduled_time", "<=", now)
-      .select("id", "ama_id");
-    return scheduleEntries.map((row: { id: UUID; ama_id: UUID }) => ({
+      .where("scheduled_time", "<=", this.knexService.knex.fn.now())
+      .select("id", "ama_id", "type");
+    return scheduleEntries.map((row: { id: UUID; ama_id: UUID; type: ScheduleType }) => ({
       scheduleId: row.id,
       amaId: row.ama_id,
+      type: row.type,
     }));
   }
 
@@ -325,6 +364,25 @@ export class AMAService {
       .orderBy("rank", "asc");
   }
 
+  // Get winners by AMA ID with user details
+  async getWinnersWithUserDetails(amaId: UUID): Promise<ScoreWithUser[]> {
+    return this.knexService
+      .knex("winner")
+      .join("user", "winner.user_id", "user.user_id")
+      .select("winner.*", "user.name", "user.username")
+      .where({ ama_id: amaId })
+      .orderBy("rank", "asc");
+  }
+
+  // Get user details by ID
+  async getUserById(userId: string): Promise<UserDetails | undefined> {
+    return this.knexService
+      .knex<UserDetails>("user")
+      .select("user_id", "username", "name")
+      .where({ user_id: userId })
+      .first();
+  }
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -336,15 +394,18 @@ export class AMAService {
       .limit(batchSize);
   }
 
+  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      forwarded_msg_id: forwardedMsgId,
+    });
+  }
 
   async updateMessageWithAnalysis(
     messageId: UUID,
     analysisData: {
       originality: number;
-      relevance: number;
       clarity: number;
       engagement: number;
-      language: number;
       score: number;
       processed: boolean;
     },
@@ -378,13 +439,21 @@ export class AMAService {
       chat_id: chatId,
       tg_msg_id: messageId,
       originality: 0,
-      relevance: 0,
       clarity: 0,
       engagement: 0,
-      language: 0,
       score: 0,
       processed: false, // Mark as unprocessed so the cron job will pick it up
     });
+  }
+
+  // Delete all the winners for a specific AMA
+  async deleteWinnersByAMA(amaId: UUID): Promise<boolean> {
+    const result = await this.knexService
+      .knex("winner")
+      .where({ ama_id: amaId })
+      .del()
+      .returning("*");
+    return result.length > 0; // Return true if winners were deleted
   }
 
   // <<------------------------------------ Analysis ------------------------------------>>
@@ -427,6 +496,7 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -452,6 +522,7 @@ export class AMAService {
       groupIds,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -469,7 +540,19 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  @Command(AMA_COMMANDS.SELECT_WINNERS)
+  async handleSelectWinnersCommand(ctx: Context): Promise<void> {
+    await handleSelectWinners(
+      ctx,
+      this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -489,18 +572,12 @@ export class AMAService {
       const reply = ctx.message.reply_to_message;
       if (reply?.from?.id) {
         targetId = reply.from.id.toString();
-        await this.upsertUser(
-          targetId,
-          reply.from.first_name,
-          reply.from.username ?? undefined,
-        );
+        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
       }
     }
 
     if (!targetId) {
-      await ctx.reply(
-        "Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin",
-      );
+      await ctx.reply("Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin");
       return;
     }
 
@@ -524,18 +601,12 @@ export class AMAService {
       const reply = ctx.message.reply_to_message;
       if (reply?.from?.id) {
         targetId = reply.from.id.toString();
-        await this.upsertUser(
-          targetId,
-          reply.from.first_name,
-          reply.from.username ?? undefined,
-        );
+        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
       }
     }
 
     if (!targetId) {
-      await ctx.reply(
-        "Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin",
-      );
+      await ctx.reply("Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin");
       return;
     }
 
@@ -696,7 +767,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -710,9 +781,9 @@ export class AMAService {
     );
   }
 
+  // confirm-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
-    console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -720,10 +791,12 @@ export class AMAService {
       this.addWinner.bind(this) as (
         ama_id: UUID,
         user_id: string,
-        score_id: UUID,
+        message_id: UUID,
         rank: number,
       ) => Promise<WinnerData | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<AMA | null>,
+      this.deleteWinnersByAMA.bind(this) as (amaId: UUID) => Promise<boolean>,
+      this.logger,
     );
   }
 
@@ -737,23 +810,22 @@ export class AMAService {
       },
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
-    await handleWiinersBroadcast(
+    await handleWinnersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
-      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
-      this.config.get<string>("BOT_USERNAME")!,
     );
   }
 
   //discard-user_(username)_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`, "i"))
-  async discardUser(ctx: BotContext): Promise<void> {
+  async handleDiscardUserCallback(ctx: BotContext): Promise<void> {
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
   }
 
@@ -763,9 +835,38 @@ export class AMAService {
     await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
-      this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.isUserWinner.bind(this) as (userId: string) => Promise<{ bool: boolean }>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
+  }
+
+  // Handle select-winners-cmd callback
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS_CMD}_${UUID_PATTERN}`, "i"))
+  async handleSelectWinnersCmdCallback(ctx: Context): Promise<void> {
+    await selectWinnersByCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  // Handle force-select-winners callback
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.FORCE_SELECT_WINNERS}_${UUID_PATTERN}`, "i"))
+  async handleForceSelectWinnersCallback(ctx: Context): Promise<void> {
+    await forceSelectWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
+      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+    );
+  }
+
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
+  async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
+    broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
   }
 
   //cancel-winners_(amaId)
@@ -780,7 +881,11 @@ export class AMAService {
   // cancel-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelAMA(ctx: BotContext): Promise<void> {
-    await handleNewAMACancel(ctx, this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>);
+    await handleNewAMACancel(
+      ctx,
+      this.deleteAMA.bind(this) as (id: UUID) => Promise<boolean>,
+      this.logger,
+    );
   }
 
   // cancel-ama_(id)
@@ -813,12 +918,23 @@ export class AMAService {
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
 
+    // prettier-ignore
     if (chatID === groupIds.admin) {
-      await handleEdit(ctx);
+      // Handle scheduling winners broadcast if the context is in the correct state and input matches datetime
+      if (
+        ctx.session.scheduledWinnersBroadcast?.amaId && ctx.message && "text" in ctx.message &&
+        typeof ctx.message.text === "string" && DATETIME_REGEX.test(ctx.message.text)
+      ) {
+        await scheduleWiinersBroadcast(
+          ctx,
+          this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
+        );
+      } else {
+        await handleEdit(ctx);
+      }
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
-        ctx,
-        groupIds,
+        ctx, groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
         this.storeAMAQuestion.bind(this) as (
           amaId: UUID,
@@ -833,5 +949,14 @@ export class AMAService {
     } else {
       await ctx.reply("This command is not available in this chat.");
     }
+  }
+
+  @On("photo")
+  async handleBannerUpload(ctx: BotContext) {
+    await handleBannerUpload(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+      this.updateBanner.bind(this) as (amaId: UUID, file_id: string) => Promise<AMA | null>,
+    );
   }
 }

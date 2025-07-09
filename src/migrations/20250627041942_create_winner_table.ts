@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       .inTable("user")
       .onDelete("RESTRICT");
     table
-      .uuid("score_id")
+      .uuid("message_id")
       .notNullable()
       .references("id")
       .inTable("message")

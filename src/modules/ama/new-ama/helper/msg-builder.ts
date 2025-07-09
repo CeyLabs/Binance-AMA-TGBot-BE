@@ -1,36 +1,36 @@
-import { formatTimeTo12Hour } from "../../helper/utils";
-import { AMA_HASHTAG } from "../../ama.constants";
+import { AMA_HASHTAGS } from "../../ama.constants";
+import { TIMEZONES } from "../../helper/date-utils";
 import { SupportedLanguage } from "../../types";
 
 interface AMAData {
   session_no: number;
   language: SupportedLanguage;
-  date: Date | string;
-  time: string;
+  datetime: Date;
   total_pool: string;
   reward: string;
   winner_count: number;
   form_link: string;
+  banner_file_id?: string;
 }
 
 /**
  * Builds an HTML-formatted AMA message
  */
 export function buildAMAMessage(data: AMAData): string {
-  const formattedDate =
-    typeof data.date === "string"
-      ? new Date(data.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : data.date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+  // UTC to KSA conversion
+  const formattedDate = data.datetime?.toLocaleString("en-US", {
+    timeZone: TIMEZONES.KSA,
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
 
-  const formattedTime = formatTimeTo12Hour(data.time);
+  const formattedTime = data.datetime?.toLocaleString("en-US", {
+    timeZone: TIMEZONES.KSA,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   if (data.language === "ar") {
     return `<b>📣 انضموا إلينا في جلسة AMA من سلسلة جلسات Binance الأسبوعية مع فريق #BinanceMENA</b> واغتنموا فرصة لربح جزء من مجموع الجوائز البالغ <b>${data.total_pool}</b> 🎁
@@ -44,7 +44,7 @@ export function buildAMAMessage(data: AMAData): string {
 <b>⚡ لتكون مؤهلاً للفوز، يجب عليك:</b>
 1️⃣ تعبئة هذا <a href="${data.form_link}">النموذج</a> لتكون مؤهلاً للجائزة.
 2️⃣ المشاركة في المكالمة الصوتية 🗣️
-3️⃣ طرح سؤال أثناء المكالمة باستخدام الوسم <b>#${AMA_HASHTAG}${data.session_no}</b>
+3️⃣ طرح سؤال أثناء المكالمة باستخدام الوسم <b>#${AMA_HASHTAGS["ar"]}${data.session_no}</b>
 4️⃣ أن يكون لديك اسم مستخدم على تيليغرام
 5️⃣ ألا تكون من الفائزين في آخر 30 يومًا.
 
@@ -67,7 +67,7 @@ export function buildAMAMessage(data: AMAData): string {
 <b>⚡ To be eligible to win, you must:</b>
 1️⃣ Complete this <a href="${data.form_link}">form</a> to become qualified for the reward.
 2️⃣ Participate in the voice call 🗣️
-3️⃣ Ask a question during the call using the hashtag <b>#${AMA_HASHTAG}${data.session_no}</b>
+3️⃣ Ask a question during the call using the hashtag <b>#${AMA_HASHTAGS["en"]}${data.session_no}</b>
 4️⃣ Have a username
 5️⃣ Not be a winner of the competition in the last 30 days.
 

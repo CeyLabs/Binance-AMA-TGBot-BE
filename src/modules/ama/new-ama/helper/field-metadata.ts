@@ -12,8 +12,7 @@ export const EDITABLE_FIELDS = {
     column: "date",
     validate: (input: string): ValidationResult => {
       const match = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (!match)
-        return { value: null, error: "❌ Invalid format. Use dd/mm/yyyy." };
+      if (!match) return { value: null, error: "❌ Invalid format. Use dd/mm/yyyy." };
 
       const [, day, month, year] = match;
       const iso = `${year}-${month}-${day}`;
@@ -54,7 +53,8 @@ export const EDITABLE_FIELDS = {
         return { value: null, error: "❌ Invalid time values." };
       }
 
-      return { value: `${h.toString().padStart(2, "0")}:${minute}` };
+      // Add seconds to the time format to match HH:MM:SS format
+      return { value: `${h.toString().padStart(2, "0")}:${minute}:00` };
     },
   },
 
@@ -97,8 +97,7 @@ export const EDITABLE_FIELDS = {
     column: "winner_count",
     validate: (input: string): ValidationResult => {
       const match = input.match(/^\d+$/);
-      if (!match)
-        return { value: null, error: "❌ Winner count must be a number." };
+      if (!match) return { value: null, error: "❌ Winner count must be a number." };
       const count = parseInt(match[0], 10);
       return count > 0
         ? { value: count }
@@ -138,6 +137,18 @@ export const EDITABLE_FIELDS = {
     validate: (input: string): ValidationResult => {
       const trimmed = input.trim();
       return { value: trimmed.length > 0 ? trimmed : null };
+    },
+  },
+
+  [EDIT_KEYS.BANNER]: {
+    name: "Banner Image",
+    prompt: "Please send the banner image for the AMA announcement",
+    column: "banner_file_id",
+    validate: (input: string): ValidationResult => {
+      if (!input) {
+        return { value: null, error: "❌ Please send a valid image." };
+      }
+      return { value: input };
     },
   },
 } as const;

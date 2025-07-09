@@ -14,9 +14,7 @@ export const placeEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️�
 export const congratsImg =
   "https://a.dropoverapp.com/cloud/download/002b40b8-631c-4431-8f4b-5b8a977f4cd3/29e8d620-b2fe-4159-bb05-412c491f8b9f";
 
-export function getSortedUniqueScores(
-  scores: ScoreWithUser[],
-): ScoreWithUser[] {
+export function getSortedUniqueScores(scores: ScoreWithUser[]): ScoreWithUser[] {
   const uniqueScores = scores.reduce(
     (acc, current) => {
       const uid = String(current.user_id);
@@ -39,9 +37,7 @@ export async function validateCallbackData(
   action: string,
 ): Promise<{ callbackData: string; amaId: UUID } | null> {
   const callbackData =
-    ctx.callbackQuery && "data" in ctx.callbackQuery
-      ? ctx.callbackQuery.data
-      : undefined;
+    ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
 
   if (!callbackData) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -77,9 +73,7 @@ export function getFilteredSortedScores(
   discardedUserIds: Set<number>,
 ): ScoreWithUser[] {
   const sortedScores = getSortedUniqueScores(scores);
-  return sortedScores.filter(
-    (score) => !discardedUserIds.has(Number(score.user_id)),
-  );
+  return sortedScores.filter((score) => !discardedUserIds.has(Number(score.user_id)));
 }
 
 /**
@@ -102,7 +96,7 @@ export async function buildWinnerSelectionKeyboard(
   scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
-  isUserWinner?: (userId: string) => Promise<{ bool: boolean }>,
+  winCount?: (userId: string) => Promise<{ wins: number }>,
 ): Promise<InlineKeyboardButton[][]> {
   const keyboard: InlineKeyboardButton[][] = [];
 
@@ -114,11 +108,12 @@ export async function buildWinnerSelectionKeyboard(
     let displayText = `${place} ${user.username}${scoreDisplay}`;
 
     // Check if user is a past winner (if function is provided)
-    if (isUserWinner) {
+    if (winCount) {
       try {
-        const { bool: isPastWinner } = await isUserWinner(user.user_id);
-        if (isPastWinner) {
-          displayText = "🏆 " + displayText;
+        const { wins } = await winCount(user.user_id);
+        console.log(`User ${user.user_id} has won ${wins} times in the past.`);
+        if (wins > 0) {
+          displayText = `(🏆x${wins}) ${displayText}`;
         }
       } catch (error) {
         console.error("Error checking past winner status:", error);
@@ -127,7 +122,7 @@ export async function buildWinnerSelectionKeyboard(
 
     // prettier-ignore
     keyboard.push([
-      {text: displayText, callback_data: "noop"},
+      {text: displayText, url: `tg://user?id=${user.user_id}`},
       {text: "❌", callback_data: `${CALLBACK_ACTIONS.DISCARD_WINNER}_${user.user_id}_${amaId}`},
     ]);
   }
@@ -188,16 +183,17 @@ export async function getAMAFilteredScores(
 
 export function buildWinnersMessage(
   ama: AMA,
-  winners: ScoreWithUser[],
+  winners: ScoreWithUser[] ,
+  includeScores: boolean = false,
 ): string {
-  const sessionDate = ama.created_at
-    ? dayjs(ama.created_at).format("MMMM D")
-    : "Unknown Date";
+  const sessionDate = ama.created_at ? dayjs(ama.created_at).format("MMMM D") : "Unknown Date";
 
   const winnersText = winners
     .map((user, i) => {
       const emoji = placeEmojis[i] || `${i + 1}.`;
-      return `${emoji} <b>${user.username}</b> - Score: ${user.score}`;
+      const userLink = `<a href="tg://user?id=${user.user_id}">${user.name || user.username || user.user_id}</a>`;
+      const scoreText = includeScores ? ` - Score: ${user.score}` : "";
+      return `${emoji} ${userLink} ${scoreText}`;
     })
     .join("\n");
 
@@ -229,10 +225,7 @@ export async function validateScoresExist(
 /**
  * Generate winner announcement text with medals
  */
-export function generateWinnerAnnouncementText(
-  ama: AMA,
-  winners: ScoreWithUser[],
-): string {
+export function generateWinnerAnnouncementText(ama: AMA, winners: ScoreWithUser[]): string {
   return [
     `🎯 <b>Winners Selected for AMA #${ama.session_no}:</b>\n`,
     ...winners.map((winner, index) => {
@@ -281,9 +274,7 @@ export async function generateAndSendCSV(
     return message;
   } catch (error) {
     console.error("Error generating or sending CSV:", error);
-    await ctx.reply(
-      "❌ Failed to generate CSV report. Please try again later.",
-    );
+    await ctx.reply("❌ Failed to generate CSV report. Please try again later.");
     return;
   }
 }

@@ -1,7 +1,7 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, PublicGroupInfo } from "../types";
+import { AMA, BotContext, PublicGroupInfo, ScheduleType } from "../types";
 import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
 import * as dayjs from "dayjs";
@@ -29,18 +29,18 @@ export async function handleBroadcastNow(
   const message = buildAMAMessage({
     session_no: ama.session_no,
     language: ama.language,
-    date: ama.date,
-    time: ama.time,
+    datetime: ama.datetime,
     total_pool: ama.total_pool,
     reward: ama.reward,
     winner_count: ama.winner_count,
     form_link: ama.form_link,
+    banner_file_id: ama.banner_file_id,
   });
 
   const publicGroupId = publicGroupIds[ama.language];
 
-  // Send the announcement to the public group
-  const sent = await ctx.telegram.sendPhoto(publicGroupId, imageUrl, {
+  // Send the announcement to the public group using custom banner if available
+  const sent = await ctx.telegram.sendPhoto(publicGroupId, ama.banner_file_id || imageUrl, {
     caption: message,
     parse_mode: "HTML",
   });
@@ -67,9 +67,13 @@ export async function handleBroadcastNow(
 }
 
 export const scheduleOptions = [
+  { key: "3d", label: "3 days before", offsetMinutes: 4320 },
   { key: "2d", label: "2 days before", offsetMinutes: 2880 },
   { key: "24h", label: "24 hours before", offsetMinutes: 1440 },
+  { key: "18h", label: "18 hours before", offsetMinutes: 1080 },
+  { key: "12h", label: "12 hours before", offsetMinutes: 720 },
   { key: "6h", label: "6 hours before", offsetMinutes: 360 },
+  { key: "1h", label: "1 hour before", offsetMinutes: 60 },
 ];
 
 export async function handleScheduleBroadcast(
@@ -89,10 +93,7 @@ export async function handleScheduleBroadcast(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
     return;
@@ -157,10 +158,7 @@ export async function handleToggleSchedule(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.answerCbQuery("❌ Invalid AMA date/time.");
     return;
@@ -206,7 +204,7 @@ export async function handleConfirmSchedule(
   ctx: BotContext,
   amaId: UUID,
   getAMAById: (id: UUID) => Promise<AMA | null>,
-  scheduleAMA: (id: UUID, time: Date) => Promise<void>,
+  scheduleAMA: (id: UUID, time: Date, type: ScheduleType) => Promise<void>,
 ): Promise<void> {
   const ama = await getAMAById(amaId);
   if (!ama) {
@@ -214,10 +212,7 @@ export async function handleConfirmSchedule(
     return;
   }
 
-  const amaDateTime = dayjs(
-    `${dayjs(ama.date).format("YYYY-MM-DD")} ${ama.time}`,
-    "YYYY-MM-DD HH:mm:ss",
-  );
+  const amaDateTime = dayjs(ama.datetime);
   if (!amaDateTime.isValid()) {
     await ctx.reply("❌ Invalid AMA date/time.");
     return;
@@ -254,7 +249,7 @@ export async function handleConfirmSchedule(
 
   try {
     for (const time of scheduledTimes) {
-      await scheduleAMA(amaId, time);
+      await scheduleAMA(amaId, time, "init");
       console.log(`✅ Scheduled AMA ${amaId} at ${time.toISOString()}`);
     }
     await ctx.reply(`✅ Scheduled ${scheduledTimes.length} broadcast(s).`);

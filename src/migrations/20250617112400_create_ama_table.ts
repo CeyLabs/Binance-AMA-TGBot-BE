@@ -14,26 +14,22 @@ export async function up(knex: Knex): Promise<void> {
         enumName: "enum_language",
       })
       .notNullable();
-    table.date("date").notNullable();
-    table.time("time").notNullable();
+    table.timestamp("datetime").notNullable();
     table.string("total_pool").notNullable();
     table.string("reward").notNullable();
     table.integer("winner_count").notNullable();
     table.string("form_link").notNullable();
     table
-      .enum(
-        "status",
-        ["pending", "scheduled", "broadcasted", "active", "ended"],
-        {
-          useNative: true,
-          enumName: "enum_status",
-        },
-      )
+      .enum("status", ["pending", "scheduled", "broadcasted", "active", "ended"], {
+        useNative: true,
+        enumName: "enum_status",
+      })
       .notNullable()
       .defaultTo("pending");
     table.string("special_guest");
     table.string("topic");
     table.string("hashtag").notNullable();
+    table.string("banner_file_id");
     table.integer("thread_id");
     table.timestamps(true, true);
   });
