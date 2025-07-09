@@ -20,12 +20,15 @@ const TIME_REGEX = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/;
  */
 export function convertDateTimeToUTC(date: string | Date, time: string): dayjs.Dayjs {
   // Format date to YYYY-MM-DD if it's a Date object
-  const formattedDate =
-    date instanceof Date
-      ? dayjs(date).format("YYYY-MM-DD")
-      : typeof date === "string"
-        ? date
-        : dayjs(date).format("YYYY-MM-DD");
+  let formattedDate: string;
+
+  if (date instanceof Date) {
+    formattedDate = dayjs(date).format("YYYY-MM-DD");
+  } else if (typeof date === "string") {
+    formattedDate = date;
+  } else {
+    formattedDate = dayjs(date).format("YYYY-MM-DD");
+  }
 
   // Ensure time is in proper format (HH:mm:ss)
   const timeMatch = time.match(TIME_REGEX);
