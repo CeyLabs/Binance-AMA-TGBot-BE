@@ -118,6 +118,7 @@ async function processWinnersSelection(
 
     // Format existing winners into a message
     let winnerMessage = `🏆 <b>Winners already selected for Binance Weekly AMA #${ama.session_no}:</b>\n\n`;
+
     winnerDetails.forEach((winner, index) => {
       const userDisplayName = winner.username
         ? `@${winner.username}`

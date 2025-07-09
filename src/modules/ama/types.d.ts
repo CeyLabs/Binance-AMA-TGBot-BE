@@ -115,7 +115,7 @@ export interface WinnerData {
   id: UUID;
   ama_id: UUID;
   user_id: string;
-  score_id: UUID;
+  message_id: UUID;
   rank: number;
   created_at?: string;
   updated_at?: string;
@@ -136,7 +136,6 @@ export interface MessageWithAma extends ScoreData {
   thread_id?: number;
   topic?: string;
   chat_id: number;
-  forwarded_msg_id?: number;
 }
 
 // For queries that need user information with winner data

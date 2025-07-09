@@ -36,6 +36,7 @@ export async function handleAMAQuestion(
     } else {
       amaHashtagMatch = message.text.match(new RegExp(`#${AMA_HASHTAGS["ar"]}(\\d+)`, "i"));
     }
+
     const hashtag = amaHashtagMatch ? amaHashtagMatch[0] : null;
 
     // Check if user has first_name

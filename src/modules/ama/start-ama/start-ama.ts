@@ -4,12 +4,14 @@ import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, GroupInfo } from "../types";
 import { getLanguageText, UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { UUID } from "crypto";
+import { DbLoggerService } from "src/logger/db-logger.service";
 
 export async function handleStartAMA(
   ctx: Context,
   groupIds: GroupInfo,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -30,7 +32,7 @@ export async function handleStartAMA(
   );
 
   if (availableAMAs.length === 1) {
-    return startAMA(ctx, groupIds, availableAMAs[0], updateAMA);
+    return startAMA(ctx, groupIds, availableAMAs[0], updateAMA, logger);
   } else if (availableAMAs.length > 1) {
     return void ctx.reply(`Select the community group to Start AMA`, {
       reply_markup: {
@@ -52,6 +54,7 @@ export async function startAMAbyCallback(
   groupIds: GroupInfo,
   getAMAById: (id: string) => Promise<AMA | null>,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
@@ -72,7 +75,7 @@ export async function startAMAbyCallback(
     await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
   }
 
-  await startAMA(ctx, groupIds, ama, updateAMA);
+  await startAMA(ctx, groupIds, ama, updateAMA, logger);
 }
 
 // Generic function to start an AMA session
@@ -81,6 +84,7 @@ async function startAMA(
   groupIds: GroupInfo,
   ama: AMA,
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
+  logger?: DbLoggerService,
 ): Promise<void> {
   const thread = await ctx.telegram.callApi("createForumTopic", {
     chat_id: groupIds.admin,
@@ -93,6 +97,7 @@ async function startAMA(
   });
 
   await ctx.reply(`#${ama.session_no} has started!`);
+  logger?.log(`AMA #${ama.session_no} started in ${ama.language} group.`, ctx.from?.id.toString());
   await ctx.reply("Binance AMA Bot is listening to the messages in Binance MENA group.");
 
   // Notify the public group about the AMA start
