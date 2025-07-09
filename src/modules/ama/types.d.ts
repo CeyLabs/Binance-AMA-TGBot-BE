@@ -10,8 +10,7 @@ export interface AMA {
   id: UUID;
   session_no: number;
   language: SupportedLanguage;
-  date: string;
-  time: string;
+  datetime: Date; // UTC date-time
   total_pool: string;
   reward: string;
   winner_count: number;
@@ -40,6 +39,10 @@ export interface SessionData {
     };
   };
   discardedUsersByAMA?: Record<UUID, string[]>;
+  scheduledWinnersBroadcast?: {
+    amaId: UUID;
+    scheduledTime: Date | undefined;
+  };
 }
 
 export interface BotContext extends Context {
@@ -118,10 +121,13 @@ export interface WinnerData {
   updated_at?: string;
 }
 
+export type ScheduleType = "init" | "winner";
+
 export interface Schedule {
   id: UUID;
   ama_id: UUID;
   scheduled_time: Date;
+  type: ScheduleType;
   created_at: Date;
   updated_at: Date;
 }

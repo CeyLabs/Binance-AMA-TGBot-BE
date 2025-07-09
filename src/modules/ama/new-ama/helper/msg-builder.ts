@@ -1,12 +1,11 @@
-import { formatTimeTo12Hour } from "../../helper/utils";
 import { AMA_HASHTAGS } from "../../ama.constants";
+import { TIMEZONES } from "../../helper/date-utils";
 import { SupportedLanguage } from "../../types";
 
 interface AMAData {
   session_no: number;
   language: SupportedLanguage;
-  date: Date | string;
-  time: string;
+  datetime: Date;
   total_pool: string;
   reward: string;
   winner_count: number;
@@ -18,20 +17,20 @@ interface AMAData {
  * Builds an HTML-formatted AMA message
  */
 export function buildAMAMessage(data: AMAData): string {
-  const formattedDate =
-    typeof data.date === "string"
-      ? new Date(data.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : data.date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+  // UTC to KSA conversion
+  const formattedDate = data.datetime?.toLocaleString("en-US", {
+    timeZone: TIMEZONES.KSA,
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
 
-  const formattedTime = formatTimeTo12Hour(data.time);
+  const formattedTime = data.datetime?.toLocaleString("en-US", {
+    timeZone: TIMEZONES.KSA,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   if (data.language === "ar") {
     return `<b>📣 انضموا إلينا في جلسة AMA من سلسلة جلسات Binance الأسبوعية مع فريق #BinanceMENA</b> واغتنموا فرصة لربح جزء من مجموع الجوائز البالغ <b>${data.total_pool}</b> 🎁

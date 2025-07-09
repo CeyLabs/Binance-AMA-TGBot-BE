@@ -9,7 +9,15 @@ import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
+import * as dayjs from "dayjs";
+import * as utc from "dayjs/plugin/utc";
+import * as timezone from "dayjs/plugin/timezone";
 import { DbLoggerService } from "../../../logger/db-logger.service";
+import { TIMEZONES } from "../helper/date-utils";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 
 /**
  * Handles the /newama command and sends an image with inline buttons.
@@ -40,9 +48,7 @@ export async function handleNewAMA(
     const match = argsText.match(/^(\w+)\s+(\d+)/);
 
     if (!match) {
-      await ctx.reply(
-        "Invalid command format. Use: /newama <language> <number>",
-      );
+      await ctx.reply("Invalid command format. Use: /newama <language> <number>");
       return;
     }
 
@@ -50,9 +56,7 @@ export async function handleNewAMA(
 
     //validate language by check if its "en" or "ar"
     if (!SUPPORTED_LANGUAGES.includes(language as SupportedLanguage)) {
-      await ctx.reply(
-        "Invalid language. Please use 'en' for English or 'ar' for Arabic.",
-      );
+      await ctx.reply("Invalid language. Please use 'en' for English or 'ar' for Arabic.");
       return;
     }
 
@@ -64,27 +68,13 @@ export async function handleNewAMA(
     }
 
     // Check if the session number already exists
-    const sessionExists = await isAMAExists(
-      sessionNo,
-      language as SupportedLanguage,
-    );
+    const sessionExists = await isAMAExists(sessionNo, language as SupportedLanguage);
     if (sessionExists) {
       await ctx.reply(
         `AMA session number ${sessionNo} already exists. Please choose a different number.`,
       );
       return;
     }
-
-    const message = buildAMAMessage({
-      session_no: sessionNo,
-      language: language as SupportedLanguage,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
-      total_pool: AMA_DEFAULT_DATA.total_pool,
-      reward: AMA_DEFAULT_DATA.reward,
-      winner_count: AMA_DEFAULT_DATA.winner_count,
-      form_link: AMA_DEFAULT_DATA.form_link,
-    });
 
     const annunceMsg = await ctx.reply("Announcement Created!");
     logger?.log(
@@ -104,13 +94,32 @@ export async function handleNewAMA(
       return;
     }
 
+    const ksaDateTime = `${AMA_DEFAULT_DATA.date}T${AMA_DEFAULT_DATA.time}`;
+    const datetimeUTC = dayjs.tz(ksaDateTime, TIMEZONES.KSA).utc().toDate();
+
+    const message = buildAMAMessage({
+      session_no: sessionNo,
+      language: language as SupportedLanguage,
+      datetime: datetimeUTC,
+      total_pool: AMA_DEFAULT_DATA.total_pool,
+      reward: AMA_DEFAULT_DATA.reward,
+      winner_count: AMA_DEFAULT_DATA.winner_count,
+      form_link: AMA_DEFAULT_DATA.form_link,
+    });
+
     logger?.log(`AMA created with id ${AMA_ID}`, ctx.from?.id.toString());
+
 
     const amaMsg = await ctx.replyWithPhoto(imageUrl, {
       caption: message,
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
     });
+
+    // If the message was sent successfully, delete the announce message
+    if (amaMsg) {
+      await ctx.deleteMessage(annunceMsg.message_id);
+    }
 
     // Push the message IDs to delete later
     ctx.session.messagesToDelete ??= [];
@@ -143,8 +152,6 @@ export async function handleNewAMACancel(
     await ctx.reply("AMA session has been cancelled successfully.");
     logger?.log(`AMA ${AMA_ID} cancelled`, ctx.from?.id.toString());
   } else {
-    await ctx.answerCbQuery(
-      "Failed to cancel the AMA session. Please try again.",
-    );
+    await ctx.answerCbQuery("Failed to cancel the AMA session. Please try again.");
   }
 }

@@ -24,6 +24,7 @@ import {
   WinnerData,
   SupportedLanguage,
   UserDetails,
+  ScheduleType,
 } from "./types";
 import {
   handleBroadcastNow,
@@ -56,6 +57,8 @@ import {
 import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
+import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
+import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
 
 @Update()
 @Injectable()
@@ -94,8 +97,7 @@ export class AMAService {
     const data = await this.knexService.knex("ama").insert({
       session_no: sessionNo,
       language: language,
-      date: AMA_DEFAULT_DATA.date,
-      time: AMA_DEFAULT_DATA.time,
+      datetime: convertDateTimeToUTC(AMA_DEFAULT_DATA.date, AMA_DEFAULT_DATA.time),
       total_pool: AMA_DEFAULT_DATA.total_pool,
       reward: AMA_DEFAULT_DATA.reward,
       winner_count: AMA_DEFAULT_DATA.winner_count,
@@ -293,22 +295,24 @@ export class AMAService {
     return { wins: count };
   }
 
-  async scheduleAMA(ama_id: UUID, scheduled_time: Date): Promise<void> {
+  async scheduleAMA(ama_id: UUID, scheduled_time: Date, type: ScheduleType): Promise<void> {
     await this.knexService.knex("schedule").insert({
       ama_id,
       scheduled_time,
+      type,
     });
   }
 
   // Get all AMAs that are scheduled within the last 10 minutes
-  async getDueScheduledTimes(now: Date) {
+  async getDueScheduledTimes() {
     const scheduleEntries = await this.knexService
       .knex("schedule")
-      .where("scheduled_time", "<=", now)
-      .select("id", "ama_id");
-    return scheduleEntries.map((row: { id: UUID; ama_id: UUID }) => ({
+      .where("scheduled_time", "<=", this.knexService.knex.fn.now())
+      .select("id", "ama_id", "type");
+    return scheduleEntries.map((row: { id: UUID; ama_id: UUID; type: ScheduleType }) => ({
       scheduleId: row.id,
       amaId: row.ama_id,
+      type: row.type,
     }));
   }
 
@@ -321,6 +325,16 @@ export class AMAService {
   async getWinnersByAMA(amaId: UUID): Promise<WinnerData[]> {
     return this.knexService
       .knex<WinnerData>("winner")
+      .where({ ama_id: amaId })
+      .orderBy("rank", "asc");
+  }
+
+  // Get winners by AMA ID with user details
+  async getWinnersWithUserDetails(amaId: UUID): Promise<ScoreWithUser[]> {
+    return this.knexService
+      .knex("winner")
+      .join("user", "winner.user_id", "user.user_id")
+      .select("winner.*", "user.name", "user.username")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
@@ -343,6 +357,12 @@ export class AMAService {
       .where("message.processed", false)
       .orderBy("message.created_at", "asc")
       .limit(batchSize);
+  }
+
+  async updateMessageForwardedId(messageId: UUID, forwardedMsgId: number): Promise<void> {
+    await this.knexService.knex("message").where("id", messageId).update({
+      forwarded_msg_id: forwardedMsgId,
+    });
   }
 
   async updateMessageWithAnalysis(
@@ -646,9 +666,9 @@ export class AMAService {
     );
   }
 
+  // confirm-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
-    console.log("Confirm Winners Callback Triggered");
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -678,7 +698,7 @@ export class AMAService {
     await handleWinnersBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
-      this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
+      this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
     );
   }
@@ -727,6 +747,11 @@ export class AMAService {
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
+  }
+
+  @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
+  async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
+    broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
   }
 
   //cancel-winners_(amaId)
@@ -778,12 +803,23 @@ export class AMAService {
       admin: this.config.get<string>("ADMIN_GROUP_ID")!,
     };
 
+    // prettier-ignore
     if (chatID === groupIds.admin) {
-      await handleEdit(ctx);
+      // Handle scheduling winners broadcast if the context is in the correct state and input matches datetime
+      if (
+        ctx.session.scheduledWinnersBroadcast?.amaId && ctx.message && "text" in ctx.message &&
+        typeof ctx.message.text === "string" && DATETIME_REGEX.test(ctx.message.text)
+      ) {
+        await scheduleWiinersBroadcast(
+          ctx,
+          this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
+        );
+      } else {
+        await handleEdit(ctx);
+      }
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
-        ctx,
-        groupIds,
+        ctx, groupIds,
         this.getAMAsByHashtag.bind(this) as (hashtag: string) => Promise<AMA[]>,
         this.storeAMAQuestion.bind(this) as (
           amaId: UUID,

@@ -367,6 +367,12 @@ export async function confirmWinnersCallback(
         [
           { text: "Cancel", callback_data: `${CALLBACK_ACTIONS.CANCEL_WINNERS}_${ama.id}` },
           {
+            text: "Schedule Broadcast",
+            callback_data: `${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${ama.id}`,
+          },
+        ],
+        [
+          {
             text: "Broadcast Now",
             callback_data: `${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${ama.id}`,
           },
@@ -384,7 +390,7 @@ export async function confirmWinnersCallback(
 export async function handleWinnersBroadcast(
   ctx: Context,
   getAMAById: (id: UUID) => Promise<AMA>,
-  getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
+  getWinnersWithUserDetails: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
 ): Promise<void> {
   const result = await validateIdPattern(
@@ -400,19 +406,13 @@ export async function handleWinnersBroadcast(
     return void ctx.reply("AMA session not found.");
   }
 
-  // Filter out discarded users
-  const discardedUserIds = new Set(
-    ((ctx as BotContext).session?.discardedUsersByAMA?.[id] ?? []).map(Number),
-  );
-
-  const filteredScores = await getAMAFilteredScores(getScoresForAMA, ama.id, discardedUserIds);
-
-  if (filteredScores.length === 0) {
+  const winners = await getWinnersWithUserDetails(ama.id);
+  if (winners.length === 0) {
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  const topWinners = filteredScores.slice(0, 5); // Display top 5 only
-  const message = buildWinnersMessage(ama, topWinners, false); // Don't show scores in public message
+  const message = buildWinnersMessage(ama, winners, false); // Don't show scores in public message
+
   const publicGroupId = groupIds.public[ama.language];
 
   const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {

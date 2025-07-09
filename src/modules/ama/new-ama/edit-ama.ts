@@ -6,6 +6,37 @@ import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
 import { UUID } from "crypto";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
+import * as dayjs from "dayjs";
+import * as utc from "dayjs/plugin/utc";
+import * as timezone from "dayjs/plugin/timezone";
+import { TIMEZONES } from "../helper/date-utils";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+export function convertDateTimeToUTC(userDate: string, userTime: string): Date {
+  let formattedDate: string;
+
+  if (userDate.includes("/")) {
+    // Format: DD/MM/YYYY
+    const [day, month, year] = userDate.split("/");
+    formattedDate = `${year}-${month}-${day}`; // YYYY-MM-DD
+  } else if (userDate.includes("-")) {
+    // Format: YYYY-MM-DD
+    formattedDate = userDate;
+  } else {
+    throw new Error(`Invalid date format: ${userDate}`);
+  }
+
+  const timeWithSeconds = /^\d{2}:\d{2}$/.test(userTime) ? `${userTime}:00` : userTime;
+  const combined = `${formattedDate}T${timeWithSeconds}`;
+
+  const ksaTime = dayjs.tz(combined, TIMEZONES.KSA);
+  if (!ksaTime.isValid()) {
+    throw new Error(`Invalid datetime: ${combined}`);
+  }
+
+  return ksaTime.utc().toDate();
+}
 
 export async function handleEdit(ctx: BotContext): Promise<void> {
   const { editMode } = ctx.session;
@@ -84,12 +115,26 @@ export async function handleConfirmEdit(
     return;
   }
 
+  const updateData: Partial<AMA> = {};
+
   const fieldMeta = EDITABLE_FIELDS[field];
 
-  // Prepare update payload
-  const updateData: Partial<AMA> = {
-    [fieldMeta.column]: newValue,
-  };
+  const validAmaColumns: (keyof AMA)[] = [
+    "session_no",
+    "total_pool",
+    "reward",
+    "winner_count",
+    "form_link",
+    "special_guest",
+    "topic",
+    "banner_file_id",
+  ];
+
+  const column = fieldMeta.column;
+
+  if (newValue !== undefined && validAmaColumns.includes(column as keyof AMA)) {
+    updateData[column as keyof AMA] = newValue as never;
+  }
 
   // If session_no is being updated, also update the hashtag
   if (fieldMeta.column === "session_no") {
@@ -101,6 +146,32 @@ export async function handleConfirmEdit(
         updateData["hashtag"] = `#${AMA_HASHTAGS[ama.language]}${sessionNo}`;
       }
     }
+  }
+
+  // Convert date and time fields to UTC if they are being updated
+  // Combine date and time into UTC datetime if either is updated
+  if (fieldMeta.column === "date" || fieldMeta.column === "time") {
+    const ama = await getAMAById(AMA_ID);
+    if (!ama) {
+      await ctx.reply("❌ AMA not found.");
+      return;
+    }
+
+    const newDate =
+      fieldMeta.column === "date"
+        ? String(newValue)
+        : dayjs(ama.datetime).tz(TIMEZONES.KSA).format("DD/MM/YYYY");
+
+    const newTime =
+      fieldMeta.column === "time"
+        ? String(newValue)
+        : dayjs(ama.datetime).tz(TIMEZONES.KSA).format("HH:mm:ss");
+
+    const datetimeUTC = convertDateTimeToUTC(newDate, newTime);
+
+    // updateData["date"] = dayjs(newDate, "DD/MM/YYYY").format("YYYY-MM-DD");
+    // updateData["time"] = /^\d{2}:\d{2}$/.test(newTime) ? `${newTime}:00` : newTime;
+    updateData["datetime"] = datetimeUTC;
   }
 
   const success = await updateAMA(AMA_ID, updateData);
@@ -236,8 +307,7 @@ export async function handleBannerUpload(
       const message = buildAMAMessage({
         session_no: updatedAma.session_no,
         language: updatedAma.language,
-        date: updatedAma.date,
-        time: updatedAma.time,
+        datetime: updatedAma.datetime,
         total_pool: updatedAma.total_pool,
         reward: updatedAma.reward,
         winner_count: updatedAma.winner_count,

@@ -10,6 +10,7 @@ import { formatAnalysisMessage, handleTelegramError } from "../ama/helper/messag
 import { OpenAIAnalysis } from "../ama/types";
 import { TelegramEmoji } from "telegraf/types";
 import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
+import { buildWinnersMessage, congratsImg } from "../ama/end-ama/helper/utils";
 
 /**
  * SchedulerService - Handles AMA message processing and scheduled broadcasts
@@ -356,7 +357,7 @@ export class SchedulerService {
     const now = new Date();
     this.logger.log(`[${now.toISOString()}] Checking for scheduled AMAs...`);
 
-    const scheduledItems = await this.amaService.getDueScheduledTimes(now);
+    const scheduledItems = await this.amaService.getDueScheduledTimes();
     if (scheduledItems.length === 0) {
       return;
     }
@@ -368,7 +369,7 @@ export class SchedulerService {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     const adminTopicId = process.env.ADMIN_TOPIC_ID;
 
-    for (const { scheduleId, amaId } of scheduledItems) {
+    for (const { scheduleId, amaId, type } of scheduledItems) {
       let broadcastSuccessful = false;
       try {
         const ama = await this.amaService.getAMAById(amaId);
@@ -377,12 +378,29 @@ export class SchedulerService {
           continue;
         }
 
-        const message = buildAMAMessage(ama);
+        let message = "";
+        let image = "";
+
+        if (type === "init") {
+          image = ama.banner_file_id ?? imageUrl;
+          message = buildAMAMessage(ama);
+          this.logger.log(`Broadcasting initial AMA #${ama.session_no} with ID ${amaId}`);
+        } else if (type === "winner") {
+          image = congratsImg;
+          const winners = await this.amaService.getWinnersWithUserDetails(amaId);
+          message = buildWinnersMessage(ama, winners, false);
+        }
+
         const groupId = ama.language === "ar" ? publicGroupIds.ar : publicGroupIds.en;
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        const sent = await this.bot.telegram.sendPhoto(groupId, imageUrl, {
+        if (!image) {
+          this.logger.error(`No image found for AMA #${ama.session_no} with ID ${amaId}`);
+          continue;
+        }
+
+        const sent = await this.bot.telegram.sendPhoto(groupId, image, {
           caption: message,
           parse_mode: "HTML",
         });
@@ -399,7 +417,7 @@ export class SchedulerService {
 
           await this.bot.telegram.sendMessage(
             adminGroupId,
-            `✅ AMA session #${ama.session_no} has been broadcasted.`,
+            `Scheduled broadcast for AMA #${ama.session_no} ${type} was successful!`,
             { message_thread_id: messageThreadId },
           );
         } catch (adminError) {
