@@ -9,6 +9,7 @@ import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import * as dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import * as timezone from "dayjs/plugin/timezone";
+import { KSA_TIMEZONE } from "../helper/date-utils";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -29,7 +30,7 @@ export function convertDateTimeToUTC(userDate: string, userTime: string): Date {
   const timeWithSeconds = /^\d{2}:\d{2}$/.test(userTime) ? `${userTime}:00` : userTime;
   const combined = `${formattedDate}T${timeWithSeconds}`;
 
-  const ksaTime = dayjs.tz(combined, "Asia/Riyadh");
+  const ksaTime = dayjs.tz(combined, KSA_TIMEZONE);
   if (!ksaTime.isValid()) {
     throw new Error(`Invalid datetime: ${combined}`);
   }
@@ -159,12 +160,12 @@ export async function handleConfirmEdit(
     const newDate =
       fieldMeta.column === "date"
         ? String(newValue)
-        : dayjs(ama.datetime).tz("Asia/Riyadh").format("DD/MM/YYYY");
+        : dayjs(ama.datetime).tz(KSA_TIMEZONE).format("DD/MM/YYYY");
 
     const newTime =
       fieldMeta.column === "time"
         ? String(newValue)
-        : dayjs(ama.datetime).tz("Asia/Riyadh").format("HH:mm:ss");
+        : dayjs(ama.datetime).tz(KSA_TIMEZONE).format("HH:mm:ss");
 
     const datetimeUTC = convertDateTimeToUTC(newDate, newTime);
 

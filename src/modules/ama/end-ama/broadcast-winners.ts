@@ -43,7 +43,7 @@ export async function broadcastWinnersCallback(
   // Send a message to the user to provide the date and time for broadcasting winners
   await ctx.reply(
     `<b>🗓️ Please provide the date and time to broadcast the winners for AMA session #${ama.session_no}.</b>\n` +
-      `<i>Timezone:</i> <b>KSA (Asia/Riyadh)</b>\n` +
+      `<i>Timezone:</i> <b>KSA (${KSA_TIMEZONE})</b>\n` +
       `<i>Format:</i> <code>YYYY/MM/DD HH:mm (24h)</code>\n` +
       `\n\n` +
       `<b>Example:</b> <code>2026/06/15 18:30</code>`,

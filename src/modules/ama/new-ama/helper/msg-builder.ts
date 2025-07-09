@@ -1,4 +1,5 @@
 import { AMA_HASHTAGS } from "../../ama.constants";
+import { KSA_TIMEZONE } from "../../helper/date-utils";
 import { SupportedLanguage } from "../../types";
 
 interface AMAData {
@@ -18,14 +19,14 @@ interface AMAData {
 export function buildAMAMessage(data: AMAData): string {
   // UTC to KSA conversion
   const formattedDate = data.datetime?.toLocaleString("en-US", {
-    timeZone: "Asia/Riyadh",
+    timeZone: KSA_TIMEZONE,
     year: "numeric",
     month: "long",
     day: "2-digit",
   });
 
   const formattedTime = data.datetime?.toLocaleString("en-US", {
-    timeZone: "Asia/Riyadh",
+    timeZone: KSA_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,

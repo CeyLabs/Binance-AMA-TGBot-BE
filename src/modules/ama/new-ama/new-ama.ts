@@ -17,6 +17,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 import { DbLoggerService } from "../../../logger/db-logger.service";
+import { KSA_TIMEZONE } from "../helper/date-utils";
 
 
 /**
@@ -95,7 +96,7 @@ export async function handleNewAMA(
     }
 
     const ksaDateTime = `${AMA_DEFAULT_DATA.date}T${AMA_DEFAULT_DATA.time}`;
-    const datetimeUTC = dayjs.tz(ksaDateTime, "Asia/Riyadh").utc().toDate();
+    const datetimeUTC = dayjs.tz(ksaDateTime, KSA_TIMEZONE).utc().toDate();
 
     const message = buildAMAMessage({
       session_no: sessionNo,
