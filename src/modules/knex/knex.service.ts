@@ -43,7 +43,6 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
             this.logger.error("Error during connection validation", err);
             done(err, conn);
           } else {
-            this.logger.log("Database connection established successfully");
             done(null, conn);
           }
         });
@@ -74,6 +73,8 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
         query: query.sql,
       });
     });
+
+    this.logger.log("Database connection established successfully");
   }
 
   async onModuleDestroy(): Promise<void> {
