@@ -16,6 +16,7 @@ This bot is specifically designed to manage and automate AMA (Ask Me Anything) s
 - **User Management**
   - Participant registration for AMAs
   - User verification and tracking
+  - Admin roles with `super_admin`, `admin`, and `regular`
 
 ## 🛠 Tech Stack
 
@@ -64,3 +65,8 @@ npm run fixtures
 ```bash
 npm run serve:local
 ```
+
+## Admin Management
+
+Use `/grantadmin <tg_userid>` to promote a user to admin and `/revokeadmin <tg_userid>` to remove admin privileges. When replying to a user's message, the quoted user will also be granted or revoked without specifying an ID. These commands can only be executed by `super_admin` users.
+User name and username fields are automatically kept in sync with Telegram when any command or AMA question is received.

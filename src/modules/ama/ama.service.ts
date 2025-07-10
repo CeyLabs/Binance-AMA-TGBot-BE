@@ -142,6 +142,7 @@ export class AMAService {
         user_id,
         name: name || null,
         username: username || null,
+        role: "regular",
       })
       .onConflict("user_id")
       .merge({
@@ -149,6 +150,40 @@ export class AMAService {
         username: username || null,
         updated_at: new Date(),
       });
+  }
+
+  async upsertUserFromContext(ctx: Context): Promise<void> {
+    if (!ctx.from) return;
+    await this.upsertUser(
+      ctx.from.id.toString(),
+      ctx.from.first_name,
+      ctx.from.username ?? undefined,
+    );
+  }
+
+  async updateUserRole(userId: string, role: "super_admin" | "admin" | "regular"): Promise<void> {
+    await this.knexService
+      .knex("user")
+      .insert({ user_id: userId, role })
+      .onConflict("user_id")
+      .merge({ role, updated_at: new Date() });
+  }
+
+  async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.knexService
+      .knex<{ role: string }>("user")
+      .where("user_id", userId)
+      .first();
+    return user ? user.role : null;
+  }
+
+  async isSuperAdmin(userId: string): Promise<boolean> {
+    return (await this.getUserRole(userId)) === "super_admin";
+  }
+
+  async isAdminOrSA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role === "admin" || role === "super_admin";
   }
 
   async addWinner(
@@ -432,6 +467,7 @@ export class AMAService {
   // Handle /start command with deep links for claiming rewards
   @Start()
   async start(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
     await handleStart(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -442,6 +478,13 @@ export class AMAService {
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     await handleNewAMA(
       ctx,
       this.createAMA.bind(this) as (
@@ -460,6 +503,13 @@ export class AMAService {
   // Start the AMA (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -478,7 +528,14 @@ export class AMAService {
 
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
-  async handleEndAMACommand(ctx: Context): Promise<void> {
+  async endAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
     await handleEndAMA(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
@@ -497,6 +554,81 @@ export class AMAService {
       this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
       this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
     );
+  }
+
+  @Command("grantadmin")
+  async grantAdmin(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isSuperAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
+    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
+    let targetId = text.split(" ")[1];
+
+    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+      const reply = ctx.message.reply_to_message;
+      if (reply?.from?.id) {
+        targetId = reply.from.id.toString();
+        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
+      }
+    }
+
+    if (!targetId) {
+      await ctx.reply("Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin");
+      return;
+    }
+
+    const role = await this.getUserRole(targetId);
+    if (role === "admin") {
+      await ctx.reply(`User ${targetId} is already an admin.`);
+      return;
+    }
+
+    await this.updateUserRole(targetId, "admin");
+    await ctx.reply(`Admin access granted to user ${targetId}`);
+  }
+
+  @Command("revokeadmin")
+  async revokeAdmin(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.isSuperAdmin(fromId))) {
+      await ctx.reply("You are not authorized to perform this action.");
+      return;
+    }
+
+    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
+    let targetId = text.split(" ")[1];
+
+    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+      const reply = ctx.message.reply_to_message;
+      if (reply?.from?.id) {
+        targetId = reply.from.id.toString();
+        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
+      }
+    }
+
+    if (!targetId) {
+      await ctx.reply("Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin");
+      return;
+    }
+
+    const role = await this.getUserRole(targetId);
+    if (!role) {
+      await ctx.reply(`User ${targetId} does not exist.`);
+      return;
+    }
+
+    if (role !== "admin") {
+      await ctx.reply(`User ${targetId} is not an admin.`);
+      return;
+    }
+
+    await this.updateUserRole(targetId, "regular");
+    await ctx.reply(`Admin access revoked from user ${targetId}`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>
@@ -751,7 +883,7 @@ export class AMAService {
 
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
-    broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
+    await broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
   }
 
   //cancel-winners_(amaId)
