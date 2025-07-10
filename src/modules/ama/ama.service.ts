@@ -181,7 +181,7 @@ export class AMAService {
     return (await this.getUserRole(userId)) === "super_admin";
   }
 
-  async isAdmin(userId: string): Promise<boolean> {
+  async isAdminOrSA(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
     return role === "admin" || role === "super_admin";
   }
@@ -480,7 +480,7 @@ export class AMAService {
   async newAMA(ctx: BotContext): Promise<void> {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdmin(fromId))) {
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
       return;
     }
@@ -505,7 +505,7 @@ export class AMAService {
   async startAMA(ctx: Context): Promise<void> {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdmin(fromId))) {
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
       return;
     }
@@ -531,7 +531,7 @@ export class AMAService {
   async endAMA(ctx: BotContext): Promise<void> {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdmin(fromId))) {
+    if (!fromId || !(await this.isAdminOrSA(fromId))) {
       await ctx.reply("You are not authorized to perform this action.");
       return;
     }
