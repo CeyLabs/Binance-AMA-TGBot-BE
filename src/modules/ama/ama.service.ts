@@ -581,8 +581,14 @@ export class AMAService {
       return;
     }
 
+    const role = await this.getUserRole(targetId);
+    if (role === "admin") {
+      await ctx.reply(`User ${targetId} is already an admin.`);
+      return;
+    }
+
     await this.updateUserRole(targetId, "admin");
-    await ctx.reply(`User ${targetId} granted admin role.`);
+    await ctx.reply(`Admin access granted to user ${targetId}`);
   }
 
   @Command("revokeadmin")
@@ -610,8 +616,19 @@ export class AMAService {
       return;
     }
 
+    const role = await this.getUserRole(targetId);
+    if (!role) {
+      await ctx.reply(`User ${targetId} does not exist.`);
+      return;
+    }
+
+    if (role !== "admin") {
+      await ctx.reply(`User ${targetId} is not an admin.`);
+      return;
+    }
+
     await this.updateUserRole(targetId, "regular");
-    await ctx.reply(`User ${targetId} revoked.`);
+    await ctx.reply(`Admin access revoked from user ${targetId}`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>
