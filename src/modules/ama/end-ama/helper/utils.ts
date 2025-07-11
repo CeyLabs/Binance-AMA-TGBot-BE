@@ -97,12 +97,15 @@ export async function buildWinnerSelectionKeyboard(
   amaId: UUID,
   showResetButton = false,
   winCount?: (userId: string) => Promise<{ wins: number }>,
+  displayCount = 10,
 ): Promise<InlineKeyboardButton[][]> {
   const keyboard: InlineKeyboardButton[][] = [];
 
+  const visibleScores = scores.slice(0, Math.min(displayCount, scores.length));
+
   // Build keyboard rows for each user
-  for (let index = 0; index < Math.min(scores.length, 10); index++) {
-    const user = scores[index];
+  for (let index = 0; index < visibleScores.length; index++) {
+    const user = visibleScores[index];
     const { place, scoreDisplay } = getUserDisplayText(user, index);
 
     let displayText = `${place} ${user.username}${scoreDisplay}`;
@@ -130,7 +133,7 @@ export async function buildWinnerSelectionKeyboard(
   // Add confirm button
   keyboard.push([
     {
-      text: `✅ Confirm top ${scores.length} winners`,
+      text: `✅ Confirm top ${visibleScores.length} winners`,
       callback_data: `${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${amaId}`,
     },
   ]);
@@ -183,7 +186,7 @@ export async function getAMAFilteredScores(
 
 export function buildWinnersMessage(
   ama: AMA,
-  winners: ScoreWithUser[] ,
+  winners: ScoreWithUser[],
   includeScores: boolean = false,
 ): string {
   const sessionDate = ama.created_at ? dayjs(ama.created_at).format("MMMM D") : "Unknown Date";

@@ -118,7 +118,13 @@ async function selectWinners(
     return;
   }
 
-  const keyboard = await buildWinnerSelectionKeyboard(sortedScores, ama.id, false, winCount);
+  const keyboard = await buildWinnerSelectionKeyboard(
+    sortedScores,
+    ama.id,
+    false,
+    winCount,
+    ama.winner_count,
+  );
 
   await ctx.reply(`🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`, {
     parse_mode: "HTML",
@@ -247,7 +253,13 @@ export async function handleDiscardUser(
   const discardedUserIds = getDiscardedUserIds(ctx, id);
   const filteredScores = await getAMAFilteredScores(getScoresForAMA, id, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, true, winCount);
+  const keyboard = await buildWinnerSelectionKeyboard(
+    filteredScores,
+    ama.id,
+    true,
+    winCount,
+    ama.winner_count,
+  );
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,
@@ -286,7 +298,13 @@ export async function resetWinnersCallback(
   const discardedUserIds = getDiscardedUserIds(ctx, amaId);
   const filteredScores = getFilteredSortedScores(scores, discardedUserIds);
 
-  const keyboard = await buildWinnerSelectionKeyboard(filteredScores, ama.id, false, winCount);
+  const keyboard = await buildWinnerSelectionKeyboard(
+    filteredScores,
+    ama.id,
+    false,
+    winCount,
+    ama.winner_count,
+  );
 
   await ctx.editMessageReplyMarkup({
     inline_keyboard: keyboard,
@@ -325,7 +343,7 @@ export async function confirmWinnersCallback(
     return void ctx.reply("No winners found for this AMA session.");
   }
 
-  const topWinners = filteredScores.slice(0, 5); // Display top 5 only
+  const topWinners = filteredScores.slice(0, ama.winner_count);
 
   // End the AMA session
   await updateAMA(ama.id, {

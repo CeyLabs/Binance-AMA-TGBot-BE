@@ -202,7 +202,13 @@ async function proceedWithWinnerSelection(
   }
 
   // Build keyboard for winner selection
-  const keyboard = await buildWinnerSelectionKeyboard(sortedScores, ama.id, false, winCount);
+  const keyboard = await buildWinnerSelectionKeyboard(
+    sortedScores,
+    ama.id,
+    false,
+    winCount,
+    ama.winner_count,
+  );
 
   await ctx.reply(`🏆 <b>Top 10 Unique Users Scored Best for AMA #${ama.session_no}:</b>`, {
     parse_mode: "HTML",
