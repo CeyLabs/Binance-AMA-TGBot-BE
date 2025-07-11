@@ -39,6 +39,8 @@ export function buildAMAMessage(data: AMAData): string {
 
 📅 <b>${formattedDate} @ ${formattedTime}</b>
 
+📍 <a href="https://t.me/${process.env.AR_PUBLIC_GROUP_USERNAME}?videochat">انضم إلى الدردشة الصوتية</a>
+
 <b>⚡ لتكون مؤهلاً للفوز، يجب عليك:</b>
 1️⃣ تعبئة هذا <a href="${data.form_link}">النموذج</a> لتكون مؤهلاً للجائزة.
 2️⃣ المشاركة في المكالمة الصوتية 🗣️
@@ -59,6 +61,8 @@ export function buildAMAMessage(data: AMAData): string {
 ⬇️ <b>Reward pool</b> will be shared up to <b>${data.winner_count}</b> winners for a prize of <b>${data.reward}</b> each 🎁
 
 📅 <b>${formattedDate} @ ${formattedTime}</b>
+
+📍 <a href="https://t.me/${process.env.EN_PUBLIC_GROUP_USERNAME}?videochat">Join Voice Chat</a>
 
 <b>⚡ To be eligible to win, you must:</b>
 1️⃣ Complete this <a href="${data.form_link}">form</a> to become qualified for the reward.
