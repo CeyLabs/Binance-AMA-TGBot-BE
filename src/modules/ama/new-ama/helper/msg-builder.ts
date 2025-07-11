@@ -39,7 +39,7 @@ export function buildAMAMessage(data: AMAData): string {
 
 📅 <b>${formattedDate} @ ${formattedTime}</b>
 
-📍 <a href="https://t.me/BinanceMENAEnglish?videochat=1a351cbb96f51351b0">انضم إلى الدردشة الصوتية</a>
+📍 <a href="https://t.me/${process.env.AR_PUBLIC_GROUP_USERNAME}?videochat">انضم إلى الدردشة الصوتية</a>
 
 <b>⚡ لتكون مؤهلاً للفوز، يجب عليك:</b>
 1️⃣ تعبئة هذا <a href="${data.form_link}">النموذج</a> لتكون مؤهلاً للجائزة.
@@ -62,7 +62,7 @@ export function buildAMAMessage(data: AMAData): string {
 
 📅 <b>${formattedDate} @ ${formattedTime}</b>
 
-📍 <a href="https://t.me/BinanceMENAEnglish?videochat=1a351cbb96f51351b0">Join Voice Chat</a>
+📍 <a href="https://t.me/${process.env.EN_PUBLIC_GROUP_USERNAME}?videochat">Join Voice Chat</a>
 
 <b>⚡ To be eligible to win, you must:</b>
 1️⃣ Complete this <a href="${data.form_link}">form</a> to become qualified for the reward.
