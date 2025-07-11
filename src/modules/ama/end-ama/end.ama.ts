@@ -352,16 +352,15 @@ export async function confirmWinnersCallback(
 
   logger?.log(`AMA #${ama.session_no} ended and winners confirmed.`, ctx.from?.id?.toString());
 
+  // Delete existing winners for this AMA
+  const deleted = await deleteWinnersByAMA(ama.id);
+  if (!deleted) {
+    console.warn(`No winners were deleted for AMA #${ama.id}.`);
+  }
+
   // Add winners to database
   try {
     for (let i = 0; i < topWinners.length; i++) {
-      // Delete existing winners for this AMA
-      const deleted = await deleteWinnersByAMA(ama.id);
-      if (!deleted) {
-        console.warn(`No winners were deleted for AMA #${ama.id}.`);
-      }
-
-      // Check if the winner already exists
       const winner = topWinners[i];
       await addWinner(ama.id, winner.user_id, winner.id, i + 1);
     }
