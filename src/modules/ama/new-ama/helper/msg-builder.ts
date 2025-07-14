@@ -40,7 +40,7 @@ export function buildAMAMessage(data: AMAData): string {
 ⬅️ سيتم توزيع الجوائز على ${data.winner_count} فائزين، يحصل كل منهم على ${data.reward}.
 
 🗓 ${formattedDate}، الساعة ${formattedTime} KSA
-📍 <a href="https://t.me/${process.env.AR_PUBLIC_GROUP_USERNAME}?videochat">https://t.me/${process.env.AR_PUBLIC_GROUP_USERNAME}?videochat</a>
+📍 <a href="https://t.me/${process.env.AR_PUBLIC_GROUP_USERNAME}?videochat">انضم إلى الدردشة الصوتية</a>
 
 <b>⚡️للتأهل للفوز، يجب:</b>
 1️⃣ يرجى ملء هذه <a href="${data.form_link}">الاستمارة</a> لتكون مؤهلاً.
@@ -61,7 +61,7 @@ export function buildAMAMessage(data: AMAData): string {
 ➡️ The reward pool will be shared among ${data.winner_count} winners, each receiving ${data.reward}.
 
 🗓 ${formattedDate} at ${formattedTime} KSA
-📍 <a href="https://t.me/${process.env.EN_PUBLIC_GROUP_USERNAME}?videochat">https://t.me/${process.env.EN_PUBLIC_GROUP_USERNAME}?videochat</a>
+📍 <a href="https://t.me/${process.env.EN_PUBLIC_GROUP_USERNAME}?videochat">Join Voice Chat</a>
 
 <b>⚡️To be eligible to win, you must:</b>
 1️⃣ Please fill out <a href="${data.form_link}">this form</a> to qualify for the reward.

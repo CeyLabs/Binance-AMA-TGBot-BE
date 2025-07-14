@@ -26,6 +26,10 @@ export const EDIT_KEYS = {
   BANNER: "banner",
 };
 
+export const HIDDEN_KEYS = {
+  SUBSCRIBE: "subscribe",
+};
+
 export const CALLBACK_ACTIONS = {
   // Callback actions for AMA management
   EDIT_DATE: `edit-${EDIT_KEYS.DATE}`,

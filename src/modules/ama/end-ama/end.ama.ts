@@ -1,8 +1,14 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
-import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
+import { AMA_COMMANDS, CALLBACK_ACTIONS, HIDDEN_KEYS } from "../ama.constants";
 import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData, User } from "../types";
-import { getLanguageText, UUID_FRAGMENT, UUID_PATTERN, validateIdPattern, delay } from "../helper/utils";
+import {
+  getLanguageText,
+  UUID_FRAGMENT,
+  UUID_PATTERN,
+  validateIdPattern,
+  delay,
+} from "../helper/utils";
 import {
   buildWinnersMessage,
   congratsImg,
@@ -433,7 +439,7 @@ export async function handleWinnersBroadcast(
 
   const publicGroupId = groupIds.public[ama.language];
 
-  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=subscribe`;
+  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=${HIDDEN_KEYS.SUBSCRIBE}`;
   const inlineKeyboard =
     ama.language === "ar"
       ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
