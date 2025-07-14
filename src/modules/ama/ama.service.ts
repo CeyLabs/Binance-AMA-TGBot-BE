@@ -59,6 +59,7 @@ import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
 import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
 import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
+import { blockIfNotAdminGroup } from "../../utils/command-utils";
 
 @Update()
 @Injectable()
@@ -468,14 +469,7 @@ export class AMAService {
   @Start()
   async start(ctx: BotContext): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     await handleStart(
@@ -489,14 +483,7 @@ export class AMAService {
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: BotContext): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
@@ -524,14 +511,7 @@ export class AMAService {
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
@@ -560,14 +540,7 @@ export class AMAService {
   @Command(AMA_COMMANDS.END)
   async endAMA(ctx: BotContext): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
@@ -587,14 +560,7 @@ export class AMAService {
   @Command(AMA_COMMANDS.SELECT_WINNERS)
   async handleSelectWinnersCommand(ctx: Context): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await handleSelectWinners(
       ctx,
@@ -609,14 +575,7 @@ export class AMAService {
   @Command("grantadmin")
   async grantAdmin(ctx: BotContext): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
@@ -654,14 +613,7 @@ export class AMAService {
   @Command("revokeadmin")
   async revokeAdmin(ctx: BotContext): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (ctx.chat?.type !== "private" && ctx.chat?.id?.toString() !== adminGroupId) {
-      try {
-        await ctx.deleteMessage();
-      } catch (err) {
-        console.error('Failed to delete command message', err);
-      }
-      return;
-    }
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
