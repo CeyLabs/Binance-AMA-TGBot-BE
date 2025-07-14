@@ -188,7 +188,7 @@ export async function handleConfirmEdit(
   const updated = await getAMAById(AMA_ID);
   if (updated) {
     const message = buildAMAMessage(updated);
-    await ctx.replyWithPhoto(imageUrl, {
+    await ctx.replyWithPhoto(updated.banner_file_id || imageUrl, {
       caption: message,
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
