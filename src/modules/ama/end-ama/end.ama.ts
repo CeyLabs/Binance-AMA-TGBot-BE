@@ -23,7 +23,7 @@ export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -63,7 +63,7 @@ export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -83,7 +83,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   await ctx.reply(`#${ama.session_no} has ended!`);
 
@@ -201,7 +201,7 @@ export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -273,7 +273,7 @@ export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;

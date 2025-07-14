@@ -96,7 +96,7 @@ export async function buildWinnerSelectionKeyboard(
   scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
   displayCount = 10,
 ): Promise<InlineKeyboardButton[][]> {
   const keyboard: InlineKeyboardButton[][] = [];
@@ -113,7 +113,7 @@ export async function buildWinnerSelectionKeyboard(
     // Check if user is a past winner (if function is provided)
     if (winCount) {
       try {
-        const { wins } = await winCount(user.user_id);
+        const { wins } = await winCount(user.user_id, amaId);
         console.log(`User ${user.user_id} has won ${wins} times in the past.`);
         if (wins > 0) {
           displayText = `(🏆x${wins}) ${displayText}`;
