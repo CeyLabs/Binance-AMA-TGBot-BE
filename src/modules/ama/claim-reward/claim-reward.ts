@@ -9,20 +9,23 @@ export async function handleStart(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
+  subscribeUser: (userId: string) => Promise<void>,
 ): Promise<void> {
   const messageText = ctx.text || "";
   const args = messageText.split(" ");
 
+  if (args && args.length > 1 && args[1] === "subscribe") {
+    const userId = ctx.from?.id?.toString();
+    if (userId) {
+      await subscribeUser(userId);
+      await ctx.reply("✅ You will now receive AMA announcements here.");
+    }
+    return;
+  }
+
   // Check if this is a claim reward deep link
-  if (
-    args &&
-    args.length > 1 &&
-    args[1].startsWith(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`)
-  ) {
-    const amaId = args[1].replace(
-      `${CALLBACK_ACTIONS.CLAIM_REWARD}_`,
-      "",
-    ) as UUID;
+  if (args && args.length > 1 && args[1].startsWith(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`)) {
+    const amaId = args[1].replace(`${CALLBACK_ACTIONS.CLAIM_REWARD}_`, "") as UUID;
 
     try {
       const ama = await getAMAById(amaId);
@@ -67,9 +70,7 @@ export async function handleStart(
       }
     } catch (error) {
       console.error("Error processing claim:", error);
-      await ctx.reply(
-        "❌ Error processing your claim. Please try again later.",
-      );
+      await ctx.reply("❌ Error processing your claim. Please try again later.");
     }
   } else {
     // Regular start command

@@ -403,9 +403,33 @@ export class SchedulerService {
         const sent = await this.bot.telegram.sendPhoto(groupId, image, {
           caption: message,
           parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔔 Remind Me",
+                  url: `https://t.me/${this.config.get<string>("BOT_USERNAME")}?start=subscribe`,
+                },
+              ],
+            ],
+          },
         });
 
         await this.bot.telegram.pinChatMessage(groupId, sent.message_id);
+
+        // Send to subscribed users
+        const subscribers = await this.amaService.getSubscribedUsers();
+        for (const user of subscribers) {
+          try {
+            await this.bot.telegram.sendPhoto(user.user_id, image, {
+              caption: message,
+              parse_mode: "HTML",
+            });
+          } catch (err) {
+            this.logger.warn(`Failed to DM announcement to ${user.user_id}: ${err}`);
+          }
+          await this.delay(200);
+        }
 
         // Mark as successful after main broadcast
         broadcastSuccessful = true;
