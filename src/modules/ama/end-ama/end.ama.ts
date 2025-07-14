@@ -433,18 +433,17 @@ export async function handleWinnersBroadcast(
 
   const publicGroupId = groupIds.public[ama.language];
 
+  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=subscribe`;
+  const inlineKeyboard =
+    ama.language === "ar"
+      ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
+      : [[{ text: "⏰ Set a reminder for the next AMA", url: reminderUrl }]];
+
   const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {
     caption: message,
     parse_mode: "HTML",
     reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🔔 Remind Me",
-            url: `https://t.me/${process.env.BOT_USERNAME}?start=subscribe`,
-          },
-        ],
-      ],
+      inline_keyboard: inlineKeyboard,
     },
   });
 
