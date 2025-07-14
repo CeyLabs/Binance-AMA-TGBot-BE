@@ -925,6 +925,18 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
+    const isCommand =
+      !!ctx.message &&
+      "entities" in ctx.message &&
+      Array.isArray(ctx.message.entities) &&
+      ctx.message.entities.some(
+        (e) => e.type === "bot_command" && e.offset === 0,
+      );
+
+    if (isCommand) {
+      return;
+    }
+
     const chatID = ctx.chat?.id.toString();
 
     const groupIds = {
