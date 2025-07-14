@@ -496,6 +496,10 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<boolean>,
+      this.getAMABySessionNoAndLang.bind(this) as (
+        sessionNo: number,
+        language: SupportedLanguage,
+      ) => Promise<AMA | null>,
       this.logger,
     );
   }
