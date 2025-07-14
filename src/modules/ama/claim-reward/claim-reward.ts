@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 import { BotContext, AMA, WinnerData } from "../types";
-import { CALLBACK_ACTIONS } from "../ama.constants";
+import { CALLBACK_ACTIONS, HIDDEN_KEYS } from "../ama.constants";
 
 /**
  * Handle /start command with deep links for claiming rewards
@@ -14,7 +14,7 @@ export async function handleStart(
   const messageText = ctx.text || "";
   const args = messageText.split(" ");
 
-  if (args && args.length > 1 && args[1] === "subscribe") {
+  if (args && args.length > 1 && args[1] === HIDDEN_KEYS.SUBSCRIBE) {
     const userId = ctx.from?.id?.toString();
     if (userId) {
       await subscribeUser(userId);

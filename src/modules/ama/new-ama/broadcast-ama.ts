@@ -43,11 +43,22 @@ export async function handleBroadcastNow(
 
   // Send the announcement to the public group using custom banner if available
   const subscribeUrl = `https://t.me/${botUsername}?start=subscribe`;
+  const inlineKeyboard =
+    ama.language === "ar"
+      ? [
+          [{ text: "املأ الاستمارة 👈", url: ama.form_link }],
+          [{ text: "قم بتعيين تذكير ⏰", url: subscribeUrl }],
+        ]
+      : [
+          [{ text: "👉 Submit the form", url: ama.form_link }],
+          [{ text: "⏰ Set a reminder", url: subscribeUrl }],
+        ];
+
   const sent = await ctx.telegram.sendPhoto(publicGroupId, ama.banner_file_id || imageUrl, {
     caption: message,
     parse_mode: "HTML",
     reply_markup: {
-      inline_keyboard: [[{ text: "🔔 Remind Me", url: subscribeUrl }]],
+      inline_keyboard: inlineKeyboard,
     },
   });
 

@@ -400,19 +400,26 @@ export class SchedulerService {
           continue;
         }
 
+        const reminderUrl = `https://t.me/${this.config.get<string>("BOT_USERNAME")}?start=subscribe`;
+        const inlineKeyboard =
+          type === "init"
+            ? ama.language === "ar"
+              ? [
+                  [{ text: "املأ الاستمارة 👈", url: ama.form_link }],
+                  [{ text: "قم بتعيين تذكير ⏰", url: reminderUrl }],
+                ]
+              : [
+                  [{ text: "👉 Submit the form", url: ama.form_link }],
+                  [{ text: "⏰ Set a reminder", url: reminderUrl }],
+                ]
+            : ama.language === "ar"
+            ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
+            : [[{ text: "⏰ Set a reminder for the next AMA", url: reminderUrl }]];
+
         const sent = await this.bot.telegram.sendPhoto(groupId, image, {
           caption: message,
           parse_mode: "HTML",
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "🔔 Remind Me",
-                  url: `https://t.me/${this.config.get<string>("BOT_USERNAME")}?start=subscribe`,
-                },
-              ],
-            ],
-          },
+          reply_markup: { inline_keyboard: inlineKeyboard },
         });
 
         await this.bot.telegram.pinChatMessage(groupId, sent.message_id);
