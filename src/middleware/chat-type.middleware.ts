@@ -38,31 +38,6 @@ export class PrivateChatMiddleware {
   use(): MiddlewareFn<Context> {
     return async (ctx, next) => {
       const adminGroupId = process.env.ADMIN_GROUP_ID;
-      const publicGroupIds = [
-        process.env.EN_PUBLIC_GROUP_ID,
-        process.env.AR_PUBLIC_GROUP_ID,
-      ];
-
-      const isCommand =
-        !!ctx.message &&
-        "entities" in ctx.message &&
-        Array.isArray(ctx.message.entities) &&
-        ctx.message.entities.some(
-          (e) => e.type === "bot_command" && e.offset === 0,
-        );
-
-      const inPublicGroup =
-        ctx.chat?.type !== "private" &&
-        publicGroupIds.includes(ctx.chat?.id?.toString() ?? "");
-
-      if (inPublicGroup && isCommand) {
-        try {
-          await ctx.deleteMessage();
-        } catch {
-          // ignore deletion failures
-        }
-        return;
-      }
 
       // Allow all non-message updates (inline queries, callback queries, etc.)
       if (!ctx.chat && (ctx.inlineQuery || ctx.callbackQuery)) {
@@ -79,6 +54,17 @@ export class PrivateChatMiddleware {
         return next();
       }
 
+      // Send a message to /start command in groups
+      if (
+        ctx.chat?.type !== "private" &&
+        ctx.message &&
+        typeof ctx.message === "object" &&
+        "text" in ctx.message &&
+        typeof ctx.message.text === "string" &&
+        ctx.message.text.startsWith("/start")
+      ) {
+        return next();
+      }
 
       // Allow forwarded messages
       if (
