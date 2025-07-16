@@ -12,6 +12,8 @@ import { Request, Response, NextFunction } from "express";
 import { ConsoleLogger } from "@nestjs/common";
 import { KnexService } from "./modules/knex/knex.service";
 import { DbLoggerService } from "./logger/db-logger.service";
+import * as express from "express";
+import * as path from "path";
 
 // Add request logger middleware
 const requestLogger = (req: Request, res: Response, next: NextFunction) => {
@@ -46,6 +48,9 @@ async function bootstrap(): Promise<void> {
     // Use the request logger middleware only if webhook is enabled
     app.use(requestLogger);
   }
+
+  // Serve static files from the public directory
+  app.use('/public', express.static(path.join(__dirname, '..', '..', 'public')));
 
   // Connect the webhook middleware
   app.use(bot.webhookCallback("/webhook"));
