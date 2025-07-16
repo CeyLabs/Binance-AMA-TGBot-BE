@@ -5,7 +5,7 @@ import {
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
 import { buildAMAMessage, initImageUrl } from "./helper/msg-builder";
-import { BotContext, SupportedLanguage } from "../types";
+import { AMA, BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
@@ -23,8 +23,19 @@ dayjs.extend(timezone);
  */
 export async function handleNewAMA(
   ctx: BotContext,
-  createAMA: (sessionNo: number, language: SupportedLanguage, topic?: string) => Promise<UUID>,
-  isAMAExists: (sessionNo: number, language: SupportedLanguage) => Promise<boolean>,
+  createAMA: (
+    sessionNo: number,
+    language: SupportedLanguage,
+    topic?: string,
+  ) => Promise<UUID>,
+  isAMAExists: (
+    sessionNo: number,
+    language: SupportedLanguage,
+  ) => Promise<boolean>,
+  getAMABySessionNoAndLang: (
+    sessionNo: number,
+    language: SupportedLanguage,
+  ) => Promise<AMA | null>,
   logger?: DbLoggerService,
 ): Promise<void> {
   try {
@@ -60,11 +71,46 @@ export async function handleNewAMA(
     }
 
     // Check if the session number already exists
-    const sessionExists = await isAMAExists(sessionNo, language as SupportedLanguage);
-    if (sessionExists) {
-      await ctx.reply(
-        `AMA session number ${sessionNo} already exists. Please choose a different number.`,
+    const existingAMA = await getAMABySessionNoAndLang(
+      sessionNo,
+      language as SupportedLanguage,
+    );
+
+    if (existingAMA) {
+      if (existingAMA.status === "active" || existingAMA.status === "ended") {
+        await ctx.reply(
+          `AMA session number ${sessionNo} already exists and is ${existingAMA.status}.`,
+        );
+        return;
+      }
+
+      const message = buildAMAMessage({
+        session_no: existingAMA.session_no,
+        language: existingAMA.language,
+        datetime: existingAMA.datetime,
+        total_pool: existingAMA.total_pool,
+        reward: existingAMA.reward,
+        winner_count: existingAMA.winner_count,
+        form_link: existingAMA.form_link,
+        banner_file_id: existingAMA.banner_file_id,
+      });
+
+      const amaMsg = await ctx.replyWithPhoto(
+        existingAMA.banner_file_id || imageUrl,
+        {
+          caption: message,
+          parse_mode: "HTML",
+          reply_markup: NewAMAKeyboard(existingAMA.id),
+        },
       );
+
+      logger?.log(
+        `Loaded existing AMA session ${existingAMA.id}`,
+        ctx.from?.id.toString(),
+      );
+
+      ctx.session.messagesToDelete ??= [];
+      ctx.session.messagesToDelete.push(amaMsg.message_id);
       return;
     }
 

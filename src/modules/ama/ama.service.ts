@@ -330,15 +330,19 @@ export class AMAService {
   }
 
   // Get number of times user won in the past 3 months
-  async winCount(userId: string): Promise<{ wins: number }> {
-    const threeMonthsAgo = dayjs().subtract(1, "month").toDate();
+  async winCount(userId: string, excludeAmaId?: UUID): Promise<{ wins: number }> {
+    const oneMonthAgo = dayjs().subtract(1, "month").toDate();
 
-    const result = await this.knexService
+    const query = this.knexService
       .knex<WinnerData>("winner")
       .where("user_id", userId)
-      .andWhere("created_at", ">=", threeMonthsAgo)
-      .count<{ count: string }>("id as count")
-      .first();
+      .andWhere("created_at", ">=", oneMonthAgo);
+
+    if (excludeAmaId) {
+      query.andWhereNot("ama_id", excludeAmaId);
+    }
+
+    const result = await query.count<{ count: string }>("id as count").first();
 
     const count = result ? parseInt(result.count, 10) : 0;
     return { wins: count };
@@ -517,6 +521,10 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<boolean>,
+      this.getAMABySessionNoAndLang.bind(this) as (
+        sessionNo: number,
+        language: SupportedLanguage,
+      ) => Promise<AMA | null>,
       this.logger,
     );
   }
@@ -567,7 +575,7 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -582,7 +590,7 @@ export class AMAService {
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
       this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -822,7 +830,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -881,7 +889,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -892,7 +900,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -905,7 +913,7 @@ export class AMAService {
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
       this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 
@@ -916,7 +924,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
     );
   }
 

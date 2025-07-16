@@ -382,7 +382,7 @@ export class SchedulerService {
         let image = "";
 
         if (type === "init") {
-          image = ama.banner_file_id ?? initImageUrl[ama.language];
+          image = ama.banner_file_id || initImageUrl[ama.language];
           message = buildAMAMessage(ama);
           this.logger.log(`Broadcasting initial AMA #${ama.session_no} with ID ${amaId}`);
         } else if (type === "winner") {
