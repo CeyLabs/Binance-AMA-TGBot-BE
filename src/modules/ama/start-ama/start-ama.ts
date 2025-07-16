@@ -28,8 +28,14 @@ export async function handleStartAMA(
   }
 
   const availableAMAs = existingAMAs.filter(
-    (ama) => ama.status !== "active" && ama.status !== "ended",
+    (ama) => ama.status === "broadcasted",
   );
+
+  if (availableAMAs.length === 0) {
+    return void ctx.reply(
+      "This AMA has not been broadcasted yet. Please broadcast first and then start.",
+    );
+  }
 
   if (availableAMAs.length === 1) {
     return startAMA(ctx, groupIds, availableAMAs[0], updateAMA, logger);
@@ -68,7 +74,11 @@ export async function startAMAbyCallback(
 
   const ama = await getAMAById(result.id);
   if (!ama) return void ctx.answerCbQuery("AMA session not found.");
-  if (ama.status === "active" || ama.status === "ended") return;
+  if (ama.status !== "broadcasted") {
+    return void ctx.answerCbQuery(
+      "This AMA has not been broadcasted yet. Please broadcast first and then start.",
+    );
+  }
 
   // Delete the callback query message to clean up
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
@@ -86,6 +96,12 @@ async function startAMA(
   updateAMA: (id: UUID, data: Partial<AMA>) => Promise<boolean>,
   logger?: DbLoggerService,
 ): Promise<void> {
+  if (ama.status !== "broadcasted") {
+    await ctx.reply(
+      "This AMA has not been broadcasted yet. Please broadcast first and then start.",
+    );
+    return;
+  }
   const thread = await ctx.telegram.callApi("createForumTopic", {
     chat_id: groupIds.admin,
     name: `#${ama.session_no} ${ama.language.toUpperCase()} AMA Session`,
