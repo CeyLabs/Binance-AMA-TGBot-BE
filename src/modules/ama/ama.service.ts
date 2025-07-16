@@ -1033,8 +1033,12 @@ export class AMAService {
       // Handle scheduling winners broadcast if the context is in the correct state and input matches datetime
       if (
         ctx.session.scheduledWinnersBroadcast?.amaId && ctx.message && "text" in ctx.message &&
-        typeof ctx.message.text === "string" && DATETIME_REGEX.test(ctx.message.text)
+        typeof ctx.message.text === "string"
       ) {
+        if(!DATETIME_REGEX.test(ctx.message.text)) {
+          return void ctx.reply("Please provide a valid date and time in the format YYYY/MM/DD HH:mm");
+        }
+
         await scheduleWinnersBroadcast(
           ctx,
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
