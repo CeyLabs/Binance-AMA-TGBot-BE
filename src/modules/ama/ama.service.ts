@@ -172,6 +172,7 @@ export class AMAService {
   }
 
   async subscribeUser(userId: string, language: SupportedLanguage): Promise<void> {
+    console.log('language',language)
     await this.knexService
       .knex("user")
       .insert({
@@ -183,7 +184,7 @@ export class AMAService {
       .merge({
         subscribed: true,
         subscribed_groups: this.knexService.knex.raw(
-          "array(SELECT DISTINCT unnest(coalesce(subscribed_groups, ARRAY[]::text[])) UNION SELECT ?)",
+          "array(SELECT DISTINCT unnest(coalesce(\"user\".subscribed_groups, ARRAY[]::text[])) UNION SELECT ?)",
           [language],
         ),
         updated_at: new Date(),
