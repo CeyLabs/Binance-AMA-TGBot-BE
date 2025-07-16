@@ -1,7 +1,7 @@
 import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern, delay } from "../helper/utils";
-import { CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, PublicGroupInfo, ScheduleType, User } from "../types";
+import { CALLBACK_ACTIONS, HIDDEN_KEYS } from "../ama.constants";
+import { AMA, BotContext, PublicGroupInfo, ScheduleType, User, SupportedLanguage } from "../types";
 import { buildAMAMessage, initImageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
 import * as dayjs from "dayjs";
@@ -12,7 +12,7 @@ export async function handleBroadcastNow(
   publicGroupIds: PublicGroupInfo,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   updateAMA: (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
-  getSubscribers: () => Promise<User[]>,
+  getSubscribers: (lang: SupportedLanguage) => Promise<User[]>,
   botUsername: string,
 ): Promise<void> {
   const result = await validateIdPattern(
@@ -42,7 +42,9 @@ export async function handleBroadcastNow(
   const publicGroupId = publicGroupIds[ama.language];
 
   // Send the announcement to the public group using custom banner if available
-  const subscribeUrl = `https://t.me/${botUsername}?start=subscribe`;
+  const subscribeUrl = `https://t.me/${botUsername}?start=${
+    ama.language === "ar" ? HIDDEN_KEYS.SUBSCRIBE_AR : HIDDEN_KEYS.SUBSCRIBE_EN
+  }`;
   const inlineKeyboard =
     ama.language === "ar"
       ? [
@@ -69,7 +71,7 @@ export async function handleBroadcastNow(
   });
 
   // Send announcement to subscribed users
-  const subscribers = await getSubscribers();
+  const subscribers = await getSubscribers(ama.language);
   for (const user of subscribers) {
     try {
       await ctx.telegram.sendPhoto(user.user_id, ama.banner_file_id || image, {

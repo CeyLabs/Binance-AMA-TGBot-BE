@@ -66,6 +66,7 @@ export interface User {
   name: string | null;
   username: string | null;
   subscribed: boolean;
+  subscribed_groups: SupportedLanguage[];
   created_at?: string;
   updated_at?: string;
 }

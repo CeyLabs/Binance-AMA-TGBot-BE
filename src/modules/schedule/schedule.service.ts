@@ -11,6 +11,7 @@ import { OpenAIAnalysis } from "../ama/types";
 import { TelegramEmoji } from "telegraf/types";
 import { buildAMAMessage, initImageUrl } from "../ama/new-ama/helper/msg-builder";
 import { buildWinnersMessage, congratsImg } from "../ama/end-ama/helper/utils";
+import { HIDDEN_KEYS } from "../ama/ama.constants";
 
 /**
  * SchedulerService - Handles AMA message processing and scheduled broadcasts
@@ -400,7 +401,9 @@ export class SchedulerService {
           continue;
         }
 
-        const reminderUrl = `https://t.me/${this.config.get<string>("BOT_USERNAME")}?start=subscribe`;
+        const reminderUrl = `https://t.me/${this.config.get<string>("BOT_USERNAME")}?start=${
+          ama.language === "ar" ? HIDDEN_KEYS.SUBSCRIBE_AR : HIDDEN_KEYS.SUBSCRIBE_EN
+        }`;
         const inlineKeyboard =
           type === "init"
             ? ama.language === "ar"
@@ -413,8 +416,8 @@ export class SchedulerService {
                   [{ text: "⏰ Set a reminder", url: reminderUrl }],
                 ]
             : ama.language === "ar"
-            ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
-            : [[{ text: "⏰ Set a reminder for the next AMA", url: reminderUrl }]];
+              ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
+              : [[{ text: "⏰ Set a reminder for the next AMA", url: reminderUrl }]];
 
         const sent = await this.bot.telegram.sendPhoto(groupId, image, {
           caption: message,
@@ -425,7 +428,7 @@ export class SchedulerService {
         await this.bot.telegram.pinChatMessage(groupId, sent.message_id);
 
         // Send to subscribed users
-        const subscribers = await this.amaService.getSubscribedUsers();
+        const subscribers = await this.amaService.getSubscribedUsers(ama.language);
         for (const user of subscribers) {
           try {
             await this.bot.telegram.sendPhoto(user.user_id, image, {

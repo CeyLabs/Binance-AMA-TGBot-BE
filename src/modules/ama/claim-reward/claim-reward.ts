@@ -9,16 +9,25 @@ export async function handleStart(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
-  subscribeUser: (userId: string) => Promise<void>,
+  subscribeUser: (userId: string, lang: "en" | "ar") => Promise<void>,
 ): Promise<void> {
   const messageText = ctx.text || "";
   const args = messageText.split(" ");
 
-  if (args && args.length > 1 && args[1] === HIDDEN_KEYS.SUBSCRIBE) {
+  if (
+    args &&
+    args.length > 1 &&
+    (args[1] === HIDDEN_KEYS.SUBSCRIBE_EN || args[1] === HIDDEN_KEYS.SUBSCRIBE_AR)
+  ) {
     const userId = ctx.from?.id?.toString();
     if (userId) {
-      await subscribeUser(userId);
-      await ctx.reply("✅ You will now receive AMA announcements here.");
+      const lang = args[1] === HIDDEN_KEYS.SUBSCRIBE_AR ? "ar" : "en";
+      await subscribeUser(userId, lang);
+      await ctx.reply(
+        lang === "ar"
+          ? "✅ سيتم إرسال إعلانات AMA العربية هنا."
+          : "✅ You will now receive English AMA announcements here.",
+      );
     }
     return;
   }

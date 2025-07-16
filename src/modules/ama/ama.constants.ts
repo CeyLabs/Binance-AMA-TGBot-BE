@@ -28,7 +28,8 @@ export const EDIT_KEYS = {
 };
 
 export const HIDDEN_KEYS = {
-  SUBSCRIBE: "subscribe",
+  SUBSCRIBE_EN: "subscribe_en",
+  SUBSCRIBE_AR: "subscribe_ar",
 };
 
 export const CALLBACK_ACTIONS = {
