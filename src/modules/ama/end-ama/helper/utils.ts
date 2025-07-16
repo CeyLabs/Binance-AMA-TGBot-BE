@@ -189,12 +189,12 @@ export function buildWinnersMessage(
   winners: ScoreWithUser[],
   includeScores: boolean = false,
 ): string {
-
   const winnersText = winners
     .map((user, i) => {
       const emoji = placeEmojis[i] || `${i + 1}.`;
       const userLink = `<a href="tg://user?id=${user.user_id}">${user.name || user.username || user.user_id}</a>`;
-      const scoreText = includeScores ? ` - Score: ${user.score}` : "";
+      const scoreLabel = ama.language === "ar" ? "النتيجة" : "Score";
+      const scoreText = includeScores ? ` - ${scoreLabel}: ${user.score}` : "";
       return `${emoji} ${userLink} ${scoreText}`;
     })
     .join("\n");

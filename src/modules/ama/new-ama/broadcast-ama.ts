@@ -2,7 +2,7 @@ import { Context } from "telegraf";
 import { UUID_PATTERN, validateIdPattern, delay } from "../helper/utils";
 import { CALLBACK_ACTIONS } from "../ama.constants";
 import { AMA, BotContext, PublicGroupInfo, ScheduleType, User } from "../types";
-import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
+import { buildAMAMessage, initImageUrl } from "./helper/msg-builder";
 import { UUID } from "crypto";
 import * as dayjs from "dayjs";
 import { InlineKeyboardButton } from "telegraf/types";
@@ -54,7 +54,8 @@ export async function handleBroadcastNow(
           [{ text: "⏰ Set a reminder", url: subscribeUrl }],
         ];
 
-  const sent = await ctx.telegram.sendPhoto(publicGroupId, ama.banner_file_id || imageUrl, {
+  const image = initImageUrl[ama.language];
+  const sent = await ctx.telegram.sendPhoto(publicGroupId, ama.banner_file_id || image, {
     caption: message,
     parse_mode: "HTML",
     reply_markup: {
@@ -71,7 +72,7 @@ export async function handleBroadcastNow(
   const subscribers = await getSubscribers();
   for (const user of subscribers) {
     try {
-      await ctx.telegram.sendPhoto(user.user_id, ama.banner_file_id || imageUrl, {
+      await ctx.telegram.sendPhoto(user.user_id, ama.banner_file_id || image, {
         caption: message,
         parse_mode: "HTML",
       });

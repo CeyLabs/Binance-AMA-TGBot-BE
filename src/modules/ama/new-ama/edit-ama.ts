@@ -1,7 +1,7 @@
 import { Markup } from "telegraf";
 import { AMA_HASHTAGS, CALLBACK_ACTIONS, EDIT_KEYS } from "../ama.constants";
 import { EDITABLE_FIELDS } from "./helper/field-metadata";
-import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
+import { buildAMAMessage, initImageUrl } from "./helper/msg-builder";
 import { UUID_PATTERN, validateIdPattern } from "../helper/utils";
 import { AMA, BotContext } from "../types";
 import { UUID } from "crypto";
@@ -188,7 +188,7 @@ export async function handleConfirmEdit(
   const updated = await getAMAById(AMA_ID);
   if (updated) {
     const message = buildAMAMessage(updated);
-    await ctx.replyWithPhoto(updated.banner_file_id || imageUrl, {
+    await ctx.replyWithPhoto(updated.banner_file_id || initImageUrl[updated.language], {
       caption: message,
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
