@@ -10,8 +10,8 @@ export const AMA_COMMANDS = {
 export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
 
 export const AMA_HASHTAGS = {
-  en: "BinanceWeeklySessions",
-  ar: "المحادثة_الصوتية_الاسبوعية",
+  en: "BinanceSession",
+  ar: "جلسات_بينانس",
 };
 
 export const EDIT_KEYS = {
@@ -20,10 +20,15 @@ export const EDIT_KEYS = {
   SESSION_NO: "sessionNo",
   REWARD: "reward",
   WINNER_COUNT: "winnerCount",
+  TOTAL_POOL: "totalPool",
   FORM_LINK: "formLink",
   TOPIC: "topic",
   GUEST: "guest",
   BANNER: "banner",
+};
+
+export const HIDDEN_KEYS = {
+  SUBSCRIBE: "subscribe",
 };
 
 export const CALLBACK_ACTIONS = {
@@ -33,6 +38,7 @@ export const CALLBACK_ACTIONS = {
   EDIT_SESSION: `edit-${EDIT_KEYS.SESSION_NO}`,
   EDIT_REWARD: `edit-${EDIT_KEYS.REWARD}`,
   EDIT_WINNERS: `edit-${EDIT_KEYS.WINNER_COUNT}`,
+  EDIT_TOTAL_POOL: `edit-${EDIT_KEYS.TOTAL_POOL}`,
   EDIT_BANNER: `edit-${EDIT_KEYS.BANNER}`,
   EDIT_FORM: `edit-${EDIT_KEYS.FORM_LINK}`,
   ADD_TOPIC: `edit-${EDIT_KEYS.TOPIC}`,

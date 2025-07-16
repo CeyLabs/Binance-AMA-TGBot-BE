@@ -24,6 +24,7 @@ import {
   WinnerData,
   SupportedLanguage,
   UserDetails,
+  User,
   ScheduleType,
 } from "./types";
 import {
@@ -59,6 +60,7 @@ import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
 import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
 import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
+import { blockIfNotAdminGroup } from "../../utils/command-utils";
 
 @Update()
 @Injectable()
@@ -167,6 +169,18 @@ export class AMAService {
       .insert({ user_id: userId, role })
       .onConflict("user_id")
       .merge({ role, updated_at: new Date() });
+  }
+
+  async subscribeUser(userId: string): Promise<void> {
+    await this.knexService
+      .knex("user")
+      .insert({ user_id: userId, subscribed: true })
+      .onConflict("user_id")
+      .merge({ subscribed: true, updated_at: new Date() });
+  }
+
+  async getSubscribedUsers(): Promise<User[]> {
+    return this.knexService.knex<User>("user").where({ subscribed: true });
   }
 
   async getUserRole(userId: string): Promise<string | null> {
@@ -373,7 +387,7 @@ export class AMAService {
     return this.knexService
       .knex("winner")
       .join("user", "winner.user_id", "user.user_id")
-      .select("winner.*", "user.name", "user.username")
+      .select("winner.*", "user.name", "user.username", "user.subscribed")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
@@ -382,7 +396,7 @@ export class AMAService {
   async getUserById(userId: string): Promise<UserDetails | undefined> {
     return this.knexService
       .knex<UserDetails>("user")
-      .select("user_id", "username", "name")
+      .select("user_id", "username", "name", "subscribed")
       .where({ user_id: userId })
       .first();
   }
@@ -471,17 +485,24 @@ export class AMAService {
   // Handle /start command with deep links for claiming rewards
   @Start()
   async start(ctx: BotContext): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     await handleStart(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.subscribeUser.bind(this) as (userId: string) => Promise<void>,
     );
   }
 
   // Create a new AMA
   @Command(AMA_COMMANDS.NEW)
   async newAMA(ctx: BotContext): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdminOrSA(fromId))) {
@@ -507,6 +528,9 @@ export class AMAService {
   // Start the AMA (/startama 60)
   @Command(AMA_COMMANDS.START)
   async startAMA(ctx: Context): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdminOrSA(fromId))) {
@@ -533,6 +557,9 @@ export class AMAService {
   // End the AMA (/endama 60)
   @Command(AMA_COMMANDS.END)
   async endAMA(ctx: BotContext): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isAdminOrSA(fromId))) {
@@ -550,6 +577,9 @@ export class AMAService {
 
   @Command(AMA_COMMANDS.SELECT_WINNERS)
   async handleSelectWinnersCommand(ctx: Context): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await handleSelectWinners(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
@@ -562,6 +592,9 @@ export class AMAService {
 
   @Command("grantadmin")
   async grantAdmin(ctx: BotContext): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isSuperAdmin(fromId))) {
@@ -597,6 +630,9 @@ export class AMAService {
 
   @Command("revokeadmin")
   async revokeAdmin(ctx: BotContext): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.isSuperAdmin(fromId))) {
@@ -665,6 +701,8 @@ export class AMAService {
       publicGroupIds,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
+      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
+      this.config.get<string>("BOT_USERNAME")!,
     );
   }
 
@@ -836,6 +874,7 @@ export class AMAService {
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
+      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
     );
   }
 
@@ -887,7 +926,10 @@ export class AMAService {
 
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
-    await broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
+    await broadcastWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+    );
   }
 
   //cancel-winners_(amaId)
@@ -929,6 +971,18 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
+    const isCommand =
+      !!ctx.message &&
+      "entities" in ctx.message &&
+      Array.isArray(ctx.message.entities) &&
+      ctx.message.entities.some(
+        (e) => e.type === "bot_command" && e.offset === 0,
+      );
+
+    if (isCommand) {
+      return;
+    }
+
     const chatID = ctx.chat?.id.toString();
 
     const groupIds = {

@@ -45,3 +45,8 @@ export function formatTimeTo12Hour(time24: string): string {
 export function getLanguageText(language: SupportedLanguage): string {
   return language === "ar" ? "Arabic" : "English";
 }
+
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
