@@ -24,6 +24,7 @@ import {
   WinnerData,
   SupportedLanguage,
   UserDetails,
+  User,
   ScheduleType,
 } from "./types";
 import {
@@ -167,6 +168,18 @@ export class AMAService {
       .insert({ user_id: userId, role })
       .onConflict("user_id")
       .merge({ role, updated_at: new Date() });
+  }
+
+  async subscribeUser(userId: string): Promise<void> {
+    await this.knexService
+      .knex("user")
+      .insert({ user_id: userId, subscribed: true })
+      .onConflict("user_id")
+      .merge({ subscribed: true, updated_at: new Date() });
+  }
+
+  async getSubscribedUsers(): Promise<User[]> {
+    return this.knexService.knex<User>("user").where({ subscribed: true });
   }
 
   async getUserRole(userId: string): Promise<string | null> {
@@ -369,7 +382,7 @@ export class AMAService {
     return this.knexService
       .knex("winner")
       .join("user", "winner.user_id", "user.user_id")
-      .select("winner.*", "user.name", "user.username")
+      .select("winner.*", "user.name", "user.username", "user.subscribed")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
@@ -378,7 +391,7 @@ export class AMAService {
   async getUserById(userId: string): Promise<UserDetails | undefined> {
     return this.knexService
       .knex<UserDetails>("user")
-      .select("user_id", "username", "name")
+      .select("user_id", "username", "name", "subscribed")
       .where({ user_id: userId })
       .first();
   }
@@ -472,6 +485,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
+      this.subscribeUser.bind(this) as (userId: string) => Promise<void>,
     );
   }
 
@@ -661,6 +675,8 @@ export class AMAService {
       publicGroupIds,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
+      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
+      this.config.get<string>("BOT_USERNAME")!,
     );
   }
 
@@ -832,6 +848,7 @@ export class AMAService {
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
+      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
     );
   }
 
@@ -883,7 +900,10 @@ export class AMAService {
 
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
-    await broadcastWinnersCallback(ctx, this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>);
+    await broadcastWinnersCallback(
+      ctx,
+      this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
+    );
   }
 
   //cancel-winners_(amaId)

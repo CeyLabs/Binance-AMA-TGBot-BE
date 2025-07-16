@@ -10,8 +10,8 @@ export const AMA_COMMANDS = {
 export const SUPPORTED_LANGUAGES = ["en", "ar"] as const;
 
 export const AMA_HASHTAGS = {
-  en: "BinanceWeeklySessions",
-  ar: "المحادثة_الصوتية_الاسبوعية",
+  en: "BinanceSession",
+  ar: "جلسات_بينانس",
 };
 
 export const EDIT_KEYS = {
@@ -25,6 +25,10 @@ export const EDIT_KEYS = {
   TOPIC: "topic",
   GUEST: "guest",
   BANNER: "banner",
+};
+
+export const HIDDEN_KEYS = {
+  SUBSCRIBE: "subscribe",
 };
 
 export const CALLBACK_ACTIONS = {
