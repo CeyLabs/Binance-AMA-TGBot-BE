@@ -189,7 +189,6 @@ export function buildWinnersMessage(
   winners: ScoreWithUser[],
   includeScores: boolean = false,
 ): string {
-  const sessionDate = ama.created_at ? dayjs(ama.created_at).format("MMMM D") : "Unknown Date";
 
   const winnersText = winners
     .map((user, i) => {

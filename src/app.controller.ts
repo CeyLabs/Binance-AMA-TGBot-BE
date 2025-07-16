@@ -5,7 +5,7 @@
 
 import { Update } from "nestjs-telegraf";
 import { AppService } from "./app.service";
-import { Controller } from "@nestjs/common";
+import { Controller, Get } from "@nestjs/common";
 
 /**
  * Root controller class that handles base-level Telegram bot updates
@@ -17,4 +17,15 @@ import { Controller } from "@nestjs/common";
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
+
+  @Get('health')
+  health() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      environment: process.env.NODE_ENV || 'development'
+    };
+  }
 }
