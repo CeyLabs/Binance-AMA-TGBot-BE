@@ -355,8 +355,7 @@ export class SchedulerService {
   // Run every minute to broadcast scheduled AMAs
   @Cron("*/1 * * * *")
   async broadcastScheduledAMAs() {
-    const now = new Date();
-    this.logger.log(`[${now.toISOString()}] Checking for scheduled AMAs...`);
+    this.logger.log(`[Cron] Checking for scheduled AMAs to broadcast...`);
 
     const scheduledItems = await this.amaService.getDueScheduledTimes();
     if (scheduledItems.length === 0) {
