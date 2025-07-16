@@ -59,7 +59,7 @@ import { handleDiscardUser } from "./end-ama/end.ama";
 import * as dayjs from "dayjs";
 import { handleStart } from "./claim-reward/claim-reward";
 import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
-import { broadcastWinnersCallback, scheduleWiinersBroadcast } from "./end-ama/broadcast-winners";
+import { broadcastWinnersCallback, scheduleWinnersBroadcast } from "./end-ama/broadcast-winners";
 import { blockIfNotAdminGroup } from "../../utils/command-utils";
 
 @Update()
@@ -1035,7 +1035,7 @@ export class AMAService {
         ctx.session.scheduledWinnersBroadcast?.amaId && ctx.message && "text" in ctx.message &&
         typeof ctx.message.text === "string" && DATETIME_REGEX.test(ctx.message.text)
       ) {
-        await scheduleWiinersBroadcast(
+        await scheduleWinnersBroadcast(
           ctx,
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
         );

@@ -51,7 +51,7 @@ export async function broadcastWinnersCallback(
   );
 }
 
-export async function scheduleWiinersBroadcast(
+export async function scheduleWinnersBroadcast(
   ctx: BotContext,
   scheduleAMA: (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
 ): Promise<void> {
@@ -64,10 +64,19 @@ export async function scheduleWiinersBroadcast(
 
   const input = ctx.message.text.trim();
 
-  // Validate the input format
-  const scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", TIMEZONES.KSA);
+  // Validate the input format - try both YYYY/MM/DD and DD/MM/YYYY formats
+  let scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", TIMEZONES.KSA);
+  
+  // If invalid, try DD/MM/YYYY format
   if (!scheduled.isValid()) {
-    return void ctx.reply("Invalid date and time provided. Please check the format.");
+    scheduled = dayjs.tz(input, "DD/MM/YYYY HH:mm", TIMEZONES.KSA);
+  }
+
+  console.log(scheduled.isValid())
+  
+  if (!scheduled.isValid()) {
+    await ctx.reply("❌ Invalid date and time format. Please use: YYYY/MM/DD HH:mm or DD/MM/YYYY HH:mm\n\nExample: 2025/07/16 23:30 or 16/07/2025 23:30");
+    return;
   }
 
   if (scheduled.isBefore(dayjs())) {
