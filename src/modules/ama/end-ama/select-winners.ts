@@ -15,7 +15,7 @@ export async function handleSelectWinners(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
   getUserById: (userId: string) => Promise<UserDetails | undefined>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -62,7 +62,7 @@ export async function selectWinnersByCallback(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
   getUserById: (userId: string) => Promise<UserDetails | undefined>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   // Extract AMA ID from callback data
   const callbackData =
@@ -92,7 +92,7 @@ async function processWinnersSelection(
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
   getWinnersByAMA: (amaId: UUID) => Promise<WinnerData[]>,
   getUserById: (userId: string) => Promise<UserDetails | undefined>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   // Delete the original message if it's a callback
   if (ctx.callbackQuery && ctx.callbackQuery.message) {
@@ -156,7 +156,7 @@ export async function forceSelectWinnersCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const callbackData =
     ctx.callbackQuery && "data" in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
@@ -190,7 +190,7 @@ async function proceedWithWinnerSelection(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   // Get all scores for winner selection
   const allScores = await getScoresForAMA(ama.id);
