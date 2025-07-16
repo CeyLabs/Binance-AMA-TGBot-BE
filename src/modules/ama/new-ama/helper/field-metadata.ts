@@ -90,6 +90,17 @@ export const EDITABLE_FIELDS = {
         : { value: null, error: "❌ Reward cannot be empty." };
     },
   },
+  [EDIT_KEYS.TOTAL_POOL]: {
+    name: "Total Pool",
+    prompt: "Enter Total Pool (e.g., '1000 USD')",
+    column: "total_pool",
+    validate: (input: string): ValidationResult => {
+      const trimmed = input.trim();
+      return trimmed.length > 0
+        ? { value: trimmed }
+        : { value: null, error: "❌ Total pool cannot be empty." };
+    },
+  },
 
   [EDIT_KEYS.WINNER_COUNT]: {
     name: "Winners Count",

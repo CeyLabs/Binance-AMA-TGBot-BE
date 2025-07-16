@@ -96,7 +96,7 @@ export async function buildWinnerSelectionKeyboard(
   scores: ScoreWithUser[],
   amaId: UUID,
   showResetButton = false,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
   displayCount = 10,
 ): Promise<InlineKeyboardButton[][]> {
   const keyboard: InlineKeyboardButton[][] = [];
@@ -113,7 +113,7 @@ export async function buildWinnerSelectionKeyboard(
     // Check if user is a past winner (if function is provided)
     if (winCount) {
       try {
-        const { wins } = await winCount(user.user_id);
+        const { wins } = await winCount(user.user_id, amaId);
         console.log(`User ${user.user_id} has won ${wins} times in the past.`);
         if (wins > 0) {
           displayText = `(🏆x${wins}) ${displayText}`;
@@ -200,13 +200,24 @@ export function buildWinnersMessage(
     })
     .join("\n");
 
+  if (ama.language === "ar") {
+    return [
+      `🏆 مبروك للفائزين في جلسات بينانس الأسبوعية – #جلسات_بينانس${ama.session_no}!`,
+      `\n\n🔸 تم إرسال ${ama.reward} لكل فائز مؤهل بناءً على شروط المسابقة.`,
+      `\n🔸 قائمة الفائزين أدناه — وحظًا موفقًا للجميع في الجلسات القادمة!`,
+      `\n\n🎁 الفائزون المؤهلون:`,
+      winnersText,
+      `\n\n🎉 نتطلع إلى مشاركتكم المستمرة في جلسات بينانس الأسبوعية!🎉`,
+    ].join("\n");
+  }
+
   return [
-    `🏆 <b>Congratulations to the winners in our Binance Weekly Session #${ama.session_no} - ${sessionDate}</b>\n`,
-    `🔶 ${ama.reward} was sent to each eligible winner based on the contest terms.\n`,
-    `🔶 The list of winners is here-below and good luck to everyone in the upcoming AMA session\n`,
-    `🎁 <b>Eligible winners:</b>\n`,
+    `🏆 Congratulations to the winners of our Binance Weekly Sessions – #BinanceSession${ama.session_no}!`,
+    `\n\n🔸 Each eligible winner has received ${ama.reward} based on the contest terms.`,
+    `\n🔸 The list of winners is below — good luck to everyone in the upcoming AMA sessions!`,
+    `\n\n🎁 Eligible Winners:`,
     winnersText,
-    `\n🎉 We look forward to your future participation in the Binance Weekly Sessions.`,
+    `\n\n🎉 We look forward to your continued participation in the Binance Weekly Sessions!🎉`,
   ].join("\n");
 }
 

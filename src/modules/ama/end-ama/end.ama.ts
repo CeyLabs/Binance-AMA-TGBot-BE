@@ -1,8 +1,14 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
-import { AMA_COMMANDS, CALLBACK_ACTIONS } from "../ama.constants";
-import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData } from "../types";
-import { getLanguageText, UUID_FRAGMENT, UUID_PATTERN, validateIdPattern } from "../helper/utils";
+import { AMA_COMMANDS, CALLBACK_ACTIONS, HIDDEN_KEYS } from "../ama.constants";
+import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData, User } from "../types";
+import {
+  getLanguageText,
+  UUID_FRAGMENT,
+  UUID_PATTERN,
+  validateIdPattern,
+  delay,
+} from "../helper/utils";
 import {
   buildWinnersMessage,
   congratsImg,
@@ -23,7 +29,7 @@ export async function handleEndAMA(
   ctx: Context,
   getAMAsBySessionNo: (sessionNo: number) => Promise<AMA[]>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const text = ctx.text;
   if (!text) return void ctx.reply("Invalid command format.");
@@ -63,7 +69,7 @@ export async function endAMAbyCallback(
   ctx: Context,
   getAMAById: (id: string) => Promise<AMA | null>,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -83,7 +89,7 @@ async function selectWinners(
   ctx: Context,
   ama: AMA,
   getScoresForAMA: (amaId: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   await ctx.reply(`#${ama.session_no} has ended!`);
 
@@ -201,7 +207,7 @@ export async function handleDiscardUser(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ) {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery)) {
     await ctx.answerCbQuery("Missing callback data.");
@@ -273,7 +279,7 @@ export async function resetWinnersCallback(
   ctx: BotContext,
   getAMAById: (id: UUID) => Promise<AMA | null>,
   getScoresForAMA: (id: UUID) => Promise<ScoreWithUser[]>,
-  winCount?: (userId: string) => Promise<{ wins: number }>,
+  winCount?: (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
 ): Promise<void> {
   const result = await validateCallbackData(ctx, CALLBACK_ACTIONS.RESET_WINNERS);
   if (!result) return;
@@ -409,6 +415,7 @@ export async function handleWinnersBroadcast(
   getAMAById: (id: UUID) => Promise<AMA>,
   getWinnersWithUserDetails: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
+  getSubscribedUsers: () => Promise<User[]>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -432,13 +439,34 @@ export async function handleWinnersBroadcast(
 
   const publicGroupId = groupIds.public[ama.language];
 
+  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=${HIDDEN_KEYS.SUBSCRIBE}`;
+  const inlineKeyboard =
+    ama.language === "ar"
+      ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
+      : [[{ text: "⏰ Set a reminder for the next AMA", url: reminderUrl }]];
+
   const broadcastToPublic = await ctx.telegram.sendPhoto(publicGroupId, congratsImg, {
     caption: message,
     parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: inlineKeyboard,
+    },
   });
 
   // Pin the congratulation message in the public group
   if (broadcastToPublic.message_id) {
+    const subscribers = await getSubscribedUsers();
+    for (const user of subscribers) {
+      try {
+        await ctx.telegram.sendPhoto(user.user_id, congratsImg, {
+          caption: message,
+          parse_mode: "HTML",
+        });
+      } catch (err) {
+        console.error(`Failed to send winners to ${user.user_id}:`, err);
+      }
+      await delay(200);
+    }
     try {
       await ctx.telegram.pinChatMessage(publicGroupId, broadcastToPublic.message_id);
     } catch (error) {
