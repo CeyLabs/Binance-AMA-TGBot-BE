@@ -177,12 +177,10 @@ export class AMAService {
       .knex("user")
       .insert({
         user_id: userId,
-        subscribed: true,
         subscribed_groups: [language],
       })
       .onConflict("user_id")
       .merge({
-        subscribed: true,
         subscribed_groups: this.knexService.knex.raw(
           "array(SELECT DISTINCT unnest(coalesce(\"user\".subscribed_groups, ARRAY[]::text[])) UNION SELECT ?)",
           [language],
@@ -194,8 +192,7 @@ export class AMAService {
   async getSubscribedUsers(language: SupportedLanguage): Promise<User[]> {
     return this.knexService
       .knex<User>("user")
-      .where({ subscribed: true })
-      .andWhereRaw("? = ANY(subscribed_groups)", [language]);
+      .whereRaw("? = ANY(subscribed_groups)", [language]);
   }
 
   async getUserRole(userId: string): Promise<string | null> {
@@ -402,7 +399,7 @@ export class AMAService {
     return this.knexService
       .knex("winner")
       .join("user", "winner.user_id", "user.user_id")
-      .select("winner.*", "user.name", "user.username", "user.subscribed")
+      .select("winner.*", "user.name", "user.username")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
@@ -411,7 +408,7 @@ export class AMAService {
   async getUserById(userId: string): Promise<UserDetails | undefined> {
     return this.knexService
       .knex<UserDetails>("user")
-      .select("user_id", "username", "name", "subscribed")
+      .select("user_id", "username", "name")
       .where({ user_id: userId })
       .first();
   }

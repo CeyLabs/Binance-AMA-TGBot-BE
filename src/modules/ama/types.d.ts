@@ -65,7 +65,6 @@ export interface User {
   user_id: string;
   name: string | null;
   username: string | null;
-  subscribed: boolean;
   subscribed_groups: SupportedLanguage[];
   created_at?: string;
   updated_at?: string;
@@ -150,5 +149,4 @@ export interface UserDetails {
   user_id: string;
   username: string | null;
   name: string | null;
-  subscribed: boolean;
 }
