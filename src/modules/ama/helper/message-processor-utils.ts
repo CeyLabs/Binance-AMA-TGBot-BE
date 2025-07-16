@@ -17,7 +17,7 @@ export function formatAnalysisMessage(analysis: OpenAIAnalysis): string {
     `<i>${analysis.clarity?.comment}</i>\n\n` +
     `<b>📢 Engagement:</b> ${analysis.engagement?.score}/10\n` +
     `<i>${analysis.engagement?.comment}</i>\n\n` +
-    `<b>🏁 Total Score:</b> <b>${analysis.total_score}/50</b>`
+    `<b>🏁 Total Score:</b> <b>${analysis.total_score}/30</b>`
   );
 }
 
