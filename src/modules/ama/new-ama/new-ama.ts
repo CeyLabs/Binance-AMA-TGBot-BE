@@ -96,7 +96,7 @@ export async function handleNewAMA(
       });
 
       const amaMsg = await ctx.replyWithPhoto(
-        existingAMA.banner_file_id || imageUrl,
+        existingAMA.banner_file_id || initImageUrl[language],
         {
           caption: message,
           parse_mode: "HTML",
