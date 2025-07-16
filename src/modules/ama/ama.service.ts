@@ -171,16 +171,28 @@ export class AMAService {
       .merge({ role, updated_at: new Date() });
   }
 
-  async subscribeUser(userId: string): Promise<void> {
+  async subscribeUser(userId: string, language: SupportedLanguage): Promise<void> {
+    console.log('language',language)
     await this.knexService
       .knex("user")
-      .insert({ user_id: userId, subscribed: true })
+      .insert({
+        user_id: userId,
+        subscribed_groups: [language],
+      })
       .onConflict("user_id")
-      .merge({ subscribed: true, updated_at: new Date() });
+      .merge({
+        subscribed_groups: this.knexService.knex.raw(
+          "array(SELECT DISTINCT unnest(coalesce(\"user\".subscribed_groups, ARRAY[]::text[])) UNION SELECT ?)",
+          [language],
+        ),
+        updated_at: new Date(),
+      });
   }
 
-  async getSubscribedUsers(): Promise<User[]> {
-    return this.knexService.knex<User>("user").where({ subscribed: true });
+  async getSubscribedUsers(language: SupportedLanguage): Promise<User[]> {
+    return this.knexService
+      .knex<User>("user")
+      .whereRaw("? = ANY(subscribed_groups)", [language]);
   }
 
   async getUserRole(userId: string): Promise<string | null> {
@@ -387,7 +399,7 @@ export class AMAService {
     return this.knexService
       .knex("winner")
       .join("user", "winner.user_id", "user.user_id")
-      .select("winner.*", "user.name", "user.username", "user.subscribed")
+      .select("winner.*", "user.name", "user.username")
       .where({ ama_id: amaId })
       .orderBy("rank", "asc");
   }
@@ -396,7 +408,7 @@ export class AMAService {
   async getUserById(userId: string): Promise<UserDetails | undefined> {
     return this.knexService
       .knex<UserDetails>("user")
-      .select("user_id", "username", "name", "subscribed")
+      .select("user_id", "username", "name")
       .where({ user_id: userId })
       .first();
   }
@@ -493,7 +505,7 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
-      this.subscribeUser.bind(this) as (userId: string) => Promise<void>,
+      this.subscribeUser.bind(this) as (userId: string, lang: SupportedLanguage) => Promise<void>,
     );
   }
 
@@ -575,7 +587,10 @@ export class AMAService {
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -590,7 +605,10 @@ export class AMAService {
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
       this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -705,7 +723,7 @@ export class AMAService {
       publicGroupIds,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.updateAMA.bind(this) as (id: UUID, updates: Partial<AMA>) => Promise<boolean>,
-      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
+      this.getSubscribedUsers.bind(this) as (lang: SupportedLanguage) => Promise<User[]>,
       this.config.get<string>("BOT_USERNAME")!,
     );
   }
@@ -830,7 +848,10 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -878,7 +899,7 @@ export class AMAService {
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA>,
       this.getWinnersWithUserDetails.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       groupIds,
-      this.getSubscribedUsers.bind(this) as () => Promise<User[]>,
+      this.getSubscribedUsers.bind(this) as (lang: SupportedLanguage) => Promise<User[]>,
     );
   }
 
@@ -889,7 +910,10 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (id: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -900,7 +924,10 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -913,7 +940,10 @@ export class AMAService {
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
       this.getWinnersByAMA.bind(this) as (amaId: UUID) => Promise<WinnerData[]>,
       this.getUserById.bind(this) as (userId: string) => Promise<UserDetails | undefined>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -924,7 +954,10 @@ export class AMAService {
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
       this.getScoresForAMA.bind(this) as (amaId: UUID) => Promise<ScoreWithUser[]>,
-      this.winCount.bind(this) as (userId: string, excludeAmaId?: UUID) => Promise<{ wins: number }>,
+      this.winCount.bind(this) as (
+        userId: string,
+        excludeAmaId?: UUID,
+      ) => Promise<{ wins: number }>,
     );
   }
 
@@ -979,9 +1012,7 @@ export class AMAService {
       !!ctx.message &&
       "entities" in ctx.message &&
       Array.isArray(ctx.message.entities) &&
-      ctx.message.entities.some(
-        (e) => e.type === "bot_command" && e.offset === 0,
-      );
+      ctx.message.entities.some((e) => e.type === "bot_command" && e.offset === 0);
 
     if (isCommand) {
       return;

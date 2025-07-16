@@ -1,7 +1,15 @@
 import { UUID } from "crypto";
 import { Context } from "telegraf";
 import { AMA_COMMANDS, CALLBACK_ACTIONS, HIDDEN_KEYS } from "../ama.constants";
-import { AMA, BotContext, GroupInfo, ScoreWithUser, WinnerData, User } from "../types";
+import {
+  AMA,
+  BotContext,
+  GroupInfo,
+  ScoreWithUser,
+  WinnerData,
+  User,
+  SupportedLanguage,
+} from "../types";
 import {
   getLanguageText,
   UUID_FRAGMENT,
@@ -415,7 +423,7 @@ export async function handleWinnersBroadcast(
   getAMAById: (id: UUID) => Promise<AMA>,
   getWinnersWithUserDetails: (amaId: UUID) => Promise<ScoreWithUser[]>,
   groupIds: GroupInfo,
-  getSubscribedUsers: () => Promise<User[]>,
+  getSubscribedUsers: (lang: SupportedLanguage) => Promise<User[]>,
 ): Promise<void> {
   const result = await validateIdPattern(
     ctx,
@@ -439,7 +447,9 @@ export async function handleWinnersBroadcast(
 
   const publicGroupId = groupIds.public[ama.language];
 
-  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=${HIDDEN_KEYS.SUBSCRIBE}`;
+  const reminderUrl = `https://t.me/${process.env.BOT_USERNAME}?start=${
+    ama.language === "ar" ? HIDDEN_KEYS.SUBSCRIBE_AR : HIDDEN_KEYS.SUBSCRIBE_EN
+  }`;
   const inlineKeyboard =
     ama.language === "ar"
       ? [[{ text: "قم بتعيين تذكير للمحاثة القادمة ⏰", url: reminderUrl }]]
@@ -455,7 +465,7 @@ export async function handleWinnersBroadcast(
 
   // Pin the congratulation message in the public group
   if (broadcastToPublic.message_id) {
-    const subscribers = await getSubscribedUsers();
+    const subscribers = await getSubscribedUsers(ama.language);
     for (const user of subscribers) {
       try {
         await ctx.telegram.sendPhoto(user.user_id, congratsImg, {

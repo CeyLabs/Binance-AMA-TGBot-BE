@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("user_id").primary(); // Telegram user ID as string
     table.string("name").nullable();
     table.string("username").nullable();
-    table.boolean("subscribed").notNullable().defaultTo(false);
+    table.specificType("subscribed_groups", "text[]").notNullable().defaultTo("{}");
     table
       .enum("role", ["super_admin", "admin", "regular"], {
         useNative: true,
