@@ -9,7 +9,7 @@ import { getQuestionAnalysis } from "../ama/helper/openai-utils";
 import { formatAnalysisMessage, handleTelegramError } from "../ama/helper/message-processor-utils";
 import { OpenAIAnalysis } from "../ama/types";
 import { TelegramEmoji } from "telegraf/types";
-import { buildAMAMessage, imageUrl } from "../ama/new-ama/helper/msg-builder";
+import { buildAMAMessage, initImageUrl } from "../ama/new-ama/helper/msg-builder";
 import { buildWinnersMessage, congratsImg } from "../ama/end-ama/helper/utils";
 
 /**
@@ -382,7 +382,7 @@ export class SchedulerService {
         let image = "";
 
         if (type === "init") {
-          image = ama.banner_file_id ?? imageUrl;
+          image = ama.banner_file_id ?? initImageUrl[ama.language];
           message = buildAMAMessage(ama);
           this.logger.log(`Broadcasting initial AMA #${ama.session_no} with ID ${amaId}`);
         } else if (type === "winner") {

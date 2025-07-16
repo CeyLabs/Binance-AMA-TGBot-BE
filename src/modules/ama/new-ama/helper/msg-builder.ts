@@ -78,5 +78,7 @@ export function buildAMAMessage(data: AMAData): string {
   }
 }
 
-export const imageUrl =
-  "https://ff695b5dd2960f41cb75835a324f0804.r2.cloudflarestorage.com/drp-cl/373f7ca1-1d4d-4e78-ba4c-ce82a6a6871d/67ce832b-0763-4b97-8918-37fc7be2578a/db00a674-7bad-4c57-8c19-9554f9a67ddd.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=fed7aac277aea51eca0c294ada409f61%2F20250618%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250618T060217Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=168745b090115af8c2df507c4e318781c0ce4f3ad2cb7dea12dbc7eb50263329";
+export const initImageUrl = {
+  en: "https://a.dropoverapp.com/cloud/download/4b887302-d2ec-41c1-833d-ef13fae61c7d/0d04b604-be47-4a84-a83c-b40424f78034",
+  ar: "https://a.dropoverapp.com/cloud/download/65c74651-2979-4986-a0aa-4f2025a07300/7da5d361-ad30-44be-a636-5430c7f57c01"
+}

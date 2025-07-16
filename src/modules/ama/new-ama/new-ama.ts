@@ -4,7 +4,7 @@ import {
   CALLBACK_ACTIONS,
   SUPPORTED_LANGUAGES,
 } from "../ama.constants";
-import { buildAMAMessage, imageUrl } from "./helper/msg-builder";
+import { buildAMAMessage, initImageUrl } from "./helper/msg-builder";
 import { BotContext, SupportedLanguage } from "../types";
 import { NewAMAKeyboard } from "./helper/keyboard.helper";
 import { UUID } from "crypto";
@@ -18,21 +18,13 @@ import { TIMEZONES } from "../helper/date-utils";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-
 /**
  * Handles the /newama command and sends an image with inline buttons.
  */
 export async function handleNewAMA(
   ctx: BotContext,
-  createAMA: (
-    sessionNo: number,
-    language: SupportedLanguage,
-    topic?: string,
-  ) => Promise<UUID>,
-  isAMAExists: (
-    sessionNo: number,
-    language: SupportedLanguage,
-  ) => Promise<boolean>,
+  createAMA: (sessionNo: number, language: SupportedLanguage, topic?: string) => Promise<UUID>,
+  isAMAExists: (sessionNo: number, language: SupportedLanguage) => Promise<boolean>,
   logger?: DbLoggerService,
 ): Promise<void> {
   try {
@@ -77,10 +69,7 @@ export async function handleNewAMA(
     }
 
     const annunceMsg = await ctx.reply("Announcement Created!");
-    logger?.log(
-      `Creating AMA session ${sessionNo} (${language})`,
-      ctx.from?.id.toString(),
-    );
+    logger?.log(`Creating AMA session ${sessionNo} (${language})`, ctx.from?.id.toString());
 
     // Create the AMA and get the ID
     const AMA_ID = await createAMA(
@@ -109,8 +98,7 @@ export async function handleNewAMA(
 
     logger?.log(`AMA created with id ${AMA_ID}`, ctx.from?.id.toString());
 
-
-    const amaMsg = await ctx.replyWithPhoto(imageUrl, {
+    const amaMsg = await ctx.replyWithPhoto(initImageUrl[language], {
       caption: message,
       parse_mode: "HTML",
       reply_markup: NewAMAKeyboard(AMA_ID),
@@ -126,9 +114,7 @@ export async function handleNewAMA(
     ctx.session.messagesToDelete.push(annunceMsg.message_id, amaMsg.message_id);
   } catch (error) {
     logger?.error("Error in handleNewAMA", (error as Error).stack, ctx.from?.id.toString());
-    await ctx.reply(
-      "An error occurred while processing your request. Please try again.",
-    );
+    await ctx.reply("An error occurred while processing your request. Please try again.");
   }
 }
 
