@@ -84,5 +84,5 @@ export const AMA_DEFAULT_DATA = {
   total_pool: "100 USDC",
   reward: "20 USDC",
   winner_count: 5,
-  form_link: "https://example.com/form",
+  form_link: "https://www.binance.com/en/survey/b2f7b345f34a45eebbe2a77e35604835",
 };

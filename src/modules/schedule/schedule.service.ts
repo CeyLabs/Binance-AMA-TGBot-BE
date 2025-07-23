@@ -407,7 +407,7 @@ export class SchedulerService {
           type === "init"
             ? ama.language === "ar"
               ? [
-                  [{ text: "املأ الاستمارة 👈", url: ama.form_link }],
+                  [{ text: "املأ الاستمارة 👉", url: ama.form_link }],
                   [{ text: "قم بتعيين تذكير ⏰", url: reminderUrl }],
                 ]
               : [
