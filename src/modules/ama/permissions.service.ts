@@ -20,7 +20,7 @@ export class PermissionsService {
       accessActiveAMA: true, // can start/stop AMAs
       accessWinnerSelection: true, // can select winners
       editAnnouncements: false,
-      createAMA: true, // need this to start AMAs
+      createAMA: false, // need this to start AMAs
       broadcastAnnouncements: false,
     },
     admin_edit: {
@@ -29,7 +29,7 @@ export class PermissionsService {
       accessActiveAMA: true, // can start/stop AMAs
       accessWinnerSelection: true, // can select winners
       editAnnouncements: true, // can edit announcements
-      createAMA: true,
+      createAMA: false,
       broadcastAnnouncements: false,
     },
     admin: {
