@@ -61,10 +61,13 @@ export interface OpenAIAnalysis {
   total_score: number;
 }
 
+export type UserRole = "regular" | "admin_new" | "admin_edit" | "admin" | "super_admin" ;
+
 export interface User {
   user_id: string;
   name: string | null;
   username: string | null;
+  role: UserRole;
   subscribed_groups: SupportedLanguage[];
   created_at?: string;
   updated_at?: string;

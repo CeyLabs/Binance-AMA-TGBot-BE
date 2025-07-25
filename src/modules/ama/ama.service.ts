@@ -25,6 +25,7 @@ import {
   SupportedLanguage,
   UserDetails,
   User,
+  UserRole,
   ScheduleType,
 } from "./types";
 import {
@@ -61,6 +62,7 @@ import { handleStart } from "./claim-reward/claim-reward";
 import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
 import { broadcastWinnersCallback, scheduleWinnersBroadcast } from "./end-ama/broadcast-winners";
 import { blockIfNotAdminGroup } from "../../utils/command-utils";
+import { PermissionsService } from "./permissions.service";
 
 @Update()
 @Injectable()
@@ -69,6 +71,7 @@ export class AMAService {
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
     private readonly logger: DbLoggerService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   // Check if a question is a duplicate within the same AMA session
@@ -163,7 +166,7 @@ export class AMAService {
     );
   }
 
-  async updateUserRole(userId: string, role: "super_admin" | "admin" | "regular"): Promise<void> {
+  async updateUserRole(userId: string, role: UserRole): Promise<void> {
     await this.knexService
       .knex("user")
       .insert({ user_id: userId, role })
@@ -195,9 +198,9 @@ export class AMAService {
       .whereRaw("? = ANY(subscribed_groups)", [language]);
   }
 
-  async getUserRole(userId: string): Promise<string | null> {
+  async getUserRole(userId: string): Promise<UserRole | null> {
     const user = await this.knexService
-      .knex<{ role: string }>("user")
+      .knex<{ role: UserRole }>("user")
       .where("user_id", userId)
       .first();
     return user ? user.role : null;
@@ -210,6 +213,26 @@ export class AMAService {
   async isAdminOrSA(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
     return role === "admin" || role === "super_admin";
+  }
+
+  async canUserAccessAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessActiveAMA(role) : false;
+  }
+
+  async canUserCreateAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canCreateAMA(role) : false;
+  }
+
+  async canUserEditAnnouncements(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canEditAnnouncements(role) : false;
+  }
+
+  async canUserSelectWinners(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessWinnerSelection(role) : false;
   }
 
   async addWinner(
@@ -517,8 +540,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserCreateAMA(fromId))) {
+      await ctx.reply("You are not authorized to create AMAs.");
       return;
     }
 
@@ -549,8 +572,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to start AMAs.");
       return;
     }
 
@@ -578,8 +601,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to end AMAs.");
       return;
     }
 
@@ -691,6 +714,66 @@ export class AMAService {
 
     await this.updateUserRole(targetId, "regular");
     await ctx.reply(`Admin access revoked from user ${targetId}`);
+  }
+
+  @Command("admin_new")
+  async promoteAdminNew(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "admin_new");
+  }
+
+  @Command("admin_edit")
+  async promoteAdminEdit(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "admin_edit");
+  }
+
+
+  private async handlePromoteCommand(ctx: BotContext, targetRole: UserRole): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+    
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId) {
+      await ctx.reply("Unable to identify user.");
+      return;
+    }
+
+    const promoterRole = await this.getUserRole(fromId);
+    if (!promoterRole) {
+      await ctx.reply("You are not registered in the system.");
+      return;
+    }
+
+    // Check if promoter has permission to promote to this role
+    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole)) {
+      await ctx.reply("You are not authorized to perform this promotion.");
+      return;
+    }
+
+    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
+    let targetId = text.split(" ")[1];
+    
+    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+      const reply = ctx.message.reply_to_message;
+      if (reply?.from?.id) {
+        targetId = reply.from.id.toString();
+        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
+      }
+    }
+
+    if (!targetId) {
+      await ctx.reply(`Usage: /${targetRole} <tg_userid> or reply to a user with /${targetRole}`);
+      return;
+    }
+
+    const currentRole = await this.getUserRole(targetId);
+    if (currentRole === targetRole) {
+      await ctx.reply(`User ${targetId} already has the ${targetRole} role.`);
+      return;
+    }
+
+    await this.updateUserRole(targetId, targetRole);
+    await ctx.reply(`User ${targetId} has been promoted to ${targetRole} role.`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>

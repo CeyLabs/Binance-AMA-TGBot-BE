@@ -65,7 +65,7 @@ export async function scheduleWinnersBroadcast(
   const input = ctx.message.text.trim();
 
   // Validate the input format - try both YYYY/MM/DD and DD/MM/YYYY formats
-  let scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", TIMEZONES.KSA);
+  const scheduled = dayjs.tz(input, "YYYY/MM/DD HH:mm", TIMEZONES.KSA);
   
   if (!scheduled.isValid()) {
     await ctx.reply("❌ Invalid date and time format. Please use: YYYY/MM/DD HH:mm or DD/MM/YYYY HH:mm\n\nExample: 2025/07/16 23:30 or 16/07/2025 23:30");
