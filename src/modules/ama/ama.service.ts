@@ -235,6 +235,11 @@ export class AMAService {
     return role ? this.permissionsService.canAccessWinnerSelection(role) : false;
   }
 
+  async canUserBroadcastAnnouncements(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canBroadcastAnnouncements(role) : false;
+  }
+
   async addWinner(
     ama_id: UUID,
     user_id: string,
@@ -622,6 +627,13 @@ export class AMAService {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await handleSelectWinners(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
@@ -796,6 +808,12 @@ export class AMAService {
   // broadcast-now_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i"))
   async broadcastNow(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
     const publicGroupIds = {
       en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
       ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
@@ -814,6 +832,13 @@ export class AMAService {
   // schedule-broadcast_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleBroadcast(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await handleScheduleBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -828,6 +853,13 @@ export class AMAService {
 
     if (!match) {
       await ctx.answerCbQuery("Invalid confirmation action.");
+      return;
+    }
+
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -851,6 +883,13 @@ export class AMAService {
   // Handle `toggle_5m_<amaId>` etc.
   @Action(new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`))
   async onToggleSchedule(ctx: BotContext) {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await handleToggleSchedule(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -883,6 +922,13 @@ export class AMAService {
       return;
     }
 
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
+
     // Add the parent message ID to the editingAnnouncementMsgId
     if (ctx.callbackQuery.message && "message_id" in ctx.callbackQuery.message) {
       ctx.session.editingAnnouncementMsgId = ctx.callbackQuery.message.message_id;
@@ -899,6 +945,12 @@ export class AMAService {
   // confirm-edit_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmEdit(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
@@ -909,6 +961,12 @@ export class AMAService {
   // start-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"))
   async startAMASession(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to start AMAs.");
+      return;
+    }
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -927,6 +985,13 @@ export class AMAService {
   // end-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"))
   async endAMASession(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to end AMAs.");
+      return;
+    }
+
     await endAMAbyCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -941,6 +1006,13 @@ export class AMAService {
   // select-winners_(id)_(winnerCount)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`, "i"))
   async selectWinners(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await selectWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -951,6 +1023,12 @@ export class AMAService {
   // confirm-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -970,6 +1048,12 @@ export class AMAService {
   //broadcast-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"))
   async broadcastWinners(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -989,6 +1073,13 @@ export class AMAService {
   //discard-user_(username)_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`, "i"))
   async handleDiscardUserCallback(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -1003,6 +1094,13 @@ export class AMAService {
   //reset-winners_(amaId)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.RESET_WINNERS}_${UUID_PATTERN}`, "i"))
   async resetWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -1017,6 +1115,13 @@ export class AMAService {
   // Handle select-winners-cmd callback
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS_CMD}_${UUID_PATTERN}`, "i"))
   async handleSelectWinnersCmdCallback(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await selectWinnersByCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -1033,6 +1138,13 @@ export class AMAService {
   // Handle force-select-winners callback
   @Action(new RegExp(`^${CALLBACK_ACTIONS.FORCE_SELECT_WINNERS}_${UUID_PATTERN}`, "i"))
   async handleForceSelectWinnersCallback(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await forceSelectWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -1046,6 +1158,13 @@ export class AMAService {
 
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await broadcastWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -1055,6 +1174,13 @@ export class AMAService {
   //cancel-winners_(amaId)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i"))
   async cancelWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await cancelWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -1075,6 +1201,12 @@ export class AMAService {
   // prettier-ignore
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${UUID_PATTERN}`, "i"))
   async cancelBroadcastAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
     if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
       await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
       await ctx.answerCbQuery("Broadcast cancelled successfully.");
@@ -1084,6 +1216,12 @@ export class AMAService {
   // cancel-edit_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelEdit(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
     await handleCancelEdit(ctx);
   }
 
@@ -1127,7 +1265,13 @@ export class AMAService {
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
         );
       } else {
-        await handleEdit(ctx);
+        await this.upsertUserFromContext(ctx);
+        const fromId = ctx.from?.id.toString();
+        if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+          await ctx.reply("You are not authorized to edit AMA announcements.");
+        } else {
+          await handleEdit(ctx);
+        }
       }
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
@@ -1150,6 +1294,13 @@ export class AMAService {
 
   @On("photo")
   async handleBannerUpload(ctx: BotContext) {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
+
     await handleBannerUpload(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
