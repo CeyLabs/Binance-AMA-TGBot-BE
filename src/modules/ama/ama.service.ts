@@ -716,12 +716,12 @@ export class AMAService {
     await ctx.reply(`Admin access revoked from user ${targetId}`);
   }
 
-  @Command("admin_new")
+  @Command("grant_new")
   async promoteAdminNew(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "admin_new");
   }
 
-  @Command("admin_edit")
+  @Command("grant_edit")
   async promoteAdminEdit(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "admin_edit");
   }
