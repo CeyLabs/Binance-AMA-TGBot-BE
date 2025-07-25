@@ -441,6 +441,14 @@ export class AMAService {
       .first();
   }
 
+  async getUserDisplayName(userId: string): Promise<string> {
+    const user = await this.getUserById(userId);
+    if (!user) return userId;
+    if (user.username) return `@${user.username}`;
+    if (user.name) return user.name;
+    return userId;
+  }
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -677,12 +685,14 @@ export class AMAService {
 
     const role = await this.getUserRole(targetId);
     if (role === "admin") {
-      await ctx.reply(`User ${targetId} is already an admin.`);
+      const name = await this.getUserDisplayName(targetId);
+      await ctx.reply(`User ${name} is already an admin.`);
       return;
     }
 
     await this.updateUserRole(targetId, "admin");
-    await ctx.reply(`Admin access granted to user ${targetId}`);
+    const name = await this.getUserDisplayName(targetId);
+    await ctx.reply(`Admin access granted to ${name}`);
   }
 
   @Command("revokeadmin")
@@ -715,17 +725,20 @@ export class AMAService {
 
     const role = await this.getUserRole(targetId);
     if (!role) {
-      await ctx.reply(`User ${targetId} does not exist.`);
+      const name = await this.getUserDisplayName(targetId);
+      await ctx.reply(`User ${name} does not exist.`);
       return;
     }
 
     if (role !== "admin") {
-      await ctx.reply(`User ${targetId} is not an admin.`);
+      const name = await this.getUserDisplayName(targetId);
+      await ctx.reply(`User ${name} is not an admin.`);
       return;
     }
 
     await this.updateUserRole(targetId, "regular");
-    await ctx.reply(`Admin access revoked from user ${targetId}`);
+    const name = await this.getUserDisplayName(targetId);
+    await ctx.reply(`Admin access revoked from ${name}`);
   }
 
   @Command("grant_new")
@@ -780,12 +793,14 @@ export class AMAService {
 
     const currentRole = await this.getUserRole(targetId);
     if (currentRole === targetRole) {
-      await ctx.reply(`User ${targetId} already has the ${targetRole} role.`);
+      const name = await this.getUserDisplayName(targetId);
+      await ctx.reply(`User ${name} already has the ${targetRole} role.`);
       return;
     }
 
     await this.updateUserRole(targetId, targetRole);
-    await ctx.reply(`User ${targetId} has been promoted to ${targetRole} role.`);
+    const name = await this.getUserDisplayName(targetId);
+    await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>
