@@ -74,6 +74,15 @@ export class AMAService {
     private readonly permissionsService: PermissionsService,
   ) {}
 
+  // Get bot owner ID from environment
+  private getBotOwnerId(): string {
+    const ownerId = this.config.get<string>("BOT_OWNER_ID");
+    if (!ownerId) {
+      throw new Error("BOT_OWNER_ID is not defined");
+    }
+    return ownerId;
+  }
+
   // Check if a question is a duplicate within the same AMA session
   async checkDuplicateQuestion(amaId: UUID, question: string): Promise<boolean> {
     if (!question || question.trim() === "") return false;
@@ -167,6 +176,11 @@ export class AMAService {
   }
 
   async updateUserRole(userId: string, role: UserRole): Promise<void> {
+    // Prevent modification of bot user permissions
+    if (userId === this.getBotOwnerId()) {
+      throw new Error("Cannot modify bot owner permissions");
+    }
+
     await this.knexService
       .knex("user")
       .insert({ user_id: userId, role })
@@ -206,41 +220,47 @@ export class AMAService {
     return user ? user.role : null;
   }
 
-  async isSuperAdmin(userId: string): Promise<boolean> {
-    return (await this.getUserRole(userId)) === "super_admin";
+  isBotOwner(userId: string): boolean {
+    return userId === this.getBotOwnerId();
   }
 
-  async isAdminOrSA(userId: string): Promise<boolean> {
+  async isAdminOrOwner(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
-    return role === "admin" || role === "super_admin";
+    return role === "admin" || this.isBotOwner(userId);
   }
 
   async canUserAccessAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessActiveAMA(role) : false;
   }
 
   async canUserCreateAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canCreateAMA(role) : false;
   }
 
   async canUserAccessNewAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessNewAMACommand(role) : false;
   }
 
   async canUserEditAnnouncements(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canEditAnnouncements(role) : false;
   }
 
   async canUserSelectWinners(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessWinnerSelection(role) : false;
   }
 
   async canUserBroadcastAnnouncements(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canBroadcastAnnouncements(role) : false;
   }
@@ -706,7 +726,8 @@ export class AMAService {
     }
 
     const userRole = await this.getUserRole(fromId);
-    if (userRole !== "admin" && userRole !== "super_admin") {
+    const isBotOwner = this.isBotOwner(fromId);
+    if (userRole !== "admin" && !isBotOwner) {
       await ctx.reply("You are not authorized to view permissions.");
       return;
     }
@@ -722,7 +743,6 @@ export class AMAService {
       // Group users by role and create user-friendly display
       const getRoleName = (role: string): string => {
         switch (role) {
-          case 'super_admin': return 'Super Admin(s)';
           case 'admin': return 'Admin(s)';
           case 'editor': return 'Editor(s)';
           case 'host': return 'Host(s)';
@@ -730,7 +750,7 @@ export class AMAService {
         }
       };
 
-      const roleOrder = ['super_admin', 'admin', 'editor', 'host'];
+      const roleOrder = ['admin', 'editor', 'host'];
       const usersByRole = nonRegularUsers.reduce((acc, user) => {
         if (!acc[user.role]) acc[user.role] = [];
         acc[user.role].push(user);
@@ -739,15 +759,28 @@ export class AMAService {
 
       let message = "";
       
+      // Show bot owner first
+      const botOwnerId = this.getBotOwnerId();
+      const botOwner = nonRegularUsers.find(user => user.user_id === botOwnerId);
+      if (botOwner) {
+        message += `<b>Bot Owner</b>\n`;
+        const displayName = botOwner.name ? `${botOwner.name} (<code>${botOwner.user_id}</code>)` : `User <code>${botOwner.user_id}</code>`;
+        message += `• ${displayName}\n\n`;
+      }
+      
       for (const role of roleOrder) {
         const usersInRole = usersByRole[role];
         if (usersInRole && usersInRole.length > 0) {
-          message += `<b>${getRoleName(role)}</b>\n`;
-          for (const user of usersInRole) {
-            const displayName = user.name ? `${user.name} (<code>${user.user_id}</code>)` : `User <code>${user.user_id}</code>`;
-            message += `• ${displayName}\n`;
+          // Filter out bot owner from other roles display since we show them separately
+          const filteredUsers = usersInRole.filter(user => user.user_id !== botOwnerId);
+          if (filteredUsers.length > 0) {
+            message += `<b>${getRoleName(role)}</b>\n`;
+            for (const user of filteredUsers) {
+              const displayName = user.name ? `${user.name} (<code>${user.user_id}</code>)` : `User <code>${user.user_id}</code>`;
+              message += `• ${displayName}\n`;
+            }
+            message += '\n';
           }
-          message += '\n';
         }
       }
 
@@ -800,8 +833,9 @@ export class AMAService {
 
     const currentRole = await this.getUserRole(targetId);
     
-    // Check if promoter has permission to modify this user (considering their current role)
-    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole, currentRole)) {
+    // Check if promoter has permission to modify this user
+    const isBotOwner = this.isBotOwner(fromId);
+    if (!isBotOwner && !this.permissionsService.canPromoteToRole(promoterRole)) {
       await ctx.reply("You are not authorized to perform this promotion/demotion.");
       return;
     }
@@ -812,17 +846,31 @@ export class AMAService {
       return;
     }
 
-    await this.updateUserRole(targetId, targetRole);
-    const name = await this.getUserDisplayName(targetId);
-    
-    // Determine if this is a promotion or demotion
-    const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
-    if (roleComparison > 0) {
-      await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
-    } else if (roleComparison < 0) {
-      await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
-    } else {
-      await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
+    try {
+      await this.updateUserRole(targetId, targetRole);
+      const name = await this.getUserDisplayName(targetId);
+      
+      // Determine if this is a promotion or demotion
+      const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
+      if (roleComparison > 0) {
+        await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
+      } else if (roleComparison < 0) {
+        await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
+      } else {
+        await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "Cannot modify bot owner permissions") {
+          await ctx.reply("Owner permissions cannot be modified.");
+        } else {
+          await ctx.reply("An error occurred while updating user role.");
+          console.error("Error updating user role:", error);
+        }
+      } else {
+        await ctx.reply("An error occurred while updating user role.");
+        console.error("Error updating user role:", error);
+      }
     }
   }
 

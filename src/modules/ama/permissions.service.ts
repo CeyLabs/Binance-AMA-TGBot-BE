@@ -3,7 +3,7 @@ import { UserRole } from "./types";
 
 @Injectable()
 export class PermissionsService {
-  // Define permission hierarchy: regular < host < editor < admin < super_admin
+  // Define permission hierarchy: regular < host < editor < admin
   private readonly permissions = {
     regular: {
       fullAccess: false,
@@ -33,22 +33,13 @@ export class PermissionsService {
       broadcastAnnouncements: false,
     },
     admin: {
-      fullAccess: false,
-      addingAdmins: false,
+      fullAccess: true,
+      addingAdmins: true, // can grant admin access
       accessActiveAMA: true, // can start/stop AMAs
       accessWinnerSelection: true, // can select winners
       editAnnouncements: true, // can edit announcements
       createAMA: true,
       broadcastAnnouncements: true, // can broadcast announcements
-    },
-    super_admin: {
-      fullAccess: true,
-      addingAdmins: true, // can grant admin access
-      accessActiveAMA: true,
-      accessWinnerSelection: true,
-      editAnnouncements: true,
-      createAMA: true,
-      broadcastAnnouncements: true,
     },
   };
 
@@ -101,7 +92,6 @@ export class PermissionsService {
     host: 1,
     editor: 2,
     admin: 3,
-    super_admin: 4,
   };
 
   // Get hierarchy level for a role
@@ -120,19 +110,10 @@ export class PermissionsService {
   }
 
   // Helper method to check if role can promote others to specific roles
-  canPromoteToRole(promoterRole: UserRole, targetRole: UserRole, currentRole?: UserRole | null): boolean {
-    // super_admin can promote to any role except super_admin
-    if (promoterRole === 'super_admin') {
-      return targetRole !== 'super_admin';
-    }
-
-    // admin can promote to regular, host, and editor (but not admin or super_admin)
+  canPromoteToRole(promoterRole: UserRole): boolean {
+    // admin can promote to any role including admin
     if (promoterRole === 'admin') {
-      // Admin cannot modify users who already have admin or super_admin role
-      if (currentRole === 'admin' || currentRole === 'super_admin') {
-        return false;
-      }
-      return targetRole === 'regular' || targetRole === 'host' || targetRole === 'editor';
+      return true;
     }
 
     return false;

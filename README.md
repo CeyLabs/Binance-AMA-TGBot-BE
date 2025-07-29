@@ -192,16 +192,17 @@ Questions are automatically analyzed using OpenAI GPT-4 with scoring on:
 
 ## Admin Management
 
-Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by `super_admin` and `admin` users.
+Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by the bot owner (defined by `BOT_OWNER_ID` environment variable) and `admin` users.
 
 **Security Features:**
 - Users cannot modify their own roles (prevents self-promotion/demotion)
+- Bot owner permissions cannot be modified by anyone
 - Role hierarchy restrictions prevent unauthorized promotions
 - Admin group restriction ensures commands are only executed in secure environment
 
 **Role Hierarchy:**
-- `super_admin` - Full access to all features and user management
-- `admin` - Full AMA management access (create, edit, start, end, select winners, broadcast)
+- `Bot Owner` - Ultimate access to all features (defined by BOT_OWNER_ID environment variable)
+- `admin` - Full access to all features and user management
 - `editor` - Can edit announcements, start/end AMAs, and select winners
 - `host` - Can start/end AMAs and select winners (no creation or editing)
 - `regular` - No bot management access (can only participate in AMAs)
@@ -215,7 +216,7 @@ Use the `/access` command to view all users with elevated permissions:
 ```
 
 **Access Control:**
-- Only `admin` and `super_admin` users can execute this command
+- Only `admin` users and the bot owner can execute this command
 - Must be used in the admin group
 
 **Output Format:**

@@ -6,6 +6,6 @@ export async function seed(knex: Knex): Promise<void> {
       user_id: "1435789682",
       name: "MoeX Mohamad 🔶Binance",
       username: "Moexba",
-      role: "super_admin",
+      role: "admin",
     })
 }
