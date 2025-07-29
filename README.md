@@ -30,7 +30,7 @@ This bot is specifically designed to manage and automate AMA (Ask Me Anything) s
 
 ### **User Management & Subscriptions**
 - **Multi-language Subscriptions**: Users can subscribe to receive AMA notifications in English or Arabic
-- **Role-based Access**: Super admin, admin, and regular user roles with `/grantadmin` and `/revokeadmin` commands
+- **Role-based Access**: Bot owner, admin, editor, host, and regular user roles with flexible user management commands
 - **User Profile Sync**: Automatic synchronization with Telegram user data
 - **Subscription Management**: Deep-link subscription system (`/start subscribe_en` or `/start subscribe_ar`)
 
@@ -110,11 +110,18 @@ bun run serve:local
 - `/access` - View list of all non-regular users and their roles
 - `/help` - Display help information
 
-### **User Role Management Commands** (Super Admin Only)
-- `/grantadmin <user_id>` - Grant full admin privileges
-- `/granteditor <user_id>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
-- `/granthost <user_id>` - Grant basic AMA access (start/end AMAs, select winners)
-- `/grantregular <user_id>` - Demote user to regular (remove all bot access)
+### **User Role Management Commands** (Bot Owner & Admin Only)
+- `/grantadmin <user_id|@username>` - Grant full admin privileges
+- `/granteditor <user_id|@username>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
+- `/granthost <user_id|@username>` - Grant basic AMA access (start/end AMAs, select winners)
+- `/grantregular <user_id|@username>` - Demote user to regular (remove all bot access)
+
+**Usage Options:**
+- Use Telegram user ID: `/grantadmin 123456789`
+- Use username: `/grantadmin @username`
+- Reply to message: Reply to any user's message with `/grantadmin`
+
+*Note: Username resolution requires the user to have interacted with the bot previously.*
 
 ### **User Commands**
 - `/start` - General bot start command

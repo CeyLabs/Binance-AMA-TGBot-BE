@@ -83,6 +83,31 @@ export class AMAService {
     return ownerId;
   }
 
+  // Resolve username to user ID by looking up in database
+  async resolveUsernameToId(input: string): Promise<string | null> {
+    // If it's already a numeric user ID, return it
+    if (/^\d+$/.test(input)) {
+      return input;
+    }
+
+    // If it starts with @, it's a username
+    if (input.startsWith('@')) {
+      const username = input.substring(1); // Remove the @ symbol
+      const user = await this.knexService
+        .knex<{ user_id: string }>("user")
+        .where("username", username)
+        .first();
+      return user ? user.user_id : null;
+    }
+
+    // If it's just a plain username without @
+    const user = await this.knexService
+      .knex<{ user_id: string }>("user")
+      .where("username", input)
+      .first();
+    return user ? user.user_id : null;
+  }
+
   // Check if a question is a duplicate within the same AMA session
   async checkDuplicateQuestion(amaId: UUID, question: string): Promise<boolean> {
     if (!question || question.trim() === "") return false;
@@ -810,18 +835,34 @@ export class AMAService {
     }
 
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    let targetId = text.split(" ")[1];
+    const targetInput = text.split(" ")[1];
+    let targetId: string | null = null;
     
-    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+    // Handle reply to message
+    if (!targetInput && ctx.message && "reply_to_message" in ctx.message) {
       const reply = ctx.message.reply_to_message;
       if (reply?.from?.id) {
         targetId = reply.from.id.toString();
         await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
       }
     }
+    // Handle username or user ID input
+    else if (targetInput) {
+      targetId = await this.resolveUsernameToId(targetInput);
+      if (!targetId) {
+        await ctx.reply(`User not found. Please ensure the user has interacted with the bot before or use their Telegram user ID.`);
+        return;
+      }
+    }
 
     if (!targetId) {
-      await ctx.reply(`Usage: /${targetRole} <tg_userid> or reply to a user with /${targetRole}`);
+      await ctx.reply(`Usage: /${targetRole} <tg_userid|@username> or reply to a user with /${targetRole}`);
+      return;
+    }
+
+    // Validate that we have a numeric user ID
+    if (!/^\d+$/.test(targetId)) {
+      await ctx.reply("Invalid user ID format. User ID must be numeric.");
       return;
     }
 
