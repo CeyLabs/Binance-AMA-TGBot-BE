@@ -191,7 +191,7 @@ Questions are automatically analyzed using OpenAI GPT-4 with scoring on:
 
 ## Admin Management
 
-Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. All role management commands can only be executed by `super_admin` users.
+Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by `super_admin` and `admin` users.
 
 **Role Hierarchy:**
 - `super_admin` - Full access to all features and user management
