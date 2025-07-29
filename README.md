@@ -69,7 +69,7 @@ cd Binance-AMA-TGBot-BE
 
 2. Create `.env` file:
 ```bash
-cp .env.example .env
+cp .env.template .env
 # Update .env file with your configuration including:
 # - BOT_TOKEN (Telegram Bot Token)
 # - OPENAI_API_KEY (OpenAI API Key)
