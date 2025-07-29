@@ -806,7 +806,16 @@ export class AMAService {
 
     await this.updateUserRole(targetId, targetRole);
     const name = await this.getUserDisplayName(targetId);
-    await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
+    
+    // Determine if this is a promotion or demotion
+    const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
+    if (roleComparison > 0) {
+      await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
+    } else if (roleComparison < 0) {
+      await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
+    } else {
+      await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
+    }
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>

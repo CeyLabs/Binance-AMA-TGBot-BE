@@ -95,6 +95,30 @@ export class PermissionsService {
     return role !== 'regular';
   }
 
+  // Define role hierarchy levels: higher number = higher role
+  private readonly roleHierarchy: Record<UserRole, number> = {
+    regular: 0,
+    admin_new: 1,
+    admin_edit: 2,
+    admin: 3,
+    super_admin: 4,
+  };
+
+  // Get hierarchy level for a role
+  getRoleLevel(role: UserRole): number {
+    return this.roleHierarchy[role] || 0;
+  }
+
+  // Compare two roles: returns 1 if newRole > currentRole (promotion), -1 if newRole < currentRole (demotion), 0 if equal
+  compareRoles(currentRole: UserRole | null, newRole: UserRole): number {
+    const currentLevel = currentRole ? this.getRoleLevel(currentRole) : 0;
+    const newLevel = this.getRoleLevel(newRole);
+    
+    if (newLevel > currentLevel) return 1; // promotion
+    if (newLevel < currentLevel) return -1; // demotion
+    return 0; // same level
+  }
+
   // Helper method to check if role can promote others to specific roles
   canPromoteToRole(promoterRole: UserRole, targetRole: UserRole): boolean {
     // Only super_admin can promote others
