@@ -757,6 +757,11 @@ export class AMAService {
     await this.handlePromoteCommand(ctx, "admin_edit");
   }
 
+  @Command("grant_regular")
+  async demoteToRegular(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "regular");
+  }
+
 
   private async handlePromoteCommand(ctx: BotContext, targetRole: UserRole): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
