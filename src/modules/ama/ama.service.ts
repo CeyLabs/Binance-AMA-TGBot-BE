@@ -668,14 +668,14 @@ export class AMAService {
     await this.handlePromoteCommand(ctx, "admin");
   }
 
-  @Command("grantnew")
+  @Command("granthost")
   async promoteAdminNew(ctx: BotContext): Promise<void> {
-    await this.handlePromoteCommand(ctx, "admin_new");
+    await this.handlePromoteCommand(ctx, "host");
   }
 
-  @Command("grantedit")
+  @Command("granteditor")
   async promoteAdminEdit(ctx: BotContext): Promise<void> {
-    await this.handlePromoteCommand(ctx, "admin_edit");
+    await this.handlePromoteCommand(ctx, "editor");
   }
 
   @Command("grantregular")

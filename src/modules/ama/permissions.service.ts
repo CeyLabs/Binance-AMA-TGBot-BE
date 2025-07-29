@@ -3,7 +3,7 @@ import { UserRole } from "./types";
 
 @Injectable()
 export class PermissionsService {
-  // Define permission hierarchy: regular < admin_new < admin_edit < admin < super_admin
+  // Define permission hierarchy: regular < host < editor < admin < super_admin
   private readonly permissions = {
     regular: {
       fullAccess: false,
@@ -14,7 +14,7 @@ export class PermissionsService {
       createAMA: false,
       broadcastAnnouncements: false,
     },
-    admin_new: {
+    host: {
       fullAccess: false,
       addingAdmins: false,
       accessActiveAMA: true, // can start/stop AMAs
@@ -23,7 +23,7 @@ export class PermissionsService {
       createAMA: false, // need this to start AMAs
       broadcastAnnouncements: false,
     },
-    admin_edit: {
+    editor: {
       fullAccess: false,
       addingAdmins: false,
       accessActiveAMA: true, // can start/stop AMAs
@@ -98,8 +98,8 @@ export class PermissionsService {
   // Define role hierarchy levels: higher number = higher role
   private readonly roleHierarchy: Record<UserRole, number> = {
     regular: 0,
-    admin_new: 1,
-    admin_edit: 2,
+    host: 1,
+    editor: 2,
     admin: 3,
     super_admin: 4,
   };
@@ -126,13 +126,13 @@ export class PermissionsService {
       return targetRole !== 'super_admin';
     }
 
-    // admin can promote to regular, admin_new, and admin_edit (but not admin or super_admin)
+    // admin can promote to regular, host, and editor (but not admin or super_admin)
     if (promoterRole === 'admin') {
       // Admin cannot modify users who already have admin or super_admin role
       if (currentRole === 'admin' || currentRole === 'super_admin') {
         return false;
       }
-      return targetRole === 'regular' || targetRole === 'admin_new' || targetRole === 'admin_edit';
+      return targetRole === 'regular' || targetRole === 'host' || targetRole === 'editor';
     }
 
     return false;

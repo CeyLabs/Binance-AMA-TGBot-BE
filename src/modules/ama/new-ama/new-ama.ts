@@ -115,7 +115,7 @@ export async function handleNewAMA(
       return;
     }
 
-    // Check if user has permission to create new AMAs (for admin_edit users who can only edit)
+    // Check if user has permission to create new AMAs (for editor users who can only edit)
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await canUserCreateAMA(fromId))) {
       await ctx.reply("You can only edit existing AMAs. This session number does not exists.");

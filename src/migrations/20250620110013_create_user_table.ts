@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("username").nullable();
     table.specificType("subscribed_groups", "text[]").notNullable().defaultTo("{}");
     table
-      .enum("role", ["super_admin", "admin", "admin_new", "admin_edit", "regular"], {
+      .enum("role", ["super_admin", "admin", "host", "editor", "regular"], {
         useNative: true,
         enumName: "enum_user_role",
       })

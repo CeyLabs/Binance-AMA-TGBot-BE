@@ -77,8 +77,8 @@ npm run serve:local
 
 ### **User Role Management Commands** (Super Admin Only)
 - `/grantadmin <user_id>` - Grant full admin privileges
-- `/grantedit <user_id>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
-- `/grantnew <user_id>` - Grant basic AMA access (start/end AMAs, select winners only)
+- `/granteditor <user_id>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
+- `/granthost <user_id>` - Grant basic AMA access (start/end AMAs, select winners)
 - `/grantregular <user_id>` - Demote user to regular (remove all bot access)
 
 ### **User Commands**
@@ -99,8 +99,8 @@ Use the role management commands to assign specific permissions to users. When r
 **Role Hierarchy:**
 - `super_admin` - Full access to all features and user management
 - `admin` - Full AMA management access (create, edit, start, end, select winners, broadcast)
-- `admin_edit` - Can edit announcements, start/end AMAs, and select winners
-- `admin_new` - Can start/end AMAs and select winners (no creation or editing)
+- `editor` - Can edit announcements, start/end AMAs, and select winners
+- `host` - Can start/end AMAs and select winners (no creation or editing)
 - `regular` - No bot management access (can only participate in AMAs)
 
 User name and username fields are automatically kept in sync with Telegram when any command or AMA question is received.
