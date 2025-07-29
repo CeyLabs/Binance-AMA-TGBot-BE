@@ -1224,8 +1224,8 @@ export class AMAService {
   async cancelBroadcastAMA(ctx: BotContext): Promise<void> {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+    if (!fromId || (!(await this.canUserBroadcastAnnouncements(fromId)) && !(await this.canUserEditAnnouncements(fromId)))) {
+      await ctx.reply("You are not authorized to cancel this action.");
       return;
     }
     if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
