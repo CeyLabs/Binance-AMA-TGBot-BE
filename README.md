@@ -107,6 +107,7 @@ bun run serve:local
 - `/startama <sessionNo>` - Start an AMA session
 - `/endama <sessionNo>` - End an AMA session
 - `/selectwinners <sessionNo>` - Select winners for completed AMA
+- `/access` - View list of all non-regular users and their roles
 - `/help` - Display help information
 
 ### **User Role Management Commands** (Super Admin Only)
@@ -199,5 +200,37 @@ Use the role management commands to assign specific permissions to users. When r
 - `editor` - Can edit announcements, start/end AMAs, and select winners
 - `host` - Can start/end AMAs and select winners (no creation or editing)
 - `regular` - No bot management access (can only participate in AMAs)
+
+### **Viewing User Permissions**
+
+Use the `/access` command to view all users with elevated permissions:
+
+```bash
+/access
+```
+
+**Access Control:**
+- Only `admin` and `super_admin` users can execute this command
+- Must be used in the admin group
+
+**Output Format:**
+```
+Super Admin(s)
+• Alice Johnson
+• Bob Wilson
+
+Admin(s)
+• John Doe
+• Jane Smith
+
+Editor(s)
+• Sarah Connor
+• Mike Ross
+
+Host(s)
+• David Kim
+```
+
+The command displays users grouped by their roles in descending order of permissions, with each user listed as a bullet point under their respective role category.
 
 User name and username fields are automatically kept in sync with Telegram when any command or AMA question is received.

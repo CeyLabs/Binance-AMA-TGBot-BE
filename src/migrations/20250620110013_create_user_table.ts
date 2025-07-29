@@ -16,6 +16,11 @@ export async function up(knex: Knex): Promise<void> {
       .notNullable()
       .defaultTo("regular");
     table.timestamps(true, true);
+
+    // Indexes for performance optimization
+    table.index("role", "idx_user_role"); // For filtering non-regular users
+    table.index(["role", "name"], "idx_user_role_name"); // Composite index for filtering and sorting
+    table.index("name", "idx_user_name"); // For sorting by name
   });
 }
 

@@ -454,6 +454,16 @@ export class AMAService {
     return userId;
   }
 
+  async getNonRegularUsers(): Promise<Omit<User, "username" | "subscribed_groups" | "created_at" | "updated_at">[]> {
+    return this.knexService
+      .knex<User>("user")
+      .select("user_id", "name", "role")
+      .where("role", "!=", "regular")
+      .orderBy("role", "asc")
+      .orderBy("name", "asc")
+      .limit(100); // Reasonable limit for non-regular users
+  }
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -681,6 +691,71 @@ export class AMAService {
   @Command("grantregular")
   async demoteToRegular(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "regular");
+  }
+
+  @Command("access")
+  async handlePermissionsCommand(ctx: Context): Promise<void> {
+    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
+    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
+
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId) {
+      await ctx.reply("Unable to identify user.");
+      return;
+    }
+
+    const userRole = await this.getUserRole(fromId);
+    if (userRole !== "admin" && userRole !== "super_admin") {
+      await ctx.reply("You are not authorized to view permissions.");
+      return;
+    }
+
+    try {
+      const nonRegularUsers = await this.getNonRegularUsers();
+      
+      if (nonRegularUsers.length === 0) {
+        await ctx.reply("No non-regular users found.");
+        return;
+      }
+
+      // Group users by role and create user-friendly display
+      const getRoleName = (role: string): string => {
+        switch (role) {
+          case 'super_admin': return 'Super Admin(s)';
+          case 'admin': return 'Admin(s)';
+          case 'editor': return 'Editor(s)';
+          case 'host': return 'Host(s)';
+          default: return role;
+        }
+      };
+
+      const roleOrder = ['super_admin', 'admin', 'editor', 'host'];
+      const usersByRole = nonRegularUsers.reduce((acc, user) => {
+        if (!acc[user.role]) acc[user.role] = [];
+        acc[user.role].push(user);
+        return acc;
+      }, {} as Record<string, typeof nonRegularUsers>);
+
+      let message = "";
+      
+      for (const role of roleOrder) {
+        const usersInRole = usersByRole[role];
+        if (usersInRole && usersInRole.length > 0) {
+          message += `<b>${getRoleName(role)}</b>\n`;
+          for (const user of usersInRole) {
+            const displayName = user.name || `User ${user.user_id}`;
+            message += `• ${displayName}\n`;
+          }
+          message += '\n';
+        }
+      }
+
+      await ctx.reply(message, { parse_mode: "HTML" });
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+      await ctx.reply("An error occurred while fetching permissions.");
+    }
   }
 
 
