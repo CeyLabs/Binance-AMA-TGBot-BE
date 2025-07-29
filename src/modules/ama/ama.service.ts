@@ -881,9 +881,12 @@ export class AMAService {
     const currentRole = await this.getUserRole(targetId);
     
     // Check if promoter has permission to modify this user
+    // Only bot owner and admin role can use grant commands
     const isBotOwner = this.isBotOwner(fromId);
-    if (!isBotOwner && !this.permissionsService.canPromoteToRole(promoterRole)) {
-      await ctx.reply("You are not authorized to perform this promotion/demotion.");
+    const isAdmin = promoterRole === 'admin';
+    
+    if (!isBotOwner && !isAdmin) {
+      await ctx.reply("Only administrators and the bot owner can manage user roles.");
       return;
     }
     

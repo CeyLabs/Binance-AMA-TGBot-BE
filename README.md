@@ -111,6 +111,8 @@ bun run serve:local
 - `/help` - Display help information
 
 ### **User Role Management Commands** (Bot Owner & Admin Only)
+
+**⚠️ Important**: Only users with `admin` role and the bot owner can execute these commands. Users with `ama`, `editor`, or `host` roles cannot manage user permissions.
 - `/grantadmin <user_id|@username>` - Grant full admin privileges (includes user management)
 - `/grantama <user_id|@username>` - Grant full AMA management privileges (excludes user management)
 - `/granteditor <user_id|@username>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
