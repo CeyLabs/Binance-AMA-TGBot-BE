@@ -48,7 +48,7 @@ export async function handleBroadcastNow(
   const inlineKeyboard =
     ama.language === "ar"
       ? [
-          [{ text: "املأ الاستمارة 👈", url: ama.form_link }],
+          [{ text: "املأ الاستمارة 👉", url: ama.form_link }],
           [{ text: "قم بتعيين تذكير ⏰", url: subscribeUrl }],
         ]
       : [
