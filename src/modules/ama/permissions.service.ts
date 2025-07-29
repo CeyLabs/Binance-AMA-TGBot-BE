@@ -120,15 +120,19 @@ export class PermissionsService {
   }
 
   // Helper method to check if role can promote others to specific roles
-  canPromoteToRole(promoterRole: UserRole, targetRole: UserRole): boolean {
-    // Only super_admin can promote others
-    if (!this.canAddAdmins(promoterRole)) {
-      return false;
-    }
-
+  canPromoteToRole(promoterRole: UserRole, targetRole: UserRole, currentRole?: UserRole | null): boolean {
     // super_admin can promote to any role except super_admin
     if (promoterRole === 'super_admin') {
       return targetRole !== 'super_admin';
+    }
+
+    // admin can promote to regular, admin_new, and admin_edit (but not admin or super_admin)
+    if (promoterRole === 'admin') {
+      // Admin cannot modify users who already have admin or super_admin role
+      if (currentRole === 'admin' || currentRole === 'super_admin') {
+        return false;
+      }
+      return targetRole === 'regular' || targetRole === 'admin_new' || targetRole === 'admin_edit';
     }
 
     return false;

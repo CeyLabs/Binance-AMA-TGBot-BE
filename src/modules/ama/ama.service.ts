@@ -701,12 +701,6 @@ export class AMAService {
       return;
     }
 
-    // Check if promoter has permission to promote to this role
-    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole)) {
-      await ctx.reply("You are not authorized to perform this promotion.");
-      return;
-    }
-
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
     let targetId = text.split(" ")[1];
     
@@ -724,6 +718,13 @@ export class AMAService {
     }
 
     const currentRole = await this.getUserRole(targetId);
+    
+    // Check if promoter has permission to modify this user (considering their current role)
+    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole, currentRole)) {
+      await ctx.reply("You are not authorized to perform this promotion/demotion.");
+      return;
+    }
+    
     if (currentRole === targetRole) {
       const name = await this.getUserDisplayName(targetId);
       await ctx.reply(`User ${name} already has the ${targetRole} role.`);
