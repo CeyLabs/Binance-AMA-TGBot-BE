@@ -221,20 +221,22 @@ Use the `/access` command to view all users with elevated permissions:
 **Output Format:**
 ```
 Super Admin(s)
-• Alice Johnson
-• Bob Wilson
+• Alice Johnson (123456789)
+• Bob Wilson (987654321)
 
 Admin(s)
-• John Doe
-• Jane Smith
+• John Doe (456789123)
+• Jane Smith (789123456)
 
 Editor(s)
-• Sarah Connor
-• Mike Ross
+• Sarah Connor (321654987)
+• Mike Ross (654987321)
 
 Host(s)
-• David Kim
+• David Kim (147258369)
 ```
+
+*Note: User IDs are displayed in monospace format for easy copying in Telegram.*
 
 The command displays users grouped by their roles in descending order of permissions, with each user listed as a bullet point under their respective role category.
 

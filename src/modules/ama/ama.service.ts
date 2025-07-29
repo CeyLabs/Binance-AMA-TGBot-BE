@@ -744,7 +744,7 @@ export class AMAService {
         if (usersInRole && usersInRole.length > 0) {
           message += `<b>${getRoleName(role)}</b>\n`;
           for (const user of usersInRole) {
-            const displayName = user.name || `User ${user.user_id}`;
+            const displayName = user.name ? `${user.name} (<code>${user.user_id}</code>)` : `User <code>${user.user_id}</code>`;
             message += `• ${displayName}\n`;
           }
           message += '\n';
