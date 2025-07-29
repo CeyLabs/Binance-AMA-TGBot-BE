@@ -3,7 +3,7 @@ import { UserRole } from "./types";
 
 @Injectable()
 export class PermissionsService {
-  // Define permission hierarchy: regular < host < editor < admin
+  // Define permission hierarchy: regular < host < editor < ama < admin
   private readonly permissions = {
     regular: {
       fullAccess: false,
@@ -31,6 +31,15 @@ export class PermissionsService {
       editAnnouncements: true, // can edit announcements
       createAMA: false,
       broadcastAnnouncements: false,
+    },
+    ama: {
+      fullAccess: false,
+      addingAdmins: false, // CANNOT manage user permissions
+      accessActiveAMA: true, // can start/stop AMAs
+      accessWinnerSelection: true, // can select winners
+      editAnnouncements: true, // can edit announcements
+      createAMA: true, // can create AMAs
+      broadcastAnnouncements: true, // can broadcast announcements
     },
     admin: {
       fullAccess: true,
@@ -91,7 +100,8 @@ export class PermissionsService {
     regular: 0,
     host: 1,
     editor: 2,
-    admin: 3,
+    ama: 3,
+    admin: 4,
   };
 
   // Get hierarchy level for a role

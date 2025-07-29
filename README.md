@@ -111,15 +111,16 @@ bun run serve:local
 - `/help` - Display help information
 
 ### **User Role Management Commands** (Bot Owner & Admin Only)
-- `/grantadmin <user_id|@username>` - Grant full admin privileges
+- `/grantadmin <user_id|@username>` - Grant full admin privileges (includes user management)
+- `/grantama <user_id|@username>` - Grant full AMA management privileges (excludes user management)
 - `/granteditor <user_id|@username>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
 - `/granthost <user_id|@username>` - Grant basic AMA access (start/end AMAs, select winners)
 - `/grantregular <user_id|@username>` - Demote user to regular (remove all bot access)
 
 **Usage Options:**
-- Use Telegram user ID: `/grantadmin 123456789`
-- Use username: `/grantadmin @username`
-- Reply to message: Reply to any user's message with `/grantadmin`
+- Use Telegram user ID: `/grantadmin 123456789` or `/grantama 123456789`
+- Use username: `/grantadmin @username` or `/grantama @username`
+- Reply to message: Reply to any user's message with `/grantadmin` or `/grantama`
 
 *Note: Username resolution requires the user to have interacted with the bot previously.*
 
@@ -210,6 +211,7 @@ Use the role management commands to assign specific permissions to users. When r
 **Role Hierarchy:**
 - `Bot Owner` - Ultimate access to all features (defined by BOT_OWNER_ID environment variable)
 - `admin` - Full access to all features and user management
+- `ama` - Full AMA management access (create, edit, start, end, select winners, broadcast) but cannot manage users
 - `editor` - Can edit announcements, start/end AMAs, and select winners
 - `host` - Can start/end AMAs and select winners (no creation or editing)
 - `regular` - No bot management access (can only participate in AMAs)

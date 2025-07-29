@@ -733,6 +733,11 @@ export class AMAService {
     await this.handlePromoteCommand(ctx, "editor");
   }
 
+  @Command("grantama")
+  async promoteToAMA(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "ama");
+  }
+
   @Command("grantregular")
   async demoteToRegular(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "regular");
@@ -769,13 +774,14 @@ export class AMAService {
       const getRoleName = (role: string): string => {
         switch (role) {
           case 'admin': return 'Admin(s)';
+          case 'ama': return 'AMA Manager(s)';
           case 'editor': return 'Editor(s)';
           case 'host': return 'Host(s)';
           default: return role;
         }
       };
 
-      const roleOrder = ['admin', 'editor', 'host'];
+      const roleOrder = ['admin', 'ama', 'editor', 'host'];
       const usersByRole = nonRegularUsers.reduce((acc, user) => {
         if (!acc[user.role]) acc[user.role] = [];
         acc[user.role].push(user);
