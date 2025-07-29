@@ -25,6 +25,7 @@ import {
   SupportedLanguage,
   UserDetails,
   User,
+  UserRole,
   ScheduleType,
 } from "./types";
 import {
@@ -61,6 +62,7 @@ import { handleStart } from "./claim-reward/claim-reward";
 import { convertDateTimeToUTC, DATETIME_REGEX } from "src/modules/ama/helper/date-utils";
 import { broadcastWinnersCallback, scheduleWinnersBroadcast } from "./end-ama/broadcast-winners";
 import { blockIfNotAdminGroup } from "../../utils/command-utils";
+import { PermissionsService } from "./permissions.service";
 
 @Update()
 @Injectable()
@@ -69,6 +71,7 @@ export class AMAService {
     private readonly config: ConfigService,
     private readonly knexService: KnexService,
     private readonly logger: DbLoggerService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   // Check if a question is a duplicate within the same AMA session
@@ -163,7 +166,7 @@ export class AMAService {
     );
   }
 
-  async updateUserRole(userId: string, role: "super_admin" | "admin" | "regular"): Promise<void> {
+  async updateUserRole(userId: string, role: UserRole): Promise<void> {
     await this.knexService
       .knex("user")
       .insert({ user_id: userId, role })
@@ -195,9 +198,9 @@ export class AMAService {
       .whereRaw("? = ANY(subscribed_groups)", [language]);
   }
 
-  async getUserRole(userId: string): Promise<string | null> {
+  async getUserRole(userId: string): Promise<UserRole | null> {
     const user = await this.knexService
-      .knex<{ role: string }>("user")
+      .knex<{ role: UserRole }>("user")
       .where("user_id", userId)
       .first();
     return user ? user.role : null;
@@ -210,6 +213,36 @@ export class AMAService {
   async isAdminOrSA(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
     return role === "admin" || role === "super_admin";
+  }
+
+  async canUserAccessAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessActiveAMA(role) : false;
+  }
+
+  async canUserCreateAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canCreateAMA(role) : false;
+  }
+
+  async canUserAccessNewAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessNewAMACommand(role) : false;
+  }
+
+  async canUserEditAnnouncements(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canEditAnnouncements(role) : false;
+  }
+
+  async canUserSelectWinners(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessWinnerSelection(role) : false;
+  }
+
+  async canUserBroadcastAnnouncements(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canBroadcastAnnouncements(role) : false;
   }
 
   async addWinner(
@@ -413,6 +446,14 @@ export class AMAService {
       .first();
   }
 
+  async getUserDisplayName(userId: string): Promise<string> {
+    const user = await this.getUserById(userId);
+    if (!user) return userId;
+    if (user.username) return `@${user.username}`;
+    if (user.name) return user.name;
+    return userId;
+  }
+
   // Methods for message processing
   async getUnprocessedMessages(batchSize: number): Promise<MessageWithAma[]> {
     return this.knexService
@@ -517,8 +558,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserAccessNewAMA(fromId))) {
+      await ctx.reply("You are not authorized to access AMA management.");
       return;
     }
 
@@ -537,6 +578,7 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<AMA | null>,
+      this.canUserCreateAMA.bind(this) as (userId: string) => Promise<boolean>,
       this.logger,
     );
   }
@@ -549,8 +591,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to start AMAs.");
       return;
     }
 
@@ -578,8 +620,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isAdminOrSA(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to end AMAs.");
       return;
     }
 
@@ -599,6 +641,13 @@ export class AMAService {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
 
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await handleSelectWinners(
       ctx,
       this.getAMAsBySessionNo.bind(this) as (sessionNo: number) => Promise<AMA[]>,
@@ -612,59 +661,49 @@ export class AMAService {
     );
   }
 
+
+
   @Command("grantadmin")
   async grantAdmin(ctx: BotContext): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
-
-    await this.upsertUserFromContext(ctx);
-    const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isSuperAdmin(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
-      return;
-    }
-
-    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    let targetId = text.split(" ")[1];
-
-    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
-      const reply = ctx.message.reply_to_message;
-      if (reply?.from?.id) {
-        targetId = reply.from.id.toString();
-        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
-      }
-    }
-
-    if (!targetId) {
-      await ctx.reply("Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin");
-      return;
-    }
-
-    const role = await this.getUserRole(targetId);
-    if (role === "admin") {
-      await ctx.reply(`User ${targetId} is already an admin.`);
-      return;
-    }
-
-    await this.updateUserRole(targetId, "admin");
-    await ctx.reply(`Admin access granted to user ${targetId}`);
+    await this.handlePromoteCommand(ctx, "admin");
   }
 
-  @Command("revokeadmin")
-  async revokeAdmin(ctx: BotContext): Promise<void> {
+  @Command("granthost")
+  async promoteAdminNew(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "host");
+  }
+
+  @Command("granteditor")
+  async promoteAdminEdit(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "editor");
+  }
+
+  @Command("grantregular")
+  async demoteToRegular(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "regular");
+  }
+
+
+  private async handlePromoteCommand(ctx: BotContext, targetRole: UserRole): Promise<void> {
     const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
     if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
-
+    
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isSuperAdmin(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
+    if (!fromId) {
+      await ctx.reply("Unable to identify user.");
+      return;
+    }
+
+    const promoterRole = await this.getUserRole(fromId);
+    if (!promoterRole) {
+      await ctx.reply("You are not registered in the system.");
       return;
     }
 
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
     let targetId = text.split(" ")[1];
-
+    
     if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
       const reply = ctx.message.reply_to_message;
       if (reply?.from?.id) {
@@ -674,23 +713,36 @@ export class AMAService {
     }
 
     if (!targetId) {
-      await ctx.reply("Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin");
+      await ctx.reply(`Usage: /${targetRole} <tg_userid> or reply to a user with /${targetRole}`);
       return;
     }
 
-    const role = await this.getUserRole(targetId);
-    if (!role) {
-      await ctx.reply(`User ${targetId} does not exist.`);
+    const currentRole = await this.getUserRole(targetId);
+    
+    // Check if promoter has permission to modify this user (considering their current role)
+    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole, currentRole)) {
+      await ctx.reply("You are not authorized to perform this promotion/demotion.");
+      return;
+    }
+    
+    if (currentRole === targetRole) {
+      const name = await this.getUserDisplayName(targetId);
+      await ctx.reply(`User ${name} already has the ${targetRole} role.`);
       return;
     }
 
-    if (role !== "admin") {
-      await ctx.reply(`User ${targetId} is not an admin.`);
-      return;
+    await this.updateUserRole(targetId, targetRole);
+    const name = await this.getUserDisplayName(targetId);
+    
+    // Determine if this is a promotion or demotion
+    const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
+    if (roleComparison > 0) {
+      await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
+    } else if (roleComparison < 0) {
+      await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
+    } else {
+      await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
     }
-
-    await this.updateUserRole(targetId, "regular");
-    await ctx.reply(`Admin access revoked from user ${targetId}`);
   }
 
   // <<------------------------------------ Callback Actions ------------------------------------>>
@@ -713,6 +765,12 @@ export class AMAService {
   // broadcast-now_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_NOW}_${UUID_PATTERN}`, "i"))
   async broadcastNow(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
     const publicGroupIds = {
       en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
       ar: this.config.get<string>("AR_PUBLIC_GROUP_ID")!,
@@ -731,6 +789,13 @@ export class AMAService {
   // schedule-broadcast_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleBroadcast(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await handleScheduleBroadcast(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -745,6 +810,13 @@ export class AMAService {
 
     if (!match) {
       await ctx.answerCbQuery("Invalid confirmation action.");
+      return;
+    }
+
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -768,6 +840,13 @@ export class AMAService {
   // Handle `toggle_5m_<amaId>` etc.
   @Action(new RegExp(`^${CALLBACK_ACTIONS.TOGGLE_SCHEDULE}_(\\w+)_(${UUID_PATTERN})$`))
   async onToggleSchedule(ctx: BotContext) {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await handleToggleSchedule(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -800,6 +879,13 @@ export class AMAService {
       return;
     }
 
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
+
     // Add the parent message ID to the editingAnnouncementMsgId
     if (ctx.callbackQuery.message && "message_id" in ctx.callbackQuery.message) {
       ctx.session.editingAnnouncementMsgId = ctx.callbackQuery.message.message_id;
@@ -816,6 +902,12 @@ export class AMAService {
   // confirm-edit_(sessionNo)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmEdit(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
     await handleConfirmEdit(
       ctx,
       this.updateAMA.bind(this) as (id: UUID, data: Partial<AMA>) => Promise<boolean>,
@@ -826,6 +918,12 @@ export class AMAService {
   // start-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.START_AMA}_${UUID_PATTERN}`, "i"))
   async startAMASession(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to start AMAs.");
+      return;
+    }
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -844,6 +942,13 @@ export class AMAService {
   // end-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.END_AMA}_${UUID_PATTERN}`, "i"))
   async endAMASession(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserAccessAMA(fromId))) {
+      await ctx.reply("You are not authorized to end AMAs.");
+      return;
+    }
+
     await endAMAbyCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -858,6 +963,13 @@ export class AMAService {
   // select-winners_(id)_(winnerCount)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS}_${UUID_FRAGMENT}_(\\d+)$`, "i"))
   async selectWinners(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await selectWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -868,6 +980,12 @@ export class AMAService {
   // confirm-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM_WINNERS}_${UUID_PATTERN}`, "i"))
   async confirmWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
     await confirmWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -887,6 +1005,12 @@ export class AMAService {
   //broadcast-winners_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.BROADCAST_WINNERS}_${UUID_PATTERN}`, "i"))
   async broadcastWinners(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
     const groupIds = {
       public: {
         en: this.config.get<string>("EN_PUBLIC_GROUP_ID")!,
@@ -906,6 +1030,13 @@ export class AMAService {
   //discard-user_(username)_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.DISCARD_WINNER}_([a-zA-Z0-9_]+)_(${UUID_PATTERN})`, "i"))
   async handleDiscardUserCallback(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await handleDiscardUser(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -920,6 +1051,13 @@ export class AMAService {
   //reset-winners_(amaId)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.RESET_WINNERS}_${UUID_PATTERN}`, "i"))
   async resetWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await resetWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -934,6 +1072,13 @@ export class AMAService {
   // Handle select-winners-cmd callback
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SELECT_WINNERS_CMD}_${UUID_PATTERN}`, "i"))
   async handleSelectWinnersCmdCallback(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await selectWinnersByCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -950,6 +1095,13 @@ export class AMAService {
   // Handle force-select-winners callback
   @Action(new RegExp(`^${CALLBACK_ACTIONS.FORCE_SELECT_WINNERS}_${UUID_PATTERN}`, "i"))
   async handleForceSelectWinnersCallback(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await forceSelectWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: string) => Promise<AMA | null>,
@@ -963,6 +1115,13 @@ export class AMAService {
 
   @Action(new RegExp(`^${CALLBACK_ACTIONS.SCHEDULE_WINNERS_BROADCAST}_${UUID_PATTERN}`, "i"))
   async scheduleWinnersBroadcast(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to broadcast announcements.");
+      return;
+    }
+
     await broadcastWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -972,6 +1131,13 @@ export class AMAService {
   //cancel-winners_(amaId)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_WINNERS}_${UUID_PATTERN}`, "i"))
   async cancelWinners(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserSelectWinners(fromId))) {
+      await ctx.reply("You are not authorized to select winners.");
+      return;
+    }
+
     await cancelWinnersCallback(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,
@@ -992,6 +1158,12 @@ export class AMAService {
   // prettier-ignore
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CANCEL_BROADCAST}_${UUID_PATTERN}`, "i"))
   async cancelBroadcastAMA(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || (!(await this.canUserBroadcastAnnouncements(fromId)) && !(await this.canUserEditAnnouncements(fromId)))) {
+      await ctx.reply("You are not authorized to cancel this action.");
+      return;
+    }
     if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
       await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
       await ctx.answerCbQuery("Broadcast cancelled successfully.");
@@ -1001,6 +1173,12 @@ export class AMAService {
   // cancel-edit_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.EDIT_CANCEL}_${UUID_PATTERN}`, "i"))
   async cancelEdit(ctx: BotContext): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
     await handleCancelEdit(ctx);
   }
 
@@ -1044,7 +1222,13 @@ export class AMAService {
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
         );
       } else {
-        await handleEdit(ctx);
+        await this.upsertUserFromContext(ctx);
+        const fromId = ctx.from?.id.toString();
+        if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+          await ctx.reply("You are not authorized to edit AMA announcements.");
+        } else {
+          await handleEdit(ctx);
+        }
       }
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
@@ -1067,6 +1251,13 @@ export class AMAService {
 
   @On("photo")
   async handleBannerUpload(ctx: BotContext) {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
+      await ctx.reply("You are not authorized to edit AMA announcements.");
+      return;
+    }
+
     await handleBannerUpload(
       ctx,
       this.getAMAById.bind(this) as (id: UUID) => Promise<AMA | null>,

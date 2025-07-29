@@ -107,9 +107,13 @@ bun run serve:local
 - `/startama <sessionNo>` - Start an AMA session
 - `/endama <sessionNo>` - End an AMA session
 - `/selectwinners <sessionNo>` - Select winners for completed AMA
-- `/grantadmin <user_id>` - Grant admin privileges (super admin only)
-- `/revokeadmin <user_id>` - Revoke admin privileges (super admin only)
 - `/help` - Display help information
+
+### **User Role Management Commands** (Super Admin Only)
+- `/grantadmin <user_id>` - Grant full admin privileges
+- `/granteditor <user_id>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
+- `/granthost <user_id>` - Grant basic AMA access (start/end AMAs, select winners)
+- `/grantregular <user_id>` - Demote user to regular (remove all bot access)
 
 ### **User Commands**
 - `/start` - General bot start command
@@ -187,5 +191,13 @@ Questions are automatically analyzed using OpenAI GPT-4 with scoring on:
 
 ## Admin Management
 
-Use `/grantadmin <tg_userid>` to promote a user to admin and `/revokeadmin <tg_userid>` to remove admin privileges. When replying to a user's message, the quoted user will also be granted or revoked without specifying an ID. These commands can only be executed by `super_admin` users.
+Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by `super_admin` and `admin` users.
+
+**Role Hierarchy:**
+- `super_admin` - Full access to all features and user management
+- `admin` - Full AMA management access (create, edit, start, end, select winners, broadcast)
+- `editor` - Can edit announcements, start/end AMAs, and select winners
+- `host` - Can start/end AMAs and select winners (no creation or editing)
+- `regular` - No bot management access (can only participate in AMAs)
+
 User name and username fields are automatically kept in sync with Telegram when any command or AMA question is received.
