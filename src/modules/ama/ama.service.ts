@@ -661,103 +661,24 @@ export class AMAService {
     );
   }
 
+
+
   @Command("grantadmin")
   async grantAdmin(ctx: BotContext): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
-
-    await this.upsertUserFromContext(ctx);
-    const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isSuperAdmin(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
-      return;
-    }
-
-    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    let targetId = text.split(" ")[1];
-
-    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
-      const reply = ctx.message.reply_to_message;
-      if (reply?.from?.id) {
-        targetId = reply.from.id.toString();
-        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
-      }
-    }
-
-    if (!targetId) {
-      await ctx.reply("Usage: /grantadmin <tg_userid> or reply to a user with /grantadmin");
-      return;
-    }
-
-    const role = await this.getUserRole(targetId);
-    if (role === "admin") {
-      const name = await this.getUserDisplayName(targetId);
-      await ctx.reply(`User ${name} is already an admin.`);
-      return;
-    }
-
-    await this.updateUserRole(targetId, "admin");
-    const name = await this.getUserDisplayName(targetId);
-    await ctx.reply(`Admin access granted to ${name}`);
+    await this.handlePromoteCommand(ctx, "admin");
   }
 
-  @Command("revokeadmin")
-  async revokeAdmin(ctx: BotContext): Promise<void> {
-    const adminGroupId = this.config.get<string>("ADMIN_GROUP_ID")!;
-    if (await blockIfNotAdminGroup(ctx, adminGroupId)) return;
-
-    await this.upsertUserFromContext(ctx);
-    const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.isSuperAdmin(fromId))) {
-      await ctx.reply("You are not authorized to perform this action.");
-      return;
-    }
-
-    const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    let targetId = text.split(" ")[1];
-
-    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
-      const reply = ctx.message.reply_to_message;
-      if (reply?.from?.id) {
-        targetId = reply.from.id.toString();
-        await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
-      }
-    }
-
-    if (!targetId) {
-      await ctx.reply("Usage: /revokeadmin <tg_userid> or reply to a user with /revokeadmin");
-      return;
-    }
-
-    const role = await this.getUserRole(targetId);
-    if (!role) {
-      const name = await this.getUserDisplayName(targetId);
-      await ctx.reply(`User ${name} does not exist.`);
-      return;
-    }
-
-    if (role !== "admin") {
-      const name = await this.getUserDisplayName(targetId);
-      await ctx.reply(`User ${name} is not an admin.`);
-      return;
-    }
-
-    await this.updateUserRole(targetId, "regular");
-    const name = await this.getUserDisplayName(targetId);
-    await ctx.reply(`Admin access revoked from ${name}`);
-  }
-
-  @Command("grant_new")
+  @Command("grantnew")
   async promoteAdminNew(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "admin_new");
   }
 
-  @Command("grant_edit")
+  @Command("grantedit")
   async promoteAdminEdit(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "admin_edit");
   }
 
-  @Command("grant_regular")
+  @Command("grantregular")
   async demoteToRegular(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "regular");
   }
