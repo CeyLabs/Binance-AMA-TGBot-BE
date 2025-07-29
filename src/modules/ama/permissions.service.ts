@@ -80,6 +80,11 @@ export class PermissionsService {
     return this.permissions[role]?.broadcastAnnouncements || false;
   }
 
+  // Check if user can access the /newama command (either create new or edit existing)
+  canAccessNewAMACommand(role: UserRole): boolean {
+    return this.canCreateAMA(role) || this.canEditAnnouncements(role);
+  }
+
   // Check if user can start/stop AMA (same as accessing active AMA)
   canControlAMA(role: UserRole): boolean {
     return this.canAccessActiveAMA(role);

@@ -36,6 +36,7 @@ export async function handleNewAMA(
     sessionNo: number,
     language: SupportedLanguage,
   ) => Promise<AMA | null>,
+  canUserCreateAMA: (userId: string) => Promise<boolean>,
   logger?: DbLoggerService,
 ): Promise<void> {
   try {
@@ -111,6 +112,13 @@ export async function handleNewAMA(
 
       ctx.session.messagesToDelete ??= [];
       ctx.session.messagesToDelete.push(amaMsg.message_id);
+      return;
+    }
+
+    // Check if user has permission to create new AMAs (for admin_edit users who can only edit)
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await canUserCreateAMA(fromId))) {
+      await ctx.reply("You can only edit existing AMAs. This session number does not exists.");
       return;
     }
 

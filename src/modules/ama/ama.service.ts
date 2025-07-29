@@ -225,6 +225,11 @@ export class AMAService {
     return role ? this.permissionsService.canCreateAMA(role) : false;
   }
 
+  async canUserAccessNewAMA(userId: string): Promise<boolean> {
+    const role = await this.getUserRole(userId);
+    return role ? this.permissionsService.canAccessNewAMACommand(role) : false;
+  }
+
   async canUserEditAnnouncements(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canEditAnnouncements(role) : false;
@@ -553,8 +558,8 @@ export class AMAService {
 
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
-    if (!fromId || !(await this.canUserCreateAMA(fromId))) {
-      await ctx.reply("You are not authorized to create AMAs.");
+    if (!fromId || !(await this.canUserAccessNewAMA(fromId))) {
+      await ctx.reply("You are not authorized to access AMA management.");
       return;
     }
 
@@ -573,6 +578,7 @@ export class AMAService {
         sessionNo: number,
         language: SupportedLanguage,
       ) => Promise<AMA | null>,
+      this.canUserCreateAMA.bind(this) as (userId: string) => Promise<boolean>,
       this.logger,
     );
   }
