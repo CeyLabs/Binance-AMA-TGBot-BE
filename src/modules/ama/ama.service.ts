@@ -201,16 +201,20 @@ export class AMAService {
   }
 
   async updateUserRole(userId: string, role: UserRole): Promise<void> {
-    // Prevent modification of bot user permissions
+    // Prevent modification of bot owner permissions
     if (userId === this.getBotOwnerId()) {
       throw new Error("Cannot modify bot owner permissions");
     }
 
-    await this.knexService
+    // Update existing user's role (user must already exist)
+    const result = await this.knexService
       .knex("user")
-      .insert({ user_id: userId, role })
-      .onConflict("user_id")
-      .merge({ role, updated_at: new Date() });
+      .where("user_id", userId)
+      .update({ role, updated_at: new Date() });
+
+    if (result === 0) {
+      throw new Error("User not found in database");
+    }
   }
 
   async subscribeUser(userId: string, language: SupportedLanguage): Promise<void> {
@@ -869,6 +873,13 @@ export class AMAService {
     // Validate that we have a numeric user ID
     if (!/^\d+$/.test(targetId)) {
       await ctx.reply("Invalid user ID format. User ID must be numeric.");
+      return;
+    }
+
+    // Check if user exists in database (must have interacted with bot before)
+    const userExists = await this.getUserById(targetId);
+    if (!userExists) {
+      await ctx.reply("User not found. The user must have interacted with the bot before their role can be changed. Make sure they have executed /start on bot or sent a message in admin group!");
       return;
     }
 
