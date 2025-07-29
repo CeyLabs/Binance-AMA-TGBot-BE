@@ -792,6 +792,12 @@ export class AMAService {
       return;
     }
 
+    // Prevent users from modifying their own roles
+    if (targetId === fromId) {
+      await ctx.reply("You cannot modify your own role.");
+      return;
+    }
+
     const currentRole = await this.getUserRole(targetId);
     
     // Check if promoter has permission to modify this user (considering their current role)

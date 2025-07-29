@@ -194,6 +194,11 @@ Questions are automatically analyzed using OpenAI GPT-4 with scoring on:
 
 Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by `super_admin` and `admin` users.
 
+**Security Features:**
+- Users cannot modify their own roles (prevents self-promotion/demotion)
+- Role hierarchy restrictions prevent unauthorized promotions
+- Admin group restriction ensures commands are only executed in secure environment
+
 **Role Hierarchy:**
 - `super_admin` - Full access to all features and user management
 - `admin` - Full AMA management access (create, edit, start, end, select winners, broadcast)
