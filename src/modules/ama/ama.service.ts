@@ -1072,7 +1072,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
 
@@ -1095,7 +1095,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
     await handleConfirmEdit(
@@ -1366,7 +1366,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
     await handleCancelEdit(ctx);
@@ -1421,7 +1421,7 @@ export class AMAService {
         await this.upsertUserFromContext(ctx);
         const fromId = ctx.from?.id.toString();
         if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-          await ctx.reply("❌ You are not authorized to edit AMA announcements.");
+          await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
         } else {
           await handleEdit(ctx);
         }
@@ -1451,7 +1451,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
 
