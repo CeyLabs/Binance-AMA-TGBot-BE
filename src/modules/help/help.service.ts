@@ -68,12 +68,12 @@ export class HelpService {
 
       // Commands available to editor, ama, admin
       if (['editor', 'ama', 'admin'].includes(userRole) || isBotOwner) {
+        helpMessage += `• /newama &lt;language&gt; &lt;sessionNo&gt; - Create/edit AMA session\n`;
         helpMessage += `• Edit announcements (via inline buttons)\n`;
       }
 
       // Commands available to ama, admin
       if (['ama', 'admin'].includes(userRole) || isBotOwner) {
-        helpMessage += `• /newama &lt;language&gt; &lt;sessionNo&gt; - Create new AMA session\n`;
         helpMessage += `• Broadcast announcements (via inline buttons)\n`;
       }
 
@@ -115,11 +115,6 @@ export class HelpService {
     } else {
       helpMessage += `<b>Your current role:</b> Regular (no bot access)\n\n`;
     }
-
-    // Public group participation
-    helpMessage += `<b>🌍 Public Group Participation:</b>\n`;
-    helpMessage += `• English AMAs: Use hashtag <code>#BinanceSession</code>\n`;
-    helpMessage += `• Arabic AMAs: Use hashtag <code>#جلسات_بينانس</code>\n\n`;
 
     helpMessage += `<b>🔔 Subscription Commands (Private Chat):</b>\n`;
     helpMessage += `• /start subscribe_en - Subscribe to English AMA notifications\n`;
