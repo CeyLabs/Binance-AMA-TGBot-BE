@@ -1411,7 +1411,8 @@ export class AMAService {
           ctx,
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
         );
-      } else {
+      } else if (ctx.session.editMode) {
+        // Only check edit permissions if user is actually in editing mode
         await this.upsertUserFromContext(ctx);
         const fromId = ctx.from?.id.toString();
         if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
@@ -1420,6 +1421,7 @@ export class AMAService {
           await handleEdit(ctx);
         }
       }
+      // For regular chat messages in admin group, do nothing (no permission check needed)
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
         ctx, groupIds,
