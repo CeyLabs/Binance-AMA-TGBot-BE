@@ -1376,6 +1376,11 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
+    // Ignore messages from the bot itself
+    if (ctx.from?.is_bot) {
+      return;
+    }
+
     const isCommand =
       !!ctx.message &&
       "entities" in ctx.message &&
