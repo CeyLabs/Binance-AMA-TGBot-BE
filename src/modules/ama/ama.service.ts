@@ -897,7 +897,7 @@ export class AMAService {
     const isAdmin = promoterRole === 'admin';
     
     if (!isBotOwner && !isAdmin) {
-      await ctx.reply("Only administrators and the bot owner can manage user roles.");
+      await ctx.reply("Only admins and the bot owner can manage user roles.");
       return;
     }
     
