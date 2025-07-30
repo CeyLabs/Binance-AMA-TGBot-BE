@@ -75,12 +75,16 @@ export class AMAService {
   ) {}
 
   // Get bot owner ID from environment
-  private getBotOwnerId(): string {
+  private getBotOwnerInfo(): { name: string; id: string } {
     const ownerId = this.config.get<string>("BOT_OWNER_ID");
     if (!ownerId) {
       throw new Error("BOT_OWNER_ID is not defined");
     }
-    return ownerId;
+    const ownerName = this.config.get<string>("BOT_OWNER_NAME");
+    if (!ownerName) {
+      throw new Error("BOT_OWNER_NAME is not defined");
+    }
+    return { id: ownerId, name: ownerName };
   }
 
   // Resolve username to user ID by looking up in database
@@ -202,7 +206,7 @@ export class AMAService {
 
   async updateUserRole(userId: string, role: UserRole): Promise<void> {
     // Prevent modification of bot owner permissions
-    if (userId === this.getBotOwnerId()) {
+    if (userId === this.getBotOwnerInfo().id) {
       throw new Error("Cannot modify bot owner permissions");
     }
 
@@ -250,7 +254,7 @@ export class AMAService {
   }
 
   isBotOwner(userId: string): boolean {
-    return userId === this.getBotOwnerId();
+    return userId === this.getBotOwnerInfo().id;
   }
 
   async isAdminOrOwner(userId: string): Promise<boolean> {
@@ -792,22 +796,16 @@ export class AMAService {
         return acc;
       }, {} as Record<string, typeof nonRegularUsers>);
 
-      let message = "";
-      
       // Show bot owner first
-      const botOwnerId = this.getBotOwnerId();
-      const botOwner = nonRegularUsers.find(user => user.user_id === botOwnerId);
-      if (botOwner) {
-        message += `<b>Bot Owner</b>\n`;
-        const displayName = botOwner.name ? `${botOwner.name} (<code>${botOwner.user_id}</code>)` : `User <code>${botOwner.user_id}</code>`;
-        message += `• ${displayName}\n\n`;
-      }
+      const botOwnerInfo = this.getBotOwnerInfo();
+      const displayName = `${botOwnerInfo.name} (<code>${botOwnerInfo.id}</code>)`
+      let message = `<b>Bot Owner:</b> ${displayName}\n\n`;
       
       for (const role of roleOrder) {
         const usersInRole = usersByRole[role];
         if (usersInRole && usersInRole.length > 0) {
           // Filter out bot owner from other roles display since we show them separately
-          const filteredUsers = usersInRole.filter(user => user.user_id !== botOwnerId);
+          const filteredUsers = usersInRole.filter(user => user.user_id !== botOwnerInfo.id);
           if (filteredUsers.length > 0) {
             message += `<b>${getRoleName(role)}</b>\n`;
             for (const user of filteredUsers) {
