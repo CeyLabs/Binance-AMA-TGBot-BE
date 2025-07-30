@@ -949,6 +949,12 @@ export class AMAService {
   // confirm-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmAMA(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserCreateAMA(fromId))) {
+      await ctx.answerCbQuery("❌ You are not authorized to confirm AMA creation.", { show_alert: true });
+      return;
+    }
     await handleConfirmAMA(ctx);
   }
 
