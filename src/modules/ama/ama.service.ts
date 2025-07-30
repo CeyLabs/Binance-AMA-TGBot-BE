@@ -618,7 +618,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessNewAMA(fromId))) {
-      await ctx.reply("You are not authorized to access AMA management.");
+      await ctx.reply("❌ You are not authorized to access AMA management.");
       return;
     }
 
@@ -651,7 +651,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to start AMAs.");
+      await ctx.reply("❌ You are not authorized to start AMAs.");
       return;
     }
 
@@ -680,7 +680,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to end AMAs.");
+      await ctx.reply("❌ You are not authorized to end AMAs.");
       return;
     }
 
@@ -703,7 +703,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -762,7 +762,7 @@ export class AMAService {
     const userRole = await this.getUserRole(fromId);
     const isBotOwner = this.isBotOwner(fromId);
     if (userRole !== "admin" && !isBotOwner) {
-      await ctx.reply("You are not authorized to view permissions.");
+      await ctx.reply("❌ You are not authorized to view permissions.");
       return;
     }
 
@@ -958,7 +958,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
     const publicGroupIds = {
@@ -982,7 +982,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -1006,7 +1006,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -1033,7 +1033,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -1072,7 +1072,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
       return;
     }
 
@@ -1095,7 +1095,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
       return;
     }
     await handleConfirmEdit(
@@ -1111,7 +1111,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to start AMAs.");
+      await ctx.reply("❌ You are not authorized to start AMAs.");
       return;
     }
     const groupIds = {
@@ -1135,7 +1135,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to end AMAs.");
+      await ctx.reply("❌ You are not authorized to end AMAs.");
       return;
     }
 
@@ -1156,7 +1156,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1173,7 +1173,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
     await confirmWinnersCallback(
@@ -1198,7 +1198,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
     const groupIds = {
@@ -1223,7 +1223,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1244,7 +1244,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1265,7 +1265,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1288,7 +1288,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1308,7 +1308,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -1324,7 +1324,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1351,7 +1351,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || (!(await this.canUserBroadcastAnnouncements(fromId)) && !(await this.canUserEditAnnouncements(fromId)))) {
-      await ctx.reply("You are not authorized to cancel this action.");
+      await ctx.reply("❌ You are not authorized to cancel this action.");
       return;
     }
     if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
@@ -1366,7 +1366,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
       return;
     }
     await handleCancelEdit(ctx);
@@ -1421,7 +1421,7 @@ export class AMAService {
         await this.upsertUserFromContext(ctx);
         const fromId = ctx.from?.id.toString();
         if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-          await ctx.reply("You are not authorized to edit AMA announcements.");
+          await ctx.reply("❌ You are not authorized to edit AMA announcements.");
         } else {
           await handleEdit(ctx);
         }
@@ -1451,7 +1451,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.reply("❌ You are not authorized to edit AMA announcements.");
       return;
     }
 
