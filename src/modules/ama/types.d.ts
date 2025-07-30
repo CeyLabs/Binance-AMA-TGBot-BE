@@ -61,7 +61,7 @@ export interface OpenAIAnalysis {
   total_score: number;
 }
 
-export type UserRole = "regular" | "host" | "editor" | "admin" | "super_admin" ;
+export type UserRole = "regular" | "host" | "editor" | "ama" | "admin";
 
 export interface User {
   user_id: string;

@@ -30,7 +30,7 @@ This bot is specifically designed to manage and automate AMA (Ask Me Anything) s
 
 ### **User Management & Subscriptions**
 - **Multi-language Subscriptions**: Users can subscribe to receive AMA notifications in English or Arabic
-- **Role-based Access**: Super admin, admin, and regular user roles with `/grantadmin` and `/revokeadmin` commands
+- **Role-based Access**: Bot owner, admin, editor, host, and regular user roles with flexible user management commands
 - **User Profile Sync**: Automatic synchronization with Telegram user data
 - **Subscription Management**: Deep-link subscription system (`/start subscribe_en` or `/start subscribe_ar`)
 
@@ -110,11 +110,21 @@ bun run serve:local
 - `/access` - View list of all non-regular users and their roles
 - `/help` - Display help information
 
-### **User Role Management Commands** (Super Admin Only)
-- `/grantadmin <user_id>` - Grant full admin privileges
-- `/granteditor <user_id>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
-- `/granthost <user_id>` - Grant basic AMA access (start/end AMAs, select winners)
-- `/grantregular <user_id>` - Demote user to regular (remove all bot access)
+### **User Role Management Commands** (Bot Owner & Admin Only)
+
+**⚠️ Important**: Only users with `admin` role and the bot owner can execute these commands. Users with `ama`, `editor`, or `host` roles cannot manage user permissions.
+- `/grantadmin <user_id|@username>` - Grant full admin privileges (includes user management)
+- `/grantama <user_id|@username>` - Grant full AMA management privileges (excludes user management)
+- `/granteditor <user_id|@username>` - Grant edit permissions (edit announcements, start/end AMAs, select winners)
+- `/granthost <user_id|@username>` - Grant basic AMA access (start/end AMAs, select winners)
+- `/grantregular <user_id|@username>` - Demote user to regular (remove all bot access)
+
+**Usage Options:**
+- Use Telegram user ID: `/grantadmin 123456789` or `/grantama 123456789`
+- Use username: `/grantadmin @username` or `/grantama @username`
+- Reply to message: Reply to any user's message with `/grantadmin` or `/grantama`
+
+*Note: Username resolution requires the user to have interacted with the bot previously.*
 
 ### **User Commands**
 - `/start` - General bot start command
@@ -192,16 +202,18 @@ Questions are automatically analyzed using OpenAI GPT-4 with scoring on:
 
 ## Admin Management
 
-Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by `super_admin` and `admin` users.
+Use the role management commands to assign specific permissions to users. When replying to a user's message, the quoted user will also be granted the role without specifying an ID. Role management commands can only be executed by the bot owner (defined by `BOT_OWNER_ID` environment variable) and `admin` users.
 
 **Security Features:**
 - Users cannot modify their own roles (prevents self-promotion/demotion)
+- Bot owner permissions cannot be modified by anyone
 - Role hierarchy restrictions prevent unauthorized promotions
 - Admin group restriction ensures commands are only executed in secure environment
 
 **Role Hierarchy:**
-- `super_admin` - Full access to all features and user management
-- `admin` - Full AMA management access (create, edit, start, end, select winners, broadcast)
+- `Bot Owner` - Ultimate access to all features (defined by BOT_OWNER_ID environment variable)
+- `admin` - Full access to all features and user management
+- `ama` - Full AMA management access (create, edit, start, end, select winners, broadcast) but cannot manage users
 - `editor` - Can edit announcements, start/end AMAs, and select winners
 - `host` - Can start/end AMAs and select winners (no creation or editing)
 - `regular` - No bot management access (can only participate in AMAs)
@@ -215,7 +227,7 @@ Use the `/access` command to view all users with elevated permissions:
 ```
 
 **Access Control:**
-- Only `admin` and `super_admin` users can execute this command
+- Only `admin` users and the bot owner can execute this command
 - Must be used in the admin group
 
 **Output Format:**

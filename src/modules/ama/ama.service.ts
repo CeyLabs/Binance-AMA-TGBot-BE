@@ -74,6 +74,40 @@ export class AMAService {
     private readonly permissionsService: PermissionsService,
   ) {}
 
+  // Get bot owner ID from environment
+  private getBotOwnerId(): string {
+    const ownerId = this.config.get<string>("BOT_OWNER_ID");
+    if (!ownerId) {
+      throw new Error("BOT_OWNER_ID is not defined");
+    }
+    return ownerId;
+  }
+
+  // Resolve username to user ID by looking up in database
+  async resolveUsernameToId(input: string): Promise<string | null> {
+    // If it's already a numeric user ID, return it
+    if (/^\d+$/.test(input)) {
+      return input;
+    }
+
+    // If it starts with @, it's a username
+    if (input.startsWith('@')) {
+      const username = input.substring(1); // Remove the @ symbol
+      const user = await this.knexService
+        .knex<{ user_id: string }>("user")
+        .where("username", username)
+        .first();
+      return user ? user.user_id : null;
+    }
+
+    // If it's just a plain username without @
+    const user = await this.knexService
+      .knex<{ user_id: string }>("user")
+      .where("username", input)
+      .first();
+    return user ? user.user_id : null;
+  }
+
   // Check if a question is a duplicate within the same AMA session
   async checkDuplicateQuestion(amaId: UUID, question: string): Promise<boolean> {
     if (!question || question.trim() === "") return false;
@@ -167,11 +201,20 @@ export class AMAService {
   }
 
   async updateUserRole(userId: string, role: UserRole): Promise<void> {
-    await this.knexService
+    // Prevent modification of bot owner permissions
+    if (userId === this.getBotOwnerId()) {
+      throw new Error("Cannot modify bot owner permissions");
+    }
+
+    // Update existing user's role (user must already exist)
+    const result = await this.knexService
       .knex("user")
-      .insert({ user_id: userId, role })
-      .onConflict("user_id")
-      .merge({ role, updated_at: new Date() });
+      .where("user_id", userId)
+      .update({ role, updated_at: new Date() });
+
+    if (result === 0) {
+      throw new Error("User not found in database");
+    }
   }
 
   async subscribeUser(userId: string, language: SupportedLanguage): Promise<void> {
@@ -206,41 +249,47 @@ export class AMAService {
     return user ? user.role : null;
   }
 
-  async isSuperAdmin(userId: string): Promise<boolean> {
-    return (await this.getUserRole(userId)) === "super_admin";
+  isBotOwner(userId: string): boolean {
+    return userId === this.getBotOwnerId();
   }
 
-  async isAdminOrSA(userId: string): Promise<boolean> {
+  async isAdminOrOwner(userId: string): Promise<boolean> {
     const role = await this.getUserRole(userId);
-    return role === "admin" || role === "super_admin";
+    return role === "admin" || this.isBotOwner(userId);
   }
 
   async canUserAccessAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessActiveAMA(role) : false;
   }
 
   async canUserCreateAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canCreateAMA(role) : false;
   }
 
   async canUserAccessNewAMA(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessNewAMACommand(role) : false;
   }
 
   async canUserEditAnnouncements(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canEditAnnouncements(role) : false;
   }
 
   async canUserSelectWinners(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canAccessWinnerSelection(role) : false;
   }
 
   async canUserBroadcastAnnouncements(userId: string): Promise<boolean> {
+    if (this.isBotOwner(userId)) return true;
     const role = await this.getUserRole(userId);
     return role ? this.permissionsService.canBroadcastAnnouncements(role) : false;
   }
@@ -569,7 +618,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessNewAMA(fromId))) {
-      await ctx.reply("You are not authorized to access AMA management.");
+      await ctx.reply("❌ You are not authorized to access AMA management.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -602,7 +651,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to start AMAs.");
+      await ctx.reply("❌ You are not authorized to start AMAs.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -631,7 +680,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to end AMAs.");
+      await ctx.reply("❌ You are not authorized to end AMAs.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -654,7 +703,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -688,6 +737,11 @@ export class AMAService {
     await this.handlePromoteCommand(ctx, "editor");
   }
 
+  @Command("grantama")
+  async promoteToAMA(ctx: BotContext): Promise<void> {
+    await this.handlePromoteCommand(ctx, "ama");
+  }
+
   @Command("grantregular")
   async demoteToRegular(ctx: BotContext): Promise<void> {
     await this.handlePromoteCommand(ctx, "regular");
@@ -701,13 +755,14 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId) {
-      await ctx.reply("Unable to identify user.");
+      await ctx.reply("Unable to identify user.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
     const userRole = await this.getUserRole(fromId);
-    if (userRole !== "admin" && userRole !== "super_admin") {
-      await ctx.reply("You are not authorized to view permissions.");
+    const isBotOwner = this.isBotOwner(fromId);
+    if (userRole !== "admin" && !isBotOwner) {
+      await ctx.reply("❌ You are not authorized to view permissions.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -722,15 +777,15 @@ export class AMAService {
       // Group users by role and create user-friendly display
       const getRoleName = (role: string): string => {
         switch (role) {
-          case 'super_admin': return 'Super Admin(s)';
           case 'admin': return 'Admin(s)';
+          case 'ama': return 'AMA Manager(s)';
           case 'editor': return 'Editor(s)';
           case 'host': return 'Host(s)';
           default: return role;
         }
       };
 
-      const roleOrder = ['super_admin', 'admin', 'editor', 'host'];
+      const roleOrder = ['admin', 'ama', 'editor', 'host'];
       const usersByRole = nonRegularUsers.reduce((acc, user) => {
         if (!acc[user.role]) acc[user.role] = [];
         acc[user.role].push(user);
@@ -739,15 +794,28 @@ export class AMAService {
 
       let message = "";
       
+      // Show bot owner first
+      const botOwnerId = this.getBotOwnerId();
+      const botOwner = nonRegularUsers.find(user => user.user_id === botOwnerId);
+      if (botOwner) {
+        message += `<b>Bot Owner</b>\n`;
+        const displayName = botOwner.name ? `${botOwner.name} (<code>${botOwner.user_id}</code>)` : `User <code>${botOwner.user_id}</code>`;
+        message += `• ${displayName}\n\n`;
+      }
+      
       for (const role of roleOrder) {
         const usersInRole = usersByRole[role];
         if (usersInRole && usersInRole.length > 0) {
-          message += `<b>${getRoleName(role)}</b>\n`;
-          for (const user of usersInRole) {
-            const displayName = user.name ? `${user.name} (<code>${user.user_id}</code>)` : `User <code>${user.user_id}</code>`;
-            message += `• ${displayName}\n`;
+          // Filter out bot owner from other roles display since we show them separately
+          const filteredUsers = usersInRole.filter(user => user.user_id !== botOwnerId);
+          if (filteredUsers.length > 0) {
+            message += `<b>${getRoleName(role)}</b>\n`;
+            for (const user of filteredUsers) {
+              const displayName = user.name ? `${user.name} (<code>${user.user_id}</code>)` : `User <code>${user.user_id}</code>`;
+              message += `• ${displayName}\n`;
+            }
+            message += '\n';
           }
-          message += '\n';
         }
       }
 
@@ -766,29 +834,52 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId) {
-      await ctx.reply("Unable to identify user.");
+      await ctx.reply("Unable to identify user.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
     const promoterRole = await this.getUserRole(fromId);
     if (!promoterRole) {
-      await ctx.reply("You are not registered in the system.");
+      await ctx.reply("You are not registered in the system.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
     const text = ctx.message && "text" in ctx.message ? ctx.message.text : "";
-    let targetId = text.split(" ")[1];
+    const targetInput = text.split(" ")[1];
+    let targetId: string | null = null;
     
-    if (!targetId && ctx.message && "reply_to_message" in ctx.message) {
+    // Handle reply to message
+    if (!targetInput && ctx.message && "reply_to_message" in ctx.message) {
       const reply = ctx.message.reply_to_message;
       if (reply?.from?.id) {
         targetId = reply.from.id.toString();
         await this.upsertUser(targetId, reply.from.first_name, reply.from.username ?? undefined);
       }
     }
+    // Handle username or user ID input
+    else if (targetInput) {
+      targetId = await this.resolveUsernameToId(targetInput);
+      if (!targetId) {
+        await ctx.reply(`User not found. Please ensure the user has interacted with the bot before or use their Telegram user ID.`);
+        return;
+      }
+    }
 
     if (!targetId) {
-      await ctx.reply(`Usage: /${targetRole} <tg_userid> or reply to a user with /${targetRole}`);
+      await ctx.reply(`Usage: /${targetRole} <tg_userid|@username> or reply to a user with /${targetRole}`);
+      return;
+    }
+
+    // Validate that we have a numeric user ID
+    if (!/^\d+$/.test(targetId)) {
+      await ctx.reply("Invalid user ID format. User ID must be numeric.");
+      return;
+    }
+
+    // Check if user exists in database (must have interacted with bot before)
+    const userExists = await this.getUserById(targetId);
+    if (!userExists) {
+      await ctx.reply("User not found. The user must have interacted with the bot before their role can be changed. Make sure they have executed /start on bot or sent a message in admin group!");
       return;
     }
 
@@ -800,9 +891,13 @@ export class AMAService {
 
     const currentRole = await this.getUserRole(targetId);
     
-    // Check if promoter has permission to modify this user (considering their current role)
-    if (!this.permissionsService.canPromoteToRole(promoterRole, targetRole, currentRole)) {
-      await ctx.reply("You are not authorized to perform this promotion/demotion.");
+    // Check if promoter has permission to modify this user
+    // Only bot owner and admin role can use grant commands
+    const isBotOwner = this.isBotOwner(fromId);
+    const isAdmin = promoterRole === 'admin';
+    
+    if (!isBotOwner && !isAdmin) {
+      await ctx.reply("Only admins and the bot owner can manage user roles.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
     
@@ -812,17 +907,31 @@ export class AMAService {
       return;
     }
 
-    await this.updateUserRole(targetId, targetRole);
-    const name = await this.getUserDisplayName(targetId);
-    
-    // Determine if this is a promotion or demotion
-    const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
-    if (roleComparison > 0) {
-      await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
-    } else if (roleComparison < 0) {
-      await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
-    } else {
-      await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
+    try {
+      await this.updateUserRole(targetId, targetRole);
+      const name = await this.getUserDisplayName(targetId);
+      
+      // Determine if this is a promotion or demotion
+      const roleComparison = this.permissionsService.compareRoles(currentRole, targetRole);
+      if (roleComparison > 0) {
+        await ctx.reply(`User ${name} has been promoted to ${targetRole} role.`);
+      } else if (roleComparison < 0) {
+        await ctx.reply(`User ${name} has been demoted to ${targetRole} role.`);
+      } else {
+        await ctx.reply(`User ${name} role has been changed to ${targetRole}.`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "Cannot modify bot owner permissions") {
+          await ctx.reply("Owner permissions cannot be modified.");
+        } else {
+          await ctx.reply("An error occurred while updating user role.");
+          console.error("Error updating user role:", error);
+        }
+      } else {
+        await ctx.reply("An error occurred while updating user role.");
+        console.error("Error updating user role:", error);
+      }
     }
   }
 
@@ -840,6 +949,12 @@ export class AMAService {
   // confirm-ama_(id)
   @Action(new RegExp(`^${CALLBACK_ACTIONS.CONFIRM}_${UUID_PATTERN}`, "i"))
   async confirmAMA(ctx: Context): Promise<void> {
+    await this.upsertUserFromContext(ctx);
+    const fromId = ctx.from?.id.toString();
+    if (!fromId || !(await this.canUserCreateAMA(fromId))) {
+      await ctx.answerCbQuery("❌ You are not authorized to confirm AMA creation.", { show_alert: true });
+      return;
+    }
     await handleConfirmAMA(ctx);
   }
 
@@ -849,7 +964,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
     const publicGroupIds = {
@@ -873,7 +988,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -897,7 +1012,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -924,7 +1039,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -963,7 +1078,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
 
@@ -986,7 +1101,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
     await handleConfirmEdit(
@@ -1002,7 +1117,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to start AMAs.");
+      await ctx.reply("❌ You are not authorized to start AMAs.");
       return;
     }
     const groupIds = {
@@ -1026,7 +1141,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("You are not authorized to end AMAs.");
+      await ctx.reply("❌ You are not authorized to end AMAs.");
       return;
     }
 
@@ -1047,7 +1162,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1064,7 +1179,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
     await confirmWinnersCallback(
@@ -1089,7 +1204,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
     const groupIds = {
@@ -1114,7 +1229,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1135,7 +1250,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1156,7 +1271,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1179,7 +1294,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1199,7 +1314,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserBroadcastAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to broadcast announcements.");
+      await ctx.reply("❌ You are not authorized to broadcast announcements.");
       return;
     }
 
@@ -1215,7 +1330,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.");
       return;
     }
 
@@ -1242,7 +1357,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || (!(await this.canUserBroadcastAnnouncements(fromId)) && !(await this.canUserEditAnnouncements(fromId)))) {
-      await ctx.reply("You are not authorized to cancel this action.");
+      await ctx.reply("❌ You are not authorized to cancel this action.");
       return;
     }
     if (ctx.callbackQuery && "message" in ctx.callbackQuery && ctx.callbackQuery.message) {
@@ -1257,7 +1372,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
     await handleCancelEdit(ctx);
@@ -1267,6 +1382,11 @@ export class AMAService {
 
   @On("text")
   async handleText(ctx: BotContext): Promise<void> {
+    // Ignore messages from the bot itself
+    if (ctx.from?.is_bot) {
+      return;
+    }
+
     const isCommand =
       !!ctx.message &&
       "entities" in ctx.message &&
@@ -1302,15 +1422,17 @@ export class AMAService {
           ctx,
           this.scheduleAMA.bind(this) as (ama_id: UUID, scheduled_time: Date, type: ScheduleType) => Promise<void>,
         );
-      } else {
+      } else if (ctx.session.editMode) {
+        // Only check edit permissions if user is actually in editing mode
         await this.upsertUserFromContext(ctx);
         const fromId = ctx.from?.id.toString();
         if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-          await ctx.reply("You are not authorized to edit AMA announcements.");
+          await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
         } else {
           await handleEdit(ctx);
         }
       }
+      // For regular chat messages in admin group, do nothing (no permission check needed)
     } else if (chatID === groupIds.public.en || chatID === groupIds.public.ar) {
       await handleAMAQuestion(
         ctx, groupIds,
@@ -1335,7 +1457,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserEditAnnouncements(fromId))) {
-      await ctx.reply("You are not authorized to edit AMA announcements.");
+      await ctx.answerCbQuery("❌ You are not authorized to edit AMA announcements.", { show_alert: true });
       return;
     }
 
