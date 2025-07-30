@@ -618,7 +618,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessNewAMA(fromId))) {
-      await ctx.reply("❌ You are not authorized to access AMA management.");
+      await ctx.reply("❌ You are not authorized to access AMA management.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -651,7 +651,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("❌ You are not authorized to start AMAs.");
+      await ctx.reply("❌ You are not authorized to start AMAs.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -680,7 +680,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserAccessAMA(fromId))) {
-      await ctx.reply("❌ You are not authorized to end AMAs.");
+      await ctx.reply("❌ You are not authorized to end AMAs.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -703,7 +703,7 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId || !(await this.canUserSelectWinners(fromId))) {
-      await ctx.reply("❌ You are not authorized to select winners.");
+      await ctx.reply("❌ You are not authorized to select winners.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -755,14 +755,14 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId) {
-      await ctx.reply("Unable to identify user.");
+      await ctx.reply("Unable to identify user.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
     const userRole = await this.getUserRole(fromId);
     const isBotOwner = this.isBotOwner(fromId);
     if (userRole !== "admin" && !isBotOwner) {
-      await ctx.reply("❌ You are not authorized to view permissions.");
+      await ctx.reply("❌ You are not authorized to view permissions.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -834,13 +834,13 @@ export class AMAService {
     await this.upsertUserFromContext(ctx);
     const fromId = ctx.from?.id.toString();
     if (!fromId) {
-      await ctx.reply("Unable to identify user.");
+      await ctx.reply("Unable to identify user.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
     const promoterRole = await this.getUserRole(fromId);
     if (!promoterRole) {
-      await ctx.reply("You are not registered in the system.");
+      await ctx.reply("You are not registered in the system.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
 
@@ -897,7 +897,7 @@ export class AMAService {
     const isAdmin = promoterRole === 'admin';
     
     if (!isBotOwner && !isAdmin) {
-      await ctx.reply("Only admins and the bot owner can manage user roles.");
+      await ctx.reply("Only admins and the bot owner can manage user roles.", ctx.message?.message_id ? { reply_parameters: { message_id: ctx.message.message_id } } : {});
       return;
     }
     
