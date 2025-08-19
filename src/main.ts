@@ -20,6 +20,8 @@ import {
   createCompressionMiddleware,
   createSecurityLoggingMiddleware,
   createIPFilterMiddleware,
+  createWebhookIPFilterMiddleware,
+  createTelegramSecretValidationMiddleware,
 } from "./middleware/security.middleware";
 
 // Add request logger middleware
@@ -59,6 +61,8 @@ async function bootstrap(): Promise<void> {
   // Security middleware - order matters!
   app.use(createSecurityLoggingMiddleware());
   app.use(createIPFilterMiddleware());
+  app.use(createWebhookIPFilterMiddleware());
+  app.use(createTelegramSecretValidationMiddleware());
   app.use(createHelmetMiddleware());
   app.use(createCompressionMiddleware());
   app.use(createRateLimitMiddleware());
@@ -96,6 +100,8 @@ async function bootstrap(): Promise<void> {
   await app.listen(PORT, () => {
     dbLogger.log(`Application is running on port ${PORT}`);
     dbLogger.log(`Security middleware enabled: Helmet, Rate Limiting, Compression, IP Filtering`);
+    dbLogger.log(`Webhook security: IP filtering=${process.env.WEBHOOK_IP_FILTERING}, Secret token=${!!process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN}`);
+    dbLogger.log(`GDPR compliance: ${process.env.GDPR_COMPLIANT_LOGGING === 'true' ? 'Enabled' : 'Disabled'}`);
     if (process.env.TRUST_PROXY === 'true') {
       dbLogger.log(`Trust proxy enabled for ALB/CloudFlare`);
     }
