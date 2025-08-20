@@ -71,11 +71,7 @@ export function createRateLimitMiddleware() {
       return req.path === '/webhook';
     },
     keyGenerator: (req) => {
-      // Use X-Forwarded-For header if behind a proxy (ALB/CloudFlare)
-      const forwarded = req.headers['x-forwarded-for'] as string;
-      if (forwarded) {
-        return forwarded.split(',')[0].trim();
-      }
+      // Let Express handle proxy trust logic via req.ip
       return req.ip || 'unknown';
     },
   });
@@ -148,7 +144,7 @@ export function createSecurityLoggingMiddleware() {
     
     res.on('finish', () => {
       const duration = Date.now() - startTime;
-      const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+      const clientIP = req.ip || 'unknown';
       
       const logData = {
         timestamp: new Date().toISOString(),
@@ -239,7 +235,7 @@ export function createWebhookIPFilterMiddleware() {
       return next();
     }
 
-    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+    const clientIP = req.ip || 'unknown';
 
     // Skip IP filtering if disabled or in development
     if (process.env.WEBHOOK_IP_FILTERING === 'false' || process.env.NODE_ENV === 'development') {
@@ -348,7 +344,7 @@ export function createIPFilterMiddleware() {
   const blacklist = process.env.IP_BLACKLIST?.split(',').map(ip => ip.trim()).filter(ip => ip) || [];
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+    const clientIP = req.ip || 'unknown';
 
     // Check blacklist first
     if (blacklist.length > 0 && blacklist.includes(clientIP)) {
