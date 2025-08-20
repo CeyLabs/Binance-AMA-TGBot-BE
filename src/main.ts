@@ -20,6 +20,9 @@ import {
   createCompressionMiddleware,
   createSecurityLoggingMiddleware,
   createIPFilterMiddleware,
+  createWebhookIPFilterMiddleware,
+  createTelegramSecretValidationMiddleware,
+  createCORSMiddleware,
 } from "./middleware/security.middleware";
 
 // Add request logger middleware
@@ -58,21 +61,13 @@ async function bootstrap(): Promise<void> {
 
   // Security middleware - order matters!
   app.use(createSecurityLoggingMiddleware());
+  app.use(createCORSMiddleware());
   app.use(createIPFilterMiddleware());
+  app.use(createWebhookIPFilterMiddleware());
+  app.use(createTelegramSecretValidationMiddleware());
   app.use(createHelmetMiddleware());
   app.use(createCompressionMiddleware());
   app.use(createRateLimitMiddleware());
-
-  // CORS configuration
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()) || [];
-  if (corsOrigins.length > 0) {
-    app.enableCors({
-      origin: corsOrigins,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    });
-  }
 
   app.use(json());
   if (process.env.WEBHOOK_LOGS === "true") {
