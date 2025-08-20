@@ -14,6 +14,16 @@ import { KnexService } from "./modules/knex/knex.service";
 import { DbLoggerService } from "./logger/db-logger.service";
 import * as express from "express";
 import * as path from "path";
+import {
+  createHelmetMiddleware,
+  createRateLimitMiddleware,
+  createCompressionMiddleware,
+  createSecurityLoggingMiddleware,
+  createIPFilterMiddleware,
+  createWebhookIPFilterMiddleware,
+  createTelegramSecretValidationMiddleware,
+  createCORSMiddleware,
+} from "./middleware/security.middleware";
 
 // Add request logger middleware
 const requestLogger = (req: Request, res: Response, next: NextFunction) => {
@@ -35,6 +45,12 @@ const requestLogger = (req: Request, res: Response, next: NextFunction) => {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // Configure trust proxy for ALB/CloudFlare
+  if (process.env.TRUST_PROXY === 'true') {
+    const expressInstance = app.getHttpAdapter().getInstance() as express.Application;
+    expressInstance.set('trust proxy', 1);
+  }
+
   // Initialize database logger
   const knexService = app.get(KnexService);
   const dbLogger = new DbLoggerService(knexService);
@@ -42,6 +58,16 @@ async function bootstrap(): Promise<void> {
 
   // Get the bot instance
   const bot = app.get<Telegraf>(getBotToken());
+
+  // Security middleware - order matters!
+  app.use(createSecurityLoggingMiddleware());
+  app.use(createCORSMiddleware());
+  app.use(createIPFilterMiddleware());
+  app.use(createWebhookIPFilterMiddleware());
+  app.use(createTelegramSecretValidationMiddleware());
+  app.use(createHelmetMiddleware());
+  app.use(createCompressionMiddleware());
+  app.use(createRateLimitMiddleware());
 
   app.use(json());
   if (process.env.WEBHOOK_LOGS === "true") {
@@ -52,6 +78,11 @@ async function bootstrap(): Promise<void> {
   // Serve static files from the public directory
   app.use('/public', express.static(path.join(__dirname, '..', '..', 'public')));
 
+  // Health check endpoint for ALB
+  app.use('/health', (req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   // Connect the webhook middleware
   app.use(bot.webhookCallback("/webhook"));
 
@@ -59,6 +90,10 @@ async function bootstrap(): Promise<void> {
   const PORT = process.env.PORT || 3000;
   await app.listen(PORT, () => {
     dbLogger.log(`Application is running on port ${PORT}`);
+    dbLogger.log(`Security middleware enabled: Helmet, Rate Limiting, Compression, IP Filtering`);
+    if (process.env.TRUST_PROXY === 'true') {
+      dbLogger.log(`Trust proxy enabled for ALB/CloudFlare`);
+    }
   });
 }
 
