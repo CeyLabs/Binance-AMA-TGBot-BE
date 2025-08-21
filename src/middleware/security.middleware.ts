@@ -71,11 +71,7 @@ export function createRateLimitMiddleware() {
       return req.path === '/webhook';
     },
     keyGenerator: (req) => {
-      // Use X-Forwarded-For header if behind a proxy (ALB/CloudFlare)
-      const forwarded = req.headers['x-forwarded-for'] as string;
-      if (forwarded) {
-        return forwarded.split(',')[0].trim();
-      }
+      // Let Express handle proxy trust logic via req.ip
       return req.ip || 'unknown';
     },
   });
@@ -148,7 +144,7 @@ export function createSecurityLoggingMiddleware() {
     
     res.on('finish', () => {
       const duration = Date.now() - startTime;
-      const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+      const clientIP = req.ip || 'unknown';
       
       const logData = {
         timestamp: new Date().toISOString(),
@@ -239,7 +235,7 @@ export function createWebhookIPFilterMiddleware() {
       return next();
     }
 
-    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+    const clientIP = req.ip || 'unknown';
 
     // Skip IP filtering if disabled or in development
     if (process.env.WEBHOOK_IP_FILTERING === 'false' || process.env.NODE_ENV === 'development') {
@@ -290,6 +286,55 @@ export function createTelegramSecretValidationMiddleware() {
 }
 
 /**
+ * CORS middleware that properly enforces origin restrictions
+ * @function createCORSMiddleware
+ * @returns {Function} CORS enforcement middleware
+ */
+export function createCORSMiddleware() {
+  const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()).filter(origin => origin) || [];
+  
+  return (req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    
+    // If no CORS origins are configured, allow all origins (development mode)
+    if (allowedOrigins.length === 0) {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      
+      // Handle preflight requests
+      if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+      }
+      return next();
+    }
+    
+    // Check if origin is allowed
+    const isAllowedOrigin = allowedOrigins.includes(origin || '');
+    
+    if (!isAllowedOrigin && origin) {
+      console.warn(`[SECURITY] Blocked CORS request from unauthorized origin: ${origin}`);
+      return res.status(403).json({ error: 'CORS policy violation: Origin not allowed' });
+    }
+    
+    // Set CORS headers for allowed origins
+    if (isAllowedOrigin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    
+    next();
+  };
+}
+
+/**
  * IP filtering middleware for general whitelist/blacklist functionality
  * @function createIPFilterMiddleware
  * @returns {Function} IP filtering middleware
@@ -299,7 +344,7 @@ export function createIPFilterMiddleware() {
   const blacklist = process.env.IP_BLACKLIST?.split(',').map(ip => ip.trim()).filter(ip => ip) || [];
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown';
+    const clientIP = req.ip || 'unknown';
 
     // Check blacklist first
     if (blacklist.length > 0 && blacklist.includes(clientIP)) {

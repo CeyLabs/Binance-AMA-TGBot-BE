@@ -16,7 +16,7 @@ This document outlines the comprehensive security middleware stack implemented t
 ### 2. Rate Limiting
 - **Window**: 15 minutes (configurable via `RATE_LIMIT_WINDOW_MS`)
 - **Limit**: 100 requests per window (configurable via `RATE_LIMIT_MAX_REQUESTS`)
-- **Smart IP Detection**: Uses `X-Forwarded-For` header when behind ALB/proxy
+- **Smart IP Detection**: Uses `req.ip` (respects TRUST_PROXY setting)
 - **Webhook Exemption**: Telegram webhooks are excluded from rate limiting
 
 ### 3. Request Compression
@@ -27,17 +27,18 @@ This document outlines the comprehensive security middleware stack implemented t
 ### 4. IP Filtering (Optional)
 - **Whitelist**: Allow only specific IPs (configurable via `IP_WHITELIST`)
 - **Blacklist**: Block specific IPs (configurable via `IP_BLACKLIST`)
-- **ALB-Aware**: Properly extracts client IP from `X-Forwarded-For` header
+- **TRUST_PROXY Aware**: Uses `req.ip` for consistent IP resolution
 
 ### 5. Security Logging & Monitoring
-- **Request Tracking**: Logs suspicious requests (4xx/5xx responses, slow requests)
-- **Performance Monitoring**: Tracks request duration and response sizes
+- **GDPR Compliant**: IP hashing and data sanitization when enabled
+- **Performance Tracking**: Logs request duration and response sizes
 - **Security Events**: Warns about blocked IPs and rate limit violations
 
 ### 6. CORS Configuration
 - **Origin Control**: Configurable allowed origins via `CORS_ORIGINS`
 - **Method Restrictions**: Limited to essential HTTP methods
 - **Header Control**: Restricted allowed headers for security
+- **Enforcement**: Actually blocks unauthorized origins (not just headers)
 
 ### 7. Proxy Configuration
 - **Trust Proxy**: Configurable trust for ALB/CloudFlare (`TRUST_PROXY`)
@@ -210,6 +211,15 @@ curl http://localhost:3000/health
 # Check application logs to verify IP addresses are hashed when GDPR_COMPLIANT_LOGGING=true
 ```
 
+### TRUST_PROXY Test
+```bash
+# Test without proxy headers
+curl http://localhost:3000/health
+
+# Test with proxy headers (should behave differently based on TRUST_PROXY setting)
+curl -H "X-Forwarded-For: 1.2.3.4" http://localhost:3000/health
+```
+
 ## Security Considerations
 
 - **Webhook Security**: Multi-layered webhook protection with IP filtering and secret token validation
@@ -227,6 +237,7 @@ curl http://localhost:3000/health
 3. **Enable GDPR Logging**: Set `GDPR_COMPLIANT_LOGGING=true` for EU compliance
 4. **Configure Telegram Secret**: Use the same secret token in your Telegram webhook setup
 5. **Monitor Security Logs**: Regularly review security events and blocked requests
+6. **Set TRUST_PROXY**: Configure `TRUST_PROXY=true` when behind ALB/CloudFlare
 
 ### Telegram Webhook Setup:
 ```bash
@@ -235,5 +246,10 @@ curl -F "url=https://yourdomain.com/webhook" \
      -F "secret_token=your-secret-token-here" \
      "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook"
 ```
+
+### TRUST_PROXY Security Fix
+- **Fixed**: All middleware now uses `req.ip` instead of manual header parsing
+- **Prevents**: IP spoofing attacks when TRUST_PROXY=false
+- **Ensures**: Consistent IP resolution across all security components
 
 This implementation provides enterprise-grade security suitable for production deployment behind AWS ALB with WAF and Shield protection, while ensuring full GDPR compliance and secure webhook handling.
