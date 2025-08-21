@@ -90,7 +90,7 @@ async function bootstrap(): Promise<void> {
   await app.listen(PORT, () => {
     dbLogger.log(`Application is running on port ${PORT}`);
     dbLogger.log(`Security middleware enabled: Helmet, Rate Limiting, Compression, IP Filtering`);
-    dbLogger.log(`Webhook security: IP filtering=${process.env.WEBHOOK_IP_FILTERING}, Secret token=${!!process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN}`);
+    dbLogger.log(`Webhook security: IP filtering=${process.env.WEBHOOK_IP_FILTERING || 'true'} (Telegram IP ranges: 149.154.160.0/20, 91.108.4.0/22)`);
     dbLogger.log(`GDPR compliance: ${process.env.GDPR_COMPLIANT_LOGGING === 'true' ? 'Enabled' : 'Disabled'}`);
     if (process.env.TRUST_PROXY === 'true') {
       dbLogger.log(`Trust proxy enabled for ALB/CloudFlare`);

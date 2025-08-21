@@ -68,8 +68,7 @@ TRUST_PROXY=true
 # CORS Configuration
 CORS_ORIGINS=
 
-# Telegram Webhook Security
-TELEGRAM_WEBHOOK_SECRET_TOKEN=your-secret-token-here
+# Telegram Webhook Security (IP-based)
 WEBHOOK_IP_FILTERING=true
 ```
 
@@ -112,11 +111,11 @@ WEBHOOK_IP_FILTERING=true
 - **Development Mode**: IP filtering can be disabled via `WEBHOOK_IP_FILTERING=false` for testing
 - **Real-time Blocking**: Unauthorized IPs are immediately blocked with security logging
 
-### Secret Token Validation
-- **X-Telegram-Bot-Api-Secret-Token**: Validates Telegram's secret header
-- **Configurable Token**: Set via `TELEGRAM_WEBHOOK_SECRET_TOKEN` environment variable
-- **Fail-Safe**: Warns if secret token is not configured but allows operation
-- **Header Verification**: Ensures requests contain valid Telegram authentication
+### Primary Security Method: IP-Based Authentication
+- **No Secret Tokens Required**: Uses IP filtering as the primary security method
+- **Simpler Configuration**: No token management or webhook reconfiguration needed
+- **Network-Level Protection**: Blocks unauthorized requests at the infrastructure level
+- **Official IP Ranges**: Uses Telegram's published and maintained IP ranges
 
 ### Webhook-Specific Features
 - **Endpoint Targeting**: Security measures only apply to `/webhook` path
@@ -192,16 +191,26 @@ curl -I http://localhost:3000/health
 curl http://localhost:3000/health
 ```
 
-### Webhook Security Test
+### Webhook IP Filtering Test
 ```bash
-# Test webhook IP filtering (should be blocked if not from Telegram IPs)
-curl -X POST http://localhost:3000/webhook -H "Content-Type: application/json" -d "{\"test\": \"data\"}"
-
-# Test webhook with secret token (replace YOUR_SECRET_TOKEN)
+# Test unauthorized IP (should be blocked)
 curl -X POST http://localhost:3000/webhook \
-  -H "Content-Type: application/json" \
-  -H "X-Telegram-Bot-Api-Secret-Token: YOUR_SECRET_TOKEN" \
-  -d "{\"test\": \"data\"}"
+     -H "Content-Type: application/json" \
+     -d '{"test": "unauthorized_ip"}'
+# Expected: 403 Forbidden - Unauthorized webhook source
+
+# Test authorized Telegram IP (simulate behind proxy)
+curl -X POST http://localhost:3000/webhook \
+     -H "Content-Type: application/json" \
+     -H "X-Forwarded-For: 149.154.165.1" \
+     -d '{"test": "telegram_ip"}'
+# Expected: Request processed (when TRUST_PROXY=true)
+
+# Test development mode (allows any IP)
+WEBHOOK_IP_FILTERING=false curl -X POST http://localhost:3000/webhook \
+     -H "Content-Type: application/json" \
+     -d '{"test": "dev_mode"}'
+# Expected: Request processed
 ```
 
 ### GDPR Compliance Test
@@ -233,19 +242,27 @@ curl -H "X-Forwarded-For: 1.2.3.4" http://localhost:3000/health
 
 ### For Production Deployment:
 1. **Change IP Hash Salt**: Update `IP_HASH_SALT` in production environment
-2. **Set Webhook Secret**: Configure `TELEGRAM_WEBHOOK_SECRET_TOKEN` for webhook authentication
+2. **Enable Webhook IP Filtering**: Set `WEBHOOK_IP_FILTERING=true` in production
 3. **Enable GDPR Logging**: Set `GDPR_COMPLIANT_LOGGING=true` for EU compliance
-4. **Configure Telegram Secret**: Use the same secret token in your Telegram webhook setup
-5. **Monitor Security Logs**: Regularly review security events and blocked requests
-6. **Set TRUST_PROXY**: Configure `TRUST_PROXY=true` when behind ALB/CloudFlare
+4. **Set TRUST_PROXY**: Configure `TRUST_PROXY=true` when behind ALB/CloudFlare
+5. **Monitor Security Logs**: Regularly review blocked IP attempts and security events
 
 ### Telegram Webhook Setup:
 ```bash
-# Set webhook with secret token (replace values)
+# Set webhook URL (no secret token needed with IP filtering)
 curl -F "url=https://yourdomain.com/webhook" \
-     -F "secret_token=your-secret-token-here" \
      "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook"
+
+# Verify webhook is set correctly
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
 ```
+
+### IP-Based Security Advantages:
+- **Simpler Setup**: No token generation or management required
+- **Automatic Protection**: Works without webhook reconfiguration
+- **Network-Level Security**: Blocks unauthorized requests before processing
+- **No Secret Management**: No tokens to rotate or secure
+- **Official IP Ranges**: Telegram maintains and updates these ranges
 
 ### TRUST_PROXY Security Fix
 - **Fixed**: All middleware now uses `req.ip` instead of manual header parsing
