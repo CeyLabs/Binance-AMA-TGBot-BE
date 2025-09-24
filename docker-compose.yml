@@ -12,6 +12,49 @@ services:
       - '3009:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U binance-ama-bot -d binance-ama-bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: binance-ama-bot
+    environment:
+      - NODE_ENV=production
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - PG_DB=binance-ama-bot
+      - PG_USER=binance-ama-bot
+      - PG_PW=binance-ama-bot
+    env_file:
+      - .env.docker
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - ./public:/app/public:ro
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:

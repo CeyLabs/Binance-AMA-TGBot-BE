@@ -53,50 +53,95 @@ This bot is specifically designed to manage and automate AMA (Ask Me Anything) s
 
 ## 📋 Prerequisites
 
-- Node.js v22
-- Docker
+- Docker & Docker Compose
 - Telegram Bot Token
 - OpenAI API Key
-- PostgreSQL Database
 
-## 🚀 Installation
+## 🚀 Quick Start with Docker
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/CeyLabs/Binance-AMA-TGBot-BE.git
 cd Binance-AMA-TGBot-BE
 ```
 
-2. Create `.env` file:
+2. **Configure environment variables:**
 ```bash
-cp .env.template .env
-# Update .env file with your configuration including:
-# - BOT_TOKEN (Telegram Bot Token)
-# - OPENAI_API_KEY (OpenAI API Key)
-# - DATABASE_URL (PostgreSQL connection string)
-# - ADMIN_GROUP_ID (Admin group ID)
-# - EN_PUBLIC_GROUP_ID (English public group ID)
-# - AR_PUBLIC_GROUP_ID (Arabic public group ID)
+cp .env.template .env.docker
 ```
 
-3. Install dependencies:
+3. **Edit `.env.docker` with your configuration:**
 ```bash
-bun install
+# Required: Update these values
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+BOT_USERNAME=your_bot_username_here
+BOT_OWNER_ID=your_telegram_user_id
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Telegram Group Configuration
+ADMIN_GROUP_ID=your_admin_group_id_here
+EN_PUBLIC_GROUP_ID=your_english_public_group_id
+AR_PUBLIC_GROUP_ID=your_arabic_public_group_id
+
+# Optional: Webhook settings (if using webhooks)
+WEBHOOK_DOMAIN=your_domain.com
+ENABLE_WEBHOOK=false
+
+# Database settings are pre-configured for Docker
 ```
 
-4. Start the PostgreSQL database using Docker:
+4. **Start the application:**
 ```bash
 docker-compose up -d
 ```
 
-5. Run database migrations:
+That's it! The application will:
+- ✅ Automatically start PostgreSQL database
+- ✅ Run database migrations
+- ✅ Build and start the NestJS application
+- ✅ Handle service dependencies and health checks
+
+**Access the application:**
+- Bot: Available on Telegram
+- Database: `localhost:3009` (postgres/postgres)
+- Health Check: `curl http://localhost:3000/health`
+
+**Connect to instance:**
 ```bash
-bun run migrate
-bun run fixtures
+docker ps
+# Find binance-ama-tgbot-be_app container id
+docker exec -it {container_id} /bin/sh
 ```
 
-6. Start the development server:
+**View logs:**
 ```bash
+docker-compose logs -f app    # Application logs
+docker-compose logs -f postgres  # Database logs
+```
+
+**Stop the application:**
+```bash
+docker-compose down
+```
+
+## 🛠 Development Setup (Alternative)
+
+If you prefer local development without Docker:
+
+1. **Install dependencies:**
+```bash
+bun install
+```
+
+2. **Setup local PostgreSQL and update .env:**
+```bash
+cp .env.template .env
+# Configure local database connection
+```
+
+3. **Run migrations and start:**
+```bash
+bun run migrate
 bun run serve:local
 ```
 
